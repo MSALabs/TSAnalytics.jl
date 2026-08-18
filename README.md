@@ -1,5 +1,8 @@
 # TSAnalytics.jl
 
+[![docs latest](https://img.shields.io/badge/docs-dev-blue.svg)](https://msalabs.github.io/TSAnalytics.jl/dev/)
+[![CI](https://github.com/MSALabs/TSAnalytics.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/MSALabs/TSAnalytics.jl/actions/workflows/CI.yml)
+
 A native Julia time series analysis package: ARIMA/SARIMAX, seasonal
 decomposition, exponential smoothing, and the diagnostic tests that go
 with them -- built incrementally, in the spirit of GLM.jl (separation of
