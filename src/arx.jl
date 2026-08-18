@@ -8,6 +8,13 @@ rows-and-columns in the same order the design matrix was built:
 trend/seasonal terms first, then lags (`"y.L1"`, `"y.L2"`, ...), then any
 `exog` columns (`"x1"`, `"x2"`, ...) -- matching `statsmodels.tsa.ar_model.AutoReg`'s
 own column order and naming exactly (verified by execution, not assumed).
+
+`y` (the full original series) and `period` (the `seasonal=true` period,
+`nothing` otherwise) are stored specifically so [`forecast`](@ref) has
+something to forecast *from* -- without them there is no way to seed a
+forecast recursion's initial lagged values or continue the trend/seasonal
+terms past the fitted sample, a real gap the first version of this
+struct (Stage 5.1) had (it only kept `resid`, not `y`).
 """
 struct ARXModel <: UnivariateModel
     coef::Vector{Float64}
@@ -21,6 +28,8 @@ struct ARXModel <: UnivariateModel
     nobs::Int
     lags::Vector{Int}
     trend::Symbol
+    y::Vector{Float64}
+    period::Union{Nothing,Int}
 end
 
 StatsAPI.coef(m::ARXModel) = m.coef
@@ -185,7 +194,8 @@ function arx(y, lags::Union{Integer,AbstractVector{<:Integer}};
     aic_val = -2*loglik + 2*(k+1)
     bic_val = -2*loglik + (k+1)*log(nobs)
 
-    return ARXModel(beta, vc, names, resid, sigma2, loglik, aic_val, bic_val, nobs, lagset, trend)
+    return ARXModel(beta, vc, names, resid, sigma2, loglik, aic_val, bic_val, nobs, lagset, trend,
+                     collect(Float64, yv), seasonal ? period : nothing)
 end
 
 function Base.show(io::IO, m::ARXModel)

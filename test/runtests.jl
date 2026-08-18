@@ -19,4 +19,5 @@ using Statistics: mean
     include("test_optim.jl")
     include("test_monahan.jl")
     include("test_arx.jl")
+    include("test_forecast.jl")
 end

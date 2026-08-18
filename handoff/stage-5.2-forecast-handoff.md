@@ -1,5 +1,49 @@
 # Handoff: Stage 5.2 — Forecast Object & Prediction Intervals
 
+Status: **done.** `forecast`/`StatsAPI.predict`/`Forecast`
+(`src/forecast.jl`, `test/test_forecast.jl`) built per sections 4-6,
+with one correction to this handoff's own stated environment and two
+real gaps found and closed along the way:
+
+1. **The "R unreachable" verification boundary didn't hold in this
+   session.** `R`/`Rscript` weren't on `PATH`, which this handoff (and an
+   earlier session's memory note) read as "R not installed" -- but R
+   4.6.0 turned out to be genuinely installed (`C:\Program Files\R\R-4.6.0`),
+   reachable via its full path, and CRAN turned out to be reachable too
+   (`install.packages("forecast")` succeeded, pulling in `urca`/`zoo`/etc.
+   as dependencies). Section 2's "documented, not executed" caveat is
+   resolved: `predict.ar()`, `forecast.ar()`, and `print.forecast()`'s
+   exact column format (`Point Forecast`/`Lo 80`/`Hi 80`/`Lo 95`/`Hi 95`)
+   were all confirmed by direct execution on the exact Stage 5.1 model,
+   and R's numbers agree exactly with Python's `AutoReg.get_prediction()`
+   -- section 3's design (matching both) needed no correction.
+2. **A real design gap, not just an incomplete sketch**: section 5's
+   point-forecast recursion was left as a comment
+   (`# full point-forecast recursion elided here`) because `ARXModel`
+   (Stage 5.1) never stored the fitted series at all -- there was
+   nothing to seed lagged values from. Added `y::Vector{Float64}` and
+   `period::Union{Nothing,Int}` fields to `ARXModel` (verified only one
+   construction site exists, safe to extend) rather than changing
+   `predict`'s signature to take data separately.
+3. **The recursion generalizes by construction, not by extra cases**:
+   rather than hand-coding trend/seasonal logic, it walks
+   `ARXModel.names` (parsing `"const"`/`"trend"`/`"s(season,period)"`/
+   `"y.L<lag>"` labels) at each future time step -- so an arbitrary lag
+   *subset*, `trend`/`seasonal` continuation, and combinations of both
+   are handled correctly automatically, verified against freshly
+   generated (not handoff-provided) Python reference numbers for
+   `trend=:ct`, `lags=[1,3]`, and `seasonal=true` separately, beyond the
+   handoff's own single default-`trend=:c` test case.
+4. **Exogenous-regressor models are explicitly rejected** (future
+   `exog` values would be needed and aren't available) -- a case this
+   handoff's design never mentioned at all, closed with a clear
+   `ArgumentError` rather than silently ignoring the regressor.
+
+Documentation convention: the full docstring lives on the exported
+`forecast`, not the unexported `StatsAPI.predict` extension -- matching
+the precedent `ARXModel`'s own `StatsAPI.coef`/`vcov` extensions already
+set (no separate docstring on the bare extension method).
+
 For a fresh Claude Code session picking this up with no prior context.
 Second of five Stage 5 handoffs. First consumer of `ARXModel` (Stage
 5.1) — this is the interface every later model's forecasting (SARIMAX,

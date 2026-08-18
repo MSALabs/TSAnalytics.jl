@@ -70,6 +70,8 @@ JarqueBeraTest
 ```@docs
 arx
 ARXModel
+forecast
+Forecast
 ```
 
 ## Model-fitting infrastructure

@@ -12,9 +12,9 @@ numerics).
 **Status: pre-release, active development.** This repository currently
 contains the foundational descriptive-statistics, diagnostic-testing, and
 decomposition layers, the optimizer/reparametrization infrastructure
-every MLE-fit model will share, and its first fitted model (`arx`).
-ARIMA/SARIMAX via a shared state-space engine is next. See
-[Roadmap](#roadmap) below.
+every MLE-fit model will share, and its first fitted model (`arx`) with
+forecasting (`forecast`). ARIMA/SARIMAX via a shared state-space engine
+is next. See [Roadmap](#roadmap) below.
 
 ## What's implemented so far
 
@@ -157,6 +157,23 @@ ARIMA/SARIMAX via a shared state-space engine is next. See
   numerically, not assumed, a ~1% systematic difference), and a singular/
   collinear design raises a clear `ArgumentError` rather than a raw
   `SingularException`
+- `forecast`/`Forecast` -- multi-step-ahead forecasting with prediction
+  intervals from a fitted `ARXModel`, R's `forecast(level=...)`
+  convention (multiple nested percentage levels in one call, default
+  `[80.0, 95.0]`) rather than Python's single-`alpha` `get_prediction`.
+  Standard errors use the known-parameters Box-Jenkins psi-weight
+  propagation formula, verified to exactly reproduce **both** real
+  `statsmodels`' `AutoReg.get_prediction()` **and** real R's
+  `predict.ar()`/`forecast.ar()`/`print.forecast()` output (R genuinely
+  is installed on the dev machine this was built on, just not on `PATH`
+  -- an earlier assumption to the contrary was wrong). Point forecasts
+  walk the fitted model's own column labels generically (not hand-coded
+  per `trend`/`seasonal` case), so an arbitrary lag *subset*, `trend`/
+  `seasonal` continuation, and combinations of both are all verified
+  exact against fresh reference numbers, not just the default case.
+  Forecasting a model fit with `exog` raises a clear error (future exog
+  values would be needed and aren't available) rather than silently
+  ignoring the regressor
 
 All of the above are implemented natively (no calls out to R or Python,
 `Optim.jl` for general-purpose numerical optimization aside -- the same

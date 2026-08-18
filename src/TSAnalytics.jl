@@ -21,6 +21,7 @@ include("mstl.jl")
 include("optim.jl")
 include("monahan.jl")
 include("arx.jl")
+include("forecast.jl")
 
 export TimeSeriesModel, StateSpaceModel, UnivariateModel, HypothesisTest
 export statistic, pvalue
