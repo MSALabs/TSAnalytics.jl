@@ -12,9 +12,12 @@ numerics).
 **Status: pre-release, active development.** This repository currently
 contains the foundational descriptive-statistics, diagnostic-testing, and
 decomposition layers, the optimizer/reparametrization infrastructure
-every MLE-fit model will share, and its first fitted model (`arx`) with
-forecasting (`forecast`). ARIMA/SARIMAX via a shared state-space engine
-is next. See [Roadmap](#roadmap) below.
+every MLE-fit model will share, its first fitted model (`arx`) with
+forecasting (`forecast`), accuracy metrics (`mae`/`rmse`/`mape`/
+`smape`/`mase`/`accuracy`), rolling-origin cross-validation (`tscv` and
+friends), and classical exponential smoothing (`holt_winters`) --
+completing Stage 5. ARIMA/SARIMAX via a shared state-space engine is
+next. See [Roadmap](#roadmap) below.
 
 ## What's implemented so far
 
@@ -174,6 +177,51 @@ is next. See [Roadmap](#roadmap) below.
   Forecasting a model fit with `exog` raises a clear error (future exog
   values would be needed and aren't available) rather than silently
   ignoring the regressor
+- `mae`, `rmse`, `mape`, `smape`, `mase`, `accuracy` -- forecast accuracy
+  metrics, verified exactly against real `sktime`'s
+  `mean_absolute_error`/`mean_squared_error`/
+  `mean_absolute_percentage_error`/`mean_absolute_scaled_error` (source
+  read directly, not just docs) and against real R's
+  `forecast::accuracy()`, confirming R reports `MAPE` as a percentage
+  (e.g. `33.69`) while `sktime` uses a raw fraction (`0.3369`) --
+  `as_percentage=true` is the default, matching R's more commonly
+  expected convention. `mase` takes the training series as a required
+  argument (a mathematical necessity: it can't be computed from
+  actual/predicted alone) and supports a seasonal-naive benchmark via
+  `sp`. `smape`'s docstring carries a prominent warning, quoting Hyndman
+  (its own metric family's author) recommending against using sMAPE at
+  all -- prefer plain MAPE or MASE instead
+- `expanding_window_split`, `sliding_window_split`, `tscv` --
+  rolling-origin cross-validation, both shapes R and Python actually use:
+  the low-level splitters return `(train_idx, test_idx)` pairs matching
+  `sktime`'s `ExpandingWindowSplitter`/`SlidingWindowSplitter` exactly
+  (verified against real index output); `tscv` is the R-`forecast::tsCV`-
+  style "batteries included" wrapper (user-supplied fit-forecast
+  callable, returns an error matrix), built *on top of* the splitters so
+  the two conventions can't silently disagree. Cross-checked against real
+  `forecast::tsCV()` output too: error values agree exactly at every
+  fold R can compute; `tscv` just omits R's always-`NA` padding rows
+  (folds that can never be computed, e.g. beyond the series end)
+- `holt_winters`/`ExponentialSmoothingModel` -- simple / Holt's linear /
+  Holt-Winters exponential smoothing, fit by SSE minimization.
+  `initialization_method=:heuristic` (default) uses fixed initial states
+  from `classical_decompose`+OLS, **verified to reproduce R's
+  `stats::HoltWinters()` fitted/level/trend/season output bit-for-bit**
+  (~1e-13) across additive, multiplicative, with/without trend, and
+  simple-ES cases -- catching a genuine formula subtlety along the way
+  (the seasonal update uses the *already-updated* level, not
+  `l_{t-1}+b_{t-1}`, invisible until comparing R's second seasonal
+  cycle). `:estimated` instead jointly optimizes the initial states with
+  the smoothing parameters, matching Python's
+  `statsmodels.tsa.holtwinters.ExponentialSmoothing` default philosophy
+  -- confirmed by direct execution that these are genuinely different
+  optimization problems (different `alpha`/`beta`/`gamma`/SSE on
+  identical data), not just different starting guesses. Also found and
+  fixed a real optimizer-selection bug along the way: `_optimize`'s
+  default `:lbfgs` silently converges to a badly wrong optimum on this
+  sigmoid-bounded objective (verified by direct testing), so
+  `holt_winters` uses `:nelder_mead` with a generous iteration budget
+  instead
 
 All of the above are implemented natively (no calls out to R or Python,
 `Optim.jl` for general-purpose numerical optimization aside -- the same

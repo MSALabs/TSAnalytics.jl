@@ -20,4 +20,7 @@ using Statistics: mean
     include("test_monahan.jl")
     include("test_arx.jl")
     include("test_forecast.jl")
+    include("test_accuracy.jl")
+    include("test_tscv.jl")
+    include("test_holtwinters.jl")
 end

@@ -1,5 +1,35 @@
 # Handoff: Stage 5.4 — Rolling-Origin Cross-Validation
 
+Status: **done.** `expanding_window_split`/`sliding_window_split`/`tscv`
+(`src/tscv.jl`, `test/test_tscv.jl`) built per sections 3-4, with one
+correction to this handoff's own stated boundary:
+
+1. **All four `sktime` splitter fold cases (section 1, table in section 6)
+   were re-verified by direct execution** on `y=arange(20)`, not just
+   trusted from the transcription — `ExpandingWindowSplitter`/
+   `SlidingWindowSplitter` fold boundaries, the `fh=[1,2,3]` multi-horizon
+   case, and the `step_length=2` case all matched exactly (0-indexed
+   Python output, +1 translated to Julia's 1-indexing).
+2. **The "R's `tsCV()` could not be executed" boundary from section 2
+   didn't hold** — same correction pattern as Stages 5.2/5.3: R is
+   installed (just not on `PATH`) and CRAN is reachable, so
+   `forecast::tsCV()` was run for real. Its error values agree exactly
+   with `tscv`'s at every fold R can actually compute; the only
+   difference is that R additionally pads its result to the full
+   series length with leading/trailing `NA`s (a `ts`-object time-index
+   alignment requirement) which `tscv` deliberately omits, since a fold
+   that can never be computed (e.g. beyond the series end) carries no
+   information plain padding would add.
+3. No discrepancies were found in the proposed design itself (section 3's
+   dual-shape rationale, section 4's implementation) — unlike Stages
+   5.1/5.2, the code was implemented essentially as proposed, with
+   `ArgumentError` validation added for `initial_window`/`window_length`/
+   `step_length`/`fh` bounds (not explicit in the handoff's own sketch,
+   but consistent with this project's existing error-handling
+   conventions).
+
+---
+
 For a fresh Claude Code session picking this up with no prior context.
 Fourth of five Stage 5 handoffs. **R and Python solve this with
 genuinely different-shaped APIs**, not just different names for the same

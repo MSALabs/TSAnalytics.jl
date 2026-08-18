@@ -1,5 +1,46 @@
 # Handoff: Stage 5.5 — Classical Exponential Smoothing (Simple/Holt/Holt-Winters)
 
+Status: **done.** `holt_winters`/`ExponentialSmoothingModel`
+(`src/holtwinters.jl`, `test/test_holtwinters.jl`) built per sections
+4-8, going further than this handoff's own "deliberately incomplete"
+recursion sketch (section 6) required:
+
+1. **The actual recursion was reverse-engineered and verified
+   bit-for-bit against real `stats::HoltWinters()` output**, not just
+   implemented from a textbook formula and trusted. Neither this
+   handoff's sketch nor a from-scratch textbook derivation alone pins
+   down the exact update timing, so fixed-`alpha`/`beta`/`gamma` fits
+   were run in real R on `TSAnalytics.AIR_PASSENGERS` (additive,
+   multiplicative, seasonal-without-trend, Holt, simple ES) and every
+   fitted/level/trend/season value matched to ~1e-13. This surfaced a
+   genuine formula subtlety invisible in the first seasonal cycle alone
+   (every season slot is still at its untouched initial value there):
+   the seasonal state update uses the **already-updated** level,
+   `s_t = gamma*(y_t - l_t) + (1-gamma)*s_{t-m}`, not
+   `l_{t-1}+b_{t-1}` as some textbook presentations use. Only found by
+   comparing R's *second* pass through the season array.
+2. **Confirmed section 3's headline finding by direct execution**:
+   `:heuristic` (R-style, `classical_decompose`+OLS, states fixed) and
+   `:estimated` (Python-style, states jointly optimized) converge to
+   visibly different `alpha`/`beta`/`gamma`/SSE on identical data.
+   Full free-parameter `:heuristic` optimization reproduces R's own
+   actual optimum on `AIR_PASSENGERS` almost exactly (`alpha=0.2480,
+   beta=0.0345, gamma≈1.0, SSE=21860.18`, matching R's real output to
+   4+ digits — not just the qualitative "gamma is high" shape).
+3. **Found and fixed a real optimizer-selection bug during this
+   verification, not assumed**: `_optimize`'s default `:lbfgs` on the
+   sigmoid-bounded SSE objective takes a single unregularized step and
+   falsely reports convergence once `alpha`/`beta`/`gamma` saturate near
+   0/1 (confirmed: `SSE=93495` in 1 iteration vs. the true `21860`
+   optimum, on the exact same problem). Switched to `:nelder_mead`,
+   confirmed to reliably find R's exact optimum — and confirmed the
+   default 1000-iteration budget genuinely isn't enough for
+   `:estimated`'s higher-dimensional joint optimization (12 seasonal
+   states + 3 smoothing + level + trend = 17 dims needed ~12,900
+   iterations to converge), hence the `20_000`-iteration budget used.
+
+---
+
 For a fresh Claude Code session picking this up with no prior context.
 Last of the five Stage 5 handoffs. **The headline finding here is a
 genuine fitting-philosophy divergence, not a parameter mismatch**: R and

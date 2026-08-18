@@ -1,5 +1,43 @@
 # Handoff: Stage 5.3 — Accuracy Metrics (MAE, RMSE, MAPE, MASE, sMAPE)
 
+Status: **done.** `mae`/`rmse`/`mape`/`smape`/`mase`/`accuracy`
+(`src/accuracy.jl`, `test/test_accuracy.jl`) built per sections 4-6.
+Every formula and numeric claim in this handoff was independently
+re-verified by direct execution this session, not just trusted from the
+prior transcription:
+
+1. **All five `sktime` values reproduced exactly**: `mean_absolute_error`,
+   `mean_squared_error(square_root=True)`,
+   `mean_absolute_percentage_error(symmetric=False/True)`, and
+   `mean_absolute_scaled_error` were re-run on the exact handoff test
+   data (`y_train`/`y_true`/`y_pred` from section 6) and matched to full
+   float precision: MAE=0.55, RMSE=0.6422616289332564,
+   MAPE(frac)=0.33690476190476193, sMAPE(frac)=0.5553379953379953,
+   MASE(sp=1)=0.18333333333333335. The independent seasonal case
+   (`sp=4`, linear `y_train2`) also reproduced exactly: MASE=0.25.
+2. **The "R could not be executed" boundary from section 2 didn't hold**
+   -- same correction as Stage 5.2: R 4.6.0 is installed
+   (`C:\Program Files\R\R-4.6.0`, just not on `PATH`) and CRAN is
+   reachable, so `forecast::accuracy()` was run for real
+   (`Rscript.exe`, full path) rather than left as documentation-only.
+   Confirmed directly: R's `MAPE` column genuinely is on the percentage
+   scale (`33.69048` for the section-6 test case), exactly matching
+   `sktime`'s fraction (`0.33690476190476193`) times 100 -- validating
+   this handoff's `as_percentage=true` R-convention default by
+   execution, not just by the original documentation-based claim.
+3. No discrepancies were found between this handoff's proposed
+   implementation (section 5) and either reference -- unlike Stages
+   5.1/5.2, nothing needed correcting; the code was implemented
+   essentially as proposed, with `ArgumentError` validation added for
+   mismatched `actual`/`predicted` lengths (not explicit in the
+   handoff's own sketch, but consistent with `arx`/`forecast`'s existing
+   error-handling conventions).
+4. `smape`'s docstring carries the `!!! warning "Use with caution"`
+   admonition quoting Hyndman directly, exactly as section 7 requested
+   -- visible without digging, not buried in prose.
+
+---
+
 For a fresh Claude Code session picking this up with no prior context.
 Third of five Stage 5 handoffs. **This one centers on a genuine, well-
 documented scientific controversy, not just an implementation detail**:
