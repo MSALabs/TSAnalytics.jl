@@ -7,7 +7,7 @@ that go with them -- built incrementally, in the spirit of GLM.jl
 `LinearAlgebra`-backed numerics).
 
 **Status:** pre-v1.0, active development. See
-[`development-sequence.md`](https://github.com/<your-org>/TSAnalytics.jl/blob/main/development-sequence.md)
+[`development-sequence.md`](https://github.com/MSALabs/TSAnalytics.jl/blob/main/development-sequence.md)
 in the repository root for the full staged roadmap and what's currently
 built vs. planned.
 

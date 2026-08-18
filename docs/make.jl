@@ -8,7 +8,7 @@ makedocs(;
     authors="Mousum Dutta",
     sitename="TSAnalytics.jl",
     format=Documenter.HTML(;
-        canonical="https://<your-org>.github.io/TSAnalytics.jl",
+        canonical="https://MSALabs.github.io/TSAnalytics.jl",
         edit_link="main",
         assets=String[],
     ),
@@ -25,6 +25,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/<your-org>/TSAnalytics.jl",
+    repo="github.com/MSALabs/TSAnalytics.jl",
     devbranch="main",
 )

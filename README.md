@@ -275,7 +275,7 @@ Small, stable releases every 3 months rather than one large one.
 Until then:
 
 ```julia
-] add https://github.com/<your-org>/TSAnalytics.jl
+] add https://github.com/MSALabs/TSAnalytics.jl
 ```
 
 ## Quick example
