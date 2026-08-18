@@ -6,7 +6,14 @@ using DelimitedFiles
     @test isapprox(TSAnalytics._chisq_ccdf(5.991, 2), 0.05; atol=1e-3)
     @test isapprox(TSAnalytics._chisq_ccdf(9.488, 4), 0.05; atol=1e-3)
 
-    Random.seed!(3)
+    # seed=3 (the original choice) deterministically gives a white-noise
+    # p-value of ~0.0396 -- just past the 0.05 threshold by chance, on
+    # every platform (Julia's Xoshiro RNG is seed-reproducible across
+    # OSes), which is why this was misdiagnosed as "flaky" for a long
+    # time rather than fixed: it never actually varied run to run, it was
+    # simply always wrong. seed=6 gives a comfortable p=0.52, nowhere
+    # near either boundary.
+    Random.seed!(6)
     n = 1000
 
     # White noise: Ljung-Box should NOT reject (high p-value)
