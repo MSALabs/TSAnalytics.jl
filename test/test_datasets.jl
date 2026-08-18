@@ -1,0 +1,54 @@
+using DelimitedFiles
+
+"""Load a single named numeric column from one of the bundled benchmark
+CSVs (test-only helper -- not part of the package's public API). Skips
+the header row; non-numeric entries (e.g. `internet.csv`'s leading `NaN`)
+parse to `NaN` rather than erroring, so callers can `filter(!isnan, ...)`
+if needed."""
+function _load_column(path::AbstractString, colname::AbstractString)
+    raw, header = readdlm(path, ',', String; header=true)
+    header = vec(header)
+    idx = findfirst(==(colname), header)
+    idx === nothing && throw(ArgumentError("column $colname not found in $(header)"))
+    col = raw[:, idx]
+    return map(col) do s
+        v = tryparse(Float64, s)
+        v === nothing ? NaN : v
+    end
+end
+
+@testset "bundled datasets" begin
+    # Nile: 100 annual observations, 1871-1970, values in a plausible range
+    nile = _load_column(TSAnalytics.NILE, "flow")
+    @test length(nile) == 100
+    @test all(400 .< nile .< 1400)
+
+    # AirPassengers: 144 monthly observations, 1949-1960, strictly positive,
+    # generally increasing (classic multiplicative trend+seasonality series)
+    air = _load_column(TSAnalytics.AIR_PASSENGERS, "passengers")
+    @test length(air) == 144
+    @test all(air .> 0)
+    @test mean(air[end-11:end]) > mean(air[1:12])  # last year's average > first year's
+
+    # Sunspots: 1700-1988, non-negative counts
+    sunspots = _load_column(TSAnalytics.SUNSPOTS_YEAR, "value")
+    @test length(sunspots) == 289
+    @test all(sunspots .>= 0)
+
+    # US macro change series: 4 numeric columns beyond Unemployment, all present
+    cons = _load_column(TSAnalytics.US_CHANGE, "Consumption")
+    unemp = _load_column(TSAnalytics.US_CHANGE, "Unemployment")
+    @test length(cons) == length(unemp) == 187
+
+    # Vehicle fatalities: two countries' series, same length
+    nf = _load_column(TSAnalytics.VEHICLE_FATALITIES, "nf")
+    ff = _load_column(TSAnalytics.VEHICLE_FATALITIES, "ff")
+    @test length(nf) == length(ff) == 34
+
+    # Internet: 100 observations, first differenced value has a leading NaN
+    net = _load_column(TSAnalytics.INTERNET, "internet")
+    dnet = _load_column(TSAnalytics.INTERNET, "dinternet")
+    @test length(net) == 100
+    @test isnan(dnet[1])
+    @test all(!isnan, dnet[2:end])
+end
