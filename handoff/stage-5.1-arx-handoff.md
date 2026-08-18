@@ -1,5 +1,38 @@
 # Handoff: Stage 5.1 — AR-X (comprehensive, R+Python verified, GLM.jl-style show)
 
+Status: **done.** `arx`/`ARXModel` (`src/arx.jl`, `test/test_arx.jl`) built
+per sections 3-5, verified exactly against real `statsmodels.tsa.ar_model.AutoReg`
+(re-derived independently, not just transcribed -- confirmed every one of
+this handoff's own section 6 numbers by execution before trusting them).
+Two real bugs in this handoff's own proposed code were found and fixed:
+1. **Standard errors**: `_ols`'s own `se` uses the `n-k` (dof-adjusted)
+   variance convention; `AutoReg`'s actual `bse` uses the `n`-denominator
+   conditional-MLE convention -- confirmed by reproducing `AutoReg`'s
+   exact standard errors from a from-scratch computation (~1% systematic
+   difference, not negligible). `arx` computes `vcov`/`stderror` itself
+   (`sigma2 * inv(X'X)`, `n`-denominator `sigma2`) rather than trusting
+   `_ols`'s `se` field as section 4's original code did.
+2. **Seasonal dummies**: section 4's proposed code built a dummy for
+   every season `1:(period-1)` named `"seasonal.$s"`. Real `AutoReg`
+   uses season `1` as the implicit baseline and builds dummies for
+   seasons `2:period`, named `"s(2,period)"` etc. -- confirmed by
+   execution to be an *algebraically different* parameterization
+   (different reference category), not a cosmetic naming difference.
+   `arx` now matches `AutoReg` exactly.
+
+Also hardened a real crash beyond what section 6 anticipated: a singular/
+collinear design (e.g. `trend=:c` plus two lags of a perfectly linear
+series) lets `_ols`'s QR-based solve silently return *some* `beta` while
+the separate `inv(X'X)` `arx` needs for `vcov` throws a raw
+`SingularException` -- now caught and reported as a clear `ArgumentError`
+instead. p-values reuse the already-validated `_chisq_ccdf` (`Z^2 ~
+ChiSq(1)` gives the two-sided normal p-value directly, confirmed to
+reproduce `AutoReg`'s exact `pvalues`) rather than adding a new
+`_std_normal_cdf` primitive as section 5 suggested; 95% CI bounds use the
+already-available precise `_confidence_z(0.05)` (`1.959964...`) instead
+of the coarser `1.96` literal from section 5's draft, matching
+`statsmodels`' `conf_int()` to 5-6 digits rather than ~4.
+
 For a fresh Claude Code session picking this up with no prior context.
 First of five Stage 5 handoffs, same one-by-one treatment as Stage 2.
 **This is also the first model-fit type in the whole project** -- the

@@ -65,6 +65,13 @@ QSTest
 JarqueBeraTest
 ```
 
+## Univariate models
+
+```@docs
+arx
+ARXModel
+```
+
 ## Model-fitting infrastructure
 
 ```@docs

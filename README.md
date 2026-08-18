@@ -8,9 +8,10 @@ numerics).
 
 **Status: pre-release, active development.** This repository currently
 contains the foundational descriptive-statistics, diagnostic-testing, and
-decomposition layers, plus the optimizer/reparametrization infrastructure
-every MLE-fit model will share. Model fitting itself (ARIMA/SARIMAX via a
-shared state-space engine) is next. See [Roadmap](#roadmap) below.
+decomposition layers, the optimizer/reparametrization infrastructure
+every MLE-fit model will share, and its first fitted model (`arx`).
+ARIMA/SARIMAX via a shared state-space engine is next. See
+[Roadmap](#roadmap) below.
 
 ## What's implemented so far
 
@@ -133,6 +134,26 @@ shared state-space engine) is next. See [Roadmap](#roadmap) below.
   distinct, not assumed); only final fitted AR/MA coefficients, not raw
   optimizer-space parameters, are expected to be comparable across an
   R-based and Python-based implementation
+- `arx`/`ARXModel` -- **the project's first fitted model**: autoregressive
+  with optional exogenous regressors ("AR-X"), fit by conditional least
+  squares. Matches Python's `statsmodels.tsa.ar_model.AutoReg` throughout
+  (`lags` as an integer *or* an arbitrary subset like `[1,3]`,
+  `trend=:n/:c/:t/:ct`, `seasonal`, `exog`, `hold_back`) rather than R's
+  much narrower `stats::ar.ols` (booleans only, no `exog` support at
+  all); deliberately conditional-least-squares only, not matching R's
+  `stats::ar()` (a different function, defaulting to Yule-Walker). First
+  real consumer of the `StatsAPI` contract (`coef`/`vcov`/`stderror`/
+  `residuals`/`nobs`/`loglikelihood`/`aic`/`bic`) and of
+  `StatsBase.CoefTable`-based `show` output. Verified exactly against
+  real `AutoReg` — coefficients, standard errors, `sigma2`,
+  log-likelihood, AIC, BIC, and p-values — across every `trend` value, an
+  `exog` regressor, a lag *subset*, `seasonal` dummies, and explicit
+  `hold_back`; standard errors are computed independently rather than
+  reused from `_ols` (whose own `se` uses a different, `n-k`-denominator
+  convention than `AutoReg`'s actual `n`-denominator one — confirmed
+  numerically, not assumed, a ~1% systematic difference), and a singular/
+  collinear design raises a clear `ArgumentError` rather than a raw
+  `SingularException`
 
 All of the above are implemented natively (no calls out to R or Python,
 `Optim.jl` for general-purpose numerical optimization aside -- the same

@@ -162,7 +162,19 @@ function arx(y, lags::Union{Integer,AbstractVector{<:Integer}};
 
     k = length(beta)
     sigma2 = sum(abs2, resid) / nobs  # MLE (n-denominator) convention -- see docstring note
-    vc = Matrix(sigma2 .* inv(Symmetric(X' * X)))
+    # `_ols`'s QR-based solve can still return SOME beta for a rank-deficient
+    # X (least-squares via QR doesn't require full column rank the way
+    # inv(X'X) does) -- so this can fail even when the line above didn't.
+    # Caught and reported clearly rather than leaking a raw SingularException.
+    XtX_inv = try
+        inv(Symmetric(X' * X))
+    catch e
+        e isa LinearAlgebra.SingularException || rethrow()
+        throw(ArgumentError("arx: design matrix is singular/collinear -- check for redundant " *
+                             "regressors (e.g. trend plus lags of a perfectly linear series, or " *
+                             "an exog column that duplicates another regressor)"))
+    end
+    vc = Matrix(sigma2 .* XtX_inv)
     loglik = -0.5 * nobs * (log(2π) + log(sigma2) + 1)
     aic_val = -2*loglik + 2*(k+1)
     bic_val = -2*loglik + (k+1)*log(nobs)

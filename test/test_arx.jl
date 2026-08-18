@@ -48,8 +48,9 @@ using DelimitedFiles, LinearAlgebra, StatsAPI
     @test mE.nobs == 90
     @test isapprox(mE.coef, [-0.007517213709204509, 0.512751032062308, 0.2761702698395734]; atol=1e-9)
 
-    # decomposition/consistency identity
-    @test isapprox(y[(2+1):end], mA.resid .+ (y[1:end-2] .* mA.coef[1] .+ y[2:end-1] .* mA.coef[2]); atol=1e-8)
+    # decomposition/consistency identity: coef[1] is y.L1 (paired with the
+    # lag-1 predictor y[2:end-1]), coef[2] is y.L2 (paired with y[1:end-2])
+    @test isapprox(y[3:end], mA.resid .+ mA.coef[1] .* y[2:end-1] .+ mA.coef[2] .* y[1:end-2]; atol=1e-8)
 end
 
 @testset "arx seasonal dummies (exact statsmodels validation)" begin
@@ -148,7 +149,7 @@ end
     x2 = reverse(x1)
     m_multi = arx(y, 2; trend=:c, exog=hcat(x1, x2))
     @test m_multi.names[end-1:end] == ["x1", "x2"]
-    @test length(m_multi.coef) == 4
+    @test length(m_multi.coef) == 5  # const + y.L1 + y.L2 + x1 + x2
 
     # every seasonal period value
     for period in (3, 4, 6)
@@ -161,8 +162,16 @@ end
     m1 = arx(y, 2; trend=:c)
     m2 = arx(Float32.(y), 2; trend=:c)
     @test isapprox(m1.coef, m2.coef; atol=1e-4)
-    m3 = arx(1.0:50.0, 2; trend=:c)
+    # a plain AbstractRange, trend=:n avoids the deliberate singular-design
+    # case exercised separately below (trend=:c's constant column plus two
+    # lags of a perfectly linear range are exactly collinear)
+    m3 = arx(1.0:50.0, 2; trend=:n)
     @test all(isfinite, m3.coef)
+
+    # singular/collinear design -> clear ArgumentError, not a raw
+    # SingularException: _ols's QR-based solve can still return SOME beta
+    # for a rank-deficient X (unlike inv(X'X), which arx needs for vcov)
+    @test_throws ArgumentError arx(1.0:50.0, 2; trend=:c)
 
     # error paths
     @test_throws ArgumentError arx(y, 2; trend=:bogus)
