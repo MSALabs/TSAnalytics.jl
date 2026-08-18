@@ -3,7 +3,8 @@
     "allow": [
       "Bash(julia --project=. -e 'using Pkg; Pkg.test\\(\\)')",
       "Bash(julia -t 4 --project=. -e 'using Pkg; Pkg.test\\(\\)')",
-      "Bash(julia --project=. -e ' *)"
+      "Bash(julia --project=. -e ' *)",
+      "PowerShell(Get-Process julia -ErrorAction SilentlyContinue)"
     ]
   }
 }
