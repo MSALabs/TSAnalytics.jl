@@ -1,0 +1,29 @@
+=== GaussianSSM ground-truth verification, dual-confirmed R + Python ===
+
+AR(1), phi=0.6, n=100, ar1_shared.csv:
+  R:      arima(y, order=c(1,0,0), include.mean=FALSE, fixed=c(0.6),
+                transform.pars=FALSE, optim.control=list(maxit=0))
+          loglik = -141.527779252
+          sigma2 = 0.988284811144
+  Python: SARIMAX(y, order=(1,0,0), trend='n', concentrate_scale=True).loglike([0.6])
+          loglike = -141.5277792524031
+  MATCH to 9+ significant digits.
+
+AR(2), phi=(0.5, 0.1), n=100, ar2_shared.csv:
+  R:      arima(y, order=c(2,0,0), include.mean=FALSE, fixed=c(0.5,0.1),
+                transform.pars=FALSE, optim.control=list(maxit=0))
+          loglik = -143.256444123
+          sigma2 = 1.02363481261
+  Python: SARIMAX(y, order=(2,0,0), trend='n', concentrate_scale=True).loglike([0.5, 0.1])
+          loglike = -143.2564441233744
+  MATCH to 9+ significant digits.
+
+MA(1), theta=0.4, n=100, ma1_shared.csv:
+  R:      set.seed(0); y3 <- arima.sim(n=100, model=list(ma=0.4))
+          arima(y3, order=c(0,0,1), include.mean=FALSE, fixed=c(0.4),
+                transform.pars=FALSE, optim.control=list(maxit=0))
+          loglik = -128.114020042
+          sigma2 = 0.757796651249
+  Python: SARIMAX(y3, order=(0,0,1), trend='n', concentrate_scale=True).loglike([0.4])
+          loglike = -128.11402004283462
+  MATCH to 9+ significant digits.

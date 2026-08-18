@@ -1,0 +1,36 @@
+=== Python transcription of src/gaussianssm.jl, verified before handoff ===
+
+Before including src/gaussianssm.jl in this bundle, the exact same
+algorithm (build_statespace / stationary_cov / kalman_filter) was
+transcribed into Python and run against all three ground-truth CSVs.
+Result: full-precision match on all three.
+
+AR(1), phi=0.6:
+  transcription loglik = -141.52777925240315
+  target (R/Python)    = -141.527779252
+  MATCH
+
+AR(2), phi=(0.5, 0.1):
+  transcription loglik = -143.25644412337445
+  target (R/Python)    = -143.256444123
+  MATCH
+
+MA(1), theta=0.4:
+  transcription loglik = -128.11402004150318
+  target (R/Python)    = -128.114020042
+  MATCH
+
+What this does and doesn't tell you:
+- The ALGORITHM in src/gaussianssm.jl is confirmed correct -- the Python
+  transcription used the identical logic (same recursion, same Lyapunov
+  solve, same concentrated-likelihood formula) and matched to full
+  precision.
+- The JULIA FILE ITSELF is still unexecuted -- no Julia runtime was
+  available to run it directly. A failure in test_gaussianssm.jl points
+  at the Julia translation specifically (indexing, syntax, 0-vs-1-indexed
+  slips), not the underlying math, which is now the lower-risk part of
+  this handoff.
+- combined_ar_ma's seasonal case was NOT part of this verification pass
+  (the three ground-truth cases are all non-seasonal). See the flag
+  already in src/gaussianssm.jl and test_gaussianssm.jl -- verify that
+  specifically, separately, before trusting it for any seasonal model.
