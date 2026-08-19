@@ -46,6 +46,28 @@ using DelimitedFiles
     @test occursin("Log-likelihood", s) && occursin("AIC", s) && occursin("BIC", s)
 end
 
+@testset "fit_arma — order (0,0), independent R verification (real gap found while implementing 6.6)" begin
+    # fit_arma originally rejected (0,0) as "nothing to fit" -- discovered
+    # to be wrong while implementing Stage 6.6 (ARIMA(0,d,0), e.g. a pure
+    # random walk after differencing, is common and R fully supports
+    # order=c(0,0,0) too). Verified directly against a fresh R run.
+    y = vec(readdlm(joinpath(@__DIR__, "verification", "arima", "d1_clean.csv"), ',', skipstart=1))
+
+    m_mean = fit_arma(y, (0, 0); include_mean=true)
+    @test m_mean.converged
+    @test isapprox(m_mean.mean, 26.9981946596; atol=1e-4)
+    @test isapprox(m_mean.loglik, -532.9856934583; atol=1e-3)
+    @test isapprox(m_mean.aic, 1069.9713869165; atol=1e-3)
+    @test length(m_mean.se) == 1
+    @test isapprox(m_mean.se[1], 0.6900313664; atol=1e-4)
+
+    m_nomean = fit_arma(y, (0, 0); include_mean=false)
+    @test m_nomean.converged
+    @test isapprox(m_nomean.loglik, -714.2170291442; atol=1e-3)
+    @test isapprox(m_nomean.aic, 1430.4340582883; atol=1e-3)
+    @test isempty(m_nomean.se)  # zero free parameters -> nothing to report
+end
+
 @testset "fit_arma — joint mean estimation (independent R verification, beyond the handoff's own ground truth)" begin
     # The handoff's own ground truth only covers include_mean=false. Its
     # §6 sketch pre-demeans with the sample mean and fits ARMA on the
@@ -119,8 +141,14 @@ end
     @test isapprox(m.aic, -2*m.loglik + 2*k_expected; atol=1e-8)
     @test isapprox(m.bic, -2*m.loglik + k_expected*log(m.nobs); atol=1e-8)
 
+    # order (0,0): a legitimate white-noise(+mean) model, not an error --
+    # confirmed against real R's arima(order=c(0,0,0)) directly (see the
+    # dedicated testset below)
+    m00 = fit_arma(y, (0, 0); include_mean=false)
+    @test isempty(m00.ar) && isempty(m00.ma) && isempty(m00.se)
+    @test m00.converged
+
     # error paths
-    @test_throws ArgumentError fit_arma(y, (0, 0))               # nothing to fit
     @test_throws ArgumentError fit_arma(y, (-1, 1))               # negative order
     @test_throws ArgumentError fit_arma(y[1:2], (1, 1))           # not enough observations
     @test_throws ArgumentError fit_arma(y, (1, 1); start_params=[0.0])  # wrong start_params length

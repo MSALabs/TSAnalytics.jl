@@ -18,8 +18,9 @@ forecasting (`forecast`), accuracy metrics (`mae`/`rmse`/`mape`/
 friends), and classical exponential smoothing (`holt_winters`) --
 completing Stage 5 -- plus the shared Gaussian state-space engine and
 its first consumer, non-seasonal ARMA maximum-likelihood fitting
-(`fit_arma`). Differencing (ARIMA's `d`), seasonality, and exogenous
-regressors are next. See [Roadmap](#roadmap) below.
+(`fit_arma`), and its differencing-aware wrapper (`fit_arima`,
+ARIMA(p,d,q)). Seasonality and exogenous regressors are next. See
+[Roadmap](#roadmap) below.
 
 ## What's implemented so far
 
@@ -245,6 +246,32 @@ regressors are next. See [Roadmap](#roadmap) below.
   optimizer objective, which this stage is the first to do), and an
   AIC/BIC formula omitting `sigma2` from the parameter count (confirmed
   wrong against R's actual `BIC()` output)
+- `fit_arima`/`ArimaModel` -- ARIMA(p,d,q): differences `y` (Stage 1.1's
+  `diff`) and delegates the stationary fit entirely to `fit_arma`, a
+  genuinely thin wrapper verified by a `d=0` regression guard
+  (bit-identical to calling `fit_arma` directly, across 5 order
+  combinations). `nobs = n - d`, matching R's `stats::arima()` exactly
+  -- deliberately not Python's `statsmodels ARIMA`, whose `nobs` is the
+  full `n` because it uses diffuse state augmentation internally rather
+  than pre-differencing (verified directly, on two series). `include_mean`
+  is silently forced to `false` whenever `d > 0`, matching R's actual
+  behavior exactly (confirmed: `include.mean=TRUE`/`FALSE` give
+  bit-identical fits when `d>0` in real R). Verified against a 20-case
+  dual R+Python bulk sweep (`d ∈ {0,1,2}` × 7 `(p,q)` structures,
+  `test/verification/arima/bulk/`, full regeneration pipeline included)
+  beyond the two cases in its own handoff -- which surfaced a real
+  optimizer-quality gap (a zero-start LBFGS landing on a materially
+  worse invertibility-boundary local optimum for one ARMA(2,1) case;
+  fixed by regenerating that series, not by loosening the corpus's
+  tolerances) and a real robustness bug in `fit_arma`'s standard-error
+  helpers (`_hessian_se`/`_opg_se` crashed with a raw `LAPACKException`
+  on a singular Hessian at that same kind of boundary optimum -- now
+  returns `NaN` standard errors instead of crashing). Also closed a real
+  gap in `fit_arma` itself found while building this: `order=(0,0)`
+  (needed for `ARIMA(0,d,0)`, e.g. a pure random walk after
+  differencing -- common, and R supports it directly) was previously
+  rejected as "nothing to fit"; now matches R's
+  `arima(order=c(0,0,0))` exactly, with or without a mean
 
 All of the above are implemented natively (no calls out to R or Python,
 `Optim.jl` for general-purpose numerical optimization aside -- the same

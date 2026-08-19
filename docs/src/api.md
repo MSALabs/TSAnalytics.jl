@@ -74,6 +74,8 @@ forecast
 Forecast
 fit_arma
 ArmaModel
+fit_arima
+ArimaModel
 ```
 
 ## Accuracy metrics

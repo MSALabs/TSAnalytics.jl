@@ -1,0 +1,20 @@
+=== Stage 6.6 ARIMA(p,d,q) ground truth, dual-verified R + Python ===
+
+d1_clean.csv (n=150, ARIMA(1,1,1), clean convergence):
+  R:      ar1=0.5828351408  ma1=0.01726218017
+          loglik=-203.9508758  aic=413.9017516  nobs=149
+          se(Hessian): 0.1309278732  0.1733885098
+  Python: ar.L1=0.58285649  ma.L1=0.01722137
+          llf=-203.95087564309128  aic=413.90175128618256  nobs=150
+          se(OPG): 0.10513078  0.15201031
+
+d1_series.csv (n=100, ARIMA(1,1,1), convergence warnings on both sides -- a stress-test case):
+  R:      ar1=0.9989472225  ma1=-0.983617654
+          loglik=-126.2521509  aic=258.5043018  nobs=99
+  Python: ar.L1=0.99943184  ma.L1=-0.98785593
+          llf=-126.24968867160791  aic=258.4993773432158  nobs=100
+
+KEY FINDING: R's nobs = n - d always. Python's nobs = n always (full
+sample, via diffuse state augmentation internally, not pre-differencing).
+This project's own architecture (pre-differencing, decided when Stage 6
+vs Stage 8 was split) matches R's convention -- verified, not assumed.

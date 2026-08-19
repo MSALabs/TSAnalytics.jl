@@ -98,10 +98,23 @@ the Hessian of the negative log-likelihood in the natural (untransformed)
 parametrization, evaluated at the fitted coefficients, via
 `ForwardDiff.hessian` -- exact automatic differentiation, not a
 numerical-differencing approximation.
+
+Returns `NaN` entries (not a thrown error) if `H` is numerically
+singular -- this genuinely happens at an invertibility-boundary optimum
+(e.g. an optimizer converging to `|ma| ~ 1` from a poor starting point,
+which the ML surface can have as a real local optimum, matching R's own
+documented starting-value sensitivity) rather than something to paper
+over with a misleadingly small pseudo-inverse-based number.
 """
 function _hessian_se(params_hat::Vector{Float64}, yv::Vector{Float64}, p::Integer, q::Integer, include_mean::Bool)
     H = ForwardDiff.hessian(params -> _arma_natural_objective(params, yv, p, q, include_mean), params_hat)
-    vc = inv(H)
+    vc = try
+        inv(H)
+    catch e
+        e isa Union{LinearAlgebra.SingularException,LinearAlgebra.LAPACKException} ||
+            rethrow()
+        return fill(NaN, length(params_hat))
+    end
     return sqrt.(max.(diag(vc), 0.0))
 end
 
@@ -118,7 +131,13 @@ same quantity, not a bug in either (see [`fit_arma`](@ref)'s docstring).
 """
 function _opg_se(params_hat::Vector{Float64}, yv::Vector{Float64}, p::Integer, q::Integer, include_mean::Bool)
     J = ForwardDiff.jacobian(params -> _arma_loglik_contributions(params, yv, p, q, include_mean), params_hat)
-    vc = inv(J' * J)
+    vc = try
+        inv(J' * J)
+    catch e
+        e isa Union{LinearAlgebra.SingularException,LinearAlgebra.LAPACKException} ||
+            rethrow()
+        return fill(NaN, length(params_hat))
+    end
     return sqrt.(max.(diag(vc), 0.0))
 end
 
@@ -158,6 +177,7 @@ function _css_start_values(yc::Vector{Float64}, p::Integer, q::Integer)
         end
         return css
     end
+    p + q == 0 && return Float64[]  # nothing to warm-start (order (0,0))
     res = _optimize(css_objective, zeros(p + q))
     return res.minimizer
 end
@@ -178,9 +198,13 @@ version of the same series) -- see
 `handoff/stage-6.5-arma-mle-handoff.md` §3 -- coefficients and
 log-likelihood match both references to several digits.
 
-`order = (p, q)`: AR and MA orders. No `d` (differencing, Stage 6.6), no
-seasonal terms (Stage 6.7), no exogenous regressors (Stage 7) -- this
-stage's scope is deliberately narrower than R's/Python's full model.
+`order = (p, q)`: AR and MA orders, either of which may be `0`
+(including `order = (0, 0)`, a pure white-noise-plus-optional-mean
+model -- no AR/MA parameters to estimate, matches R's
+`arima(order=c(0,0,0))` exactly, verified directly). No `d`
+(differencing, Stage 6.6 wraps this function with it), no seasonal terms
+(Stage 6.7), no exogenous regressors (Stage 7) -- this stage's scope is
+deliberately narrower than R's/Python's full model.
 
 - `include_mean=true` (default): the mean is a free parameter, estimated
   *jointly* with the AR/MA coefficients (matching R's actual
@@ -207,7 +231,13 @@ stage's scope is deliberately narrower than R's/Python's full model.
   Hessian-based vs. `0.081` OPG-based, for the same fitted ARMA(1,1)
   coefficient) -- both are asymptotically valid estimators of the same
   quantity, not a bug in either; pick the one matching whichever
-  reference you're validating against.
+  reference you're validating against. `NaN` entries in `se` (rather
+  than a crash) mean the Hessian/outer-product matrix was numerically
+  singular at the fitted point -- this genuinely happens at an
+  invertibility-boundary local optimum (e.g. `_optimize` converging to
+  `|ma| ~ 1` from a poor starting point, confirmed to occur with a plain
+  zero start on some series), not something this function papers over
+  with a misleadingly small number.
 - `start_params`: explicit override (raw, Monahan/`partrans`-space
   vector, length `p+q` or `p+q+1` with a mean), bypassing `method`'s own
   starting-value choice.
@@ -243,7 +273,6 @@ function fit_arma(y, order::Tuple{Int,Int};
     se_type in (:hessian, :opg) || throw(ArgumentError("se_type must be :hessian or :opg"))
     p, q = order
     p >= 0 && q >= 0 || throw(ArgumentError("order must be non-negative: got ($p, $q)"))
-    p + q > 0 || throw(ArgumentError("order (0, 0) has nothing to fit (pure mean/noise is not ARMA)"))
 
     yv = Float64.(collect(tsvalues(y)))
     n = length(yv)
@@ -273,7 +302,14 @@ function fit_arma(y, order::Tuple{Int,Int};
         return converged ? -loglik : T(1e10)
     end
 
-    result = _optimize(objective, x0; method=optimizer_method)
+    # order (0,0) with include_mean=false: no free parameters at all (a pure
+    # white-noise model -- only sigma2 is estimated, directly from the
+    # data, matching R's arima(order=c(0,0,0), include.mean=FALSE)) --
+    # _optimize (Optim.jl's LBFGS) throws BoundsError on a zero-length x0,
+    # confirmed by direct testing, so this case is evaluated directly
+    # rather than routed through the optimizer.
+    result = isempty(x0) ? (minimizer=Float64[], converged=true) :
+                            _optimize(objective, x0; method=optimizer_method)
     phi_hat = p > 0 ? partrans(result.minimizer[1:p]) : Float64[]
     theta_hat = q > 0 ? partrans(result.minimizer[(p + 1):(p + q)]) : Float64[]
     mu_hat = include_mean ? result.minimizer[end] : nothing
