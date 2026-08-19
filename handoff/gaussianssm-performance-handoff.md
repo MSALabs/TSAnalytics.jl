@@ -1,5 +1,20 @@
 # Handoff: GaussianSSM engine performance — measured findings and patches
 
+Status: **§2 (Lyapunov doubling) already landed, during the merge, not
+here.** As this document's own §10/cross-reference anticipated: the
+kron-based `stationary_cov` was replaced with the doubling iteration as
+part of completing `stage-6-arima-handoff.md`'s Part A merge (its §3.2
+flagged the same fix as a correctness-adjacent should-fix). Verified
+against the real 364-case bulk corpus post-swap, not just this
+document's own measurements. **§3 (companion structure), §4 (steady-state
+freezing), and §5 (allocation) are still untouched** -- per §1 (Read this
+first) and §7's own protocol, correctly deferred until Stage 6.6 has a
+real `fit_arima` to benchmark against, not attempted opportunistically
+during the Part A merge. Re-read §1 before starting the rest of this
+document.
+
+---
+
 For a fresh Claude Code session picking this up with no prior context.
 Companion document to `stage-6-arima-handoff.md`. That document covers
 correctness and the ARIMA fitting layer; this one covers **speed only**.

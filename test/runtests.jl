@@ -6,6 +6,9 @@ using Statistics: mean
 
 @testset "TSAnalytics.jl" begin
     include("test_interface.jl")
+    include("test_gaussianssm.jl")
+    include("test_gaussianssm_smoother.jl")
+    include("test_gaussianssm_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally
     include("test_stattools.jl")
     include("test_unitroot.jl")
     include("test_diagnostics.jl")

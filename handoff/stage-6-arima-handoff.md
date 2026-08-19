@@ -1,5 +1,32 @@
 # Handoff: Stage 6 — merging GaussianSSM into TSAnalytics.jl, then ARIMA/SARIMA fitting
 
+Status: **Part A done, Part B not started.** `Pkg.test()` is green
+(2664 assertions, including all 364+4 dual-verified cases) with the
+engine merged into `src/statespace/gaussianssm.jl` and tests/data moved
+into `test/`. Every item in §1 (mechanical steps), §2 (must-fix), and
+the small items in §3.4 landed; §3.1's keyword form was added alongside
+(not instead of) the positional one the generated corpus uses. Two
+items were deliberately deferred rather than attempted, per their own
+sections' guidance that they're out of scope for "get the merge green":
+§3.3 (missing-data handling) and §3.5 (regenerating the seasonal corpus
+with the `p=2` truncation bug fixed — a Python/R task, not a Julia code
+change). **One correction to this document's own §2.1 code snippet**:
+it shows `GaussianSSM{T}`/`build_statespace`'s signature changing, but
+doesn't mention that `kalman_filter`'s internal `v`/`F`/`a` buffers were
+still hardcoded `Vector{Float64}` -- assigning a `ForwardDiff.Dual` into
+those throws, silently defeating the whole point of the generic-type
+change. Fixed (typed from `eltype(stationary_cov(ssm))`) and verified
+end-to-end through the real `_optimize` path, not just `ForwardDiff.gradient`
+in isolation. **A second correction**: §2.1's claim that
+`AbstractVector{<:Real}` fixes the `combined_ar_ma([0.5], [], ...)`
+bare-`[]` ergonomic trap doesn't hold under direct testing (`Vector{Any}`
+is not `AbstractVector{<:Real}`) -- switched to unconstrained
+`AbstractVector` for the polynomial-coefficient arguments instead, which
+does. Full details in `development-sequence.md`'s Stage 6.1-6.4 row.
+Next: §3.5's corpus regeneration, then Part B (§4 onward).
+
+---
+
 For a fresh Claude Code session picking this up with no prior context.
 Two distinct jobs live in this document and they should not be
 interleaved:

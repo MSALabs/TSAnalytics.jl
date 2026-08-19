@@ -1,11 +1,10 @@
-# test/test_gaussianssm_smoother.jl
-#
-# Verifies kalman_smoother against statsmodels SARIMAX(...).smooth(params)'s
-# own smoothed_state/smoothed_state_cov. Confirmed (see
-# verification/bulk/smoother_check/gen_smoother_check.py) that statsmodels'
-# transition/selection/design matrices for order=(p,0,q), trend='n' match
-# build_statespace's T/R/Z convention exactly, so no reindexing is needed --
-# alpha/V are directly comparable column-for-column, entry-for-entry.
+# Verifies TSAnalytics.kalman_smoother against statsmodels
+# SARIMAX(...).smooth(params)'s own smoothed_state/smoothed_state_cov.
+# Confirmed (see test/verification/gaussianssm/bulk/smoother_check/
+# gen_smoother_check.py) that statsmodels' transition/selection/design
+# matrices for order=(p,0,q), trend='n' match build_statespace's T/R/Z
+# convention exactly, so no reindexing is needed -- alpha/V are directly
+# comparable column-for-column, entry-for-entry.
 
 using Test, DelimitedFiles, LinearAlgebra
 
@@ -18,9 +17,9 @@ using Test, DelimitedFiles, LinearAlgebra
     ]
 
     for c in cases
-        y = vec(readdlm(joinpath(@__DIR__, "..", "verification", "$(c.dataset).csv"), ',', skipstart=1))
-        ssm = build_statespace(c.ar, c.ma)
-        alpha, V = kalman_smoother(ssm, y)
+        y = vec(readdlm(joinpath(@__DIR__, "verification", "gaussianssm", "$(c.dataset).csv"), ',', skipstart=1))
+        ssm = TSAnalytics.build_statespace(c.ar, c.ma)
+        alpha, V = TSAnalytics.kalman_smoother(ssm, y)
 
         r = c.r
         n = length(y)
@@ -31,7 +30,7 @@ using Test, DelimitedFiles, LinearAlgebra
         # state-space form, so smoothing can't touch the observed component.
         @test isapprox(alpha[1, :], y; atol=1e-9)
 
-        expected = readdlm(joinpath(@__DIR__, "..", "verification", "bulk", "smoother_check", "$(c.name)_expected.csv"), ',', skipstart=1)
+        expected = readdlm(joinpath(@__DIR__, "verification", "gaussianssm", "bulk", "smoother_check", "$(c.name)_expected.csv"), ',', skipstart=1)
         # columns: alpha_1..alpha_r, then V_11, V_12, ..., V_r1, ..., V_rr (row-major from Python)
         alpha_expected = expected[:, 1:r]'
         @test isapprox(alpha, alpha_expected; atol=1e-6)

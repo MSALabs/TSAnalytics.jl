@@ -7,6 +7,7 @@ using StatsBase: StatsBase, CoefTable
 using Optim: Optim, optimize, LBFGS, BFGS, NelderMead
 
 include("interface.jl")
+include("statespace/gaussianssm.jl")
 include("abstract.jl")
 include("datasets.jl")
 include("differencing.jl")
