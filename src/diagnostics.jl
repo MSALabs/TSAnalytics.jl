@@ -1,4 +1,5 @@
-export LjungBoxTest, QSTest, JarqueBeraTest, ljungbox_test, qs_test, jarque_bera_test
+export LjungBoxTest, QSTest, JarqueBeraTest, DurbinWatsonTest,
+       ljungbox_test, qs_test, jarque_bera_test, durbin_watson_test
 
 """_chisq_ccdf(x, df) -- upper tail P(X > x) for X ~ chi-squared(df),
 via the regularized upper incomplete gamma function, computed by a
@@ -389,4 +390,129 @@ function jarque_bera_test(x)
     pval = _chisq_ccdf(JB, 2)
 
     return JarqueBeraTest(JB, pval, skewness, kurtosis, n)
+end
+
+# ---------------------------------------------------------------------------
+# Durbin-Watson
+# ---------------------------------------------------------------------------
+
+"_std_normal_cdf(z) -- standard normal CDF via the identity
+erf(x) = P(1/2, x^2) (regularized lower incomplete gamma, x >= 0),
+reusing this file's own `_upper_incomplete_gamma_reg` rather than a
+fresh erf polynomial approximation or a `Distributions.jl` dependency
+just for a normal tail probability."
+function _std_normal_cdf(z::Real)
+    z == 0 && return 0.5
+    x2 = (abs(z) / sqrt(2))^2
+    erfx = 1 - _upper_incomplete_gamma_reg(0.5, x2)
+    return z > 0 ? 0.5 * (1 + erfx) : 0.5 * (1 - erfx)
+end
+
+"""
+    DurbinWatsonTest <: HypothesisTest
+
+Result of a Durbin-Watson test for first-order autocorrelation in
+regression residuals. `method` is `:approx` (the only method currently
+implemented -- see [`durbin_watson_test`](@ref)) or `:exact`.
+"""
+struct DurbinWatsonTest <: HypothesisTest
+    statistic::Float64
+    pvalue::Float64
+    alternative::Symbol
+    method::Symbol
+    n::Int
+end
+
+function Base.show(io::IO, t::DurbinWatsonTest)
+    println(io, "Durbin-Watson test")
+    println(io, "  alternative   : ", t.alternative)
+    println(io, "  method        : ", t.method)
+    println(io, "  n             : ", t.n)
+    println(io, "  DW statistic  : ", round(t.statistic, digits=4))
+    print(io,   "  p-value       : ", round(t.pvalue, digits=4))
+end
+
+"""
+    durbin_watson_test(resid, X=nothing; alternative=:greater, method=:approx) -> DurbinWatsonTest
+
+Durbin-Watson test for first-order autocorrelation in regression
+residuals `resid`. The statistic itself --
+
+    DW = sum((resid[t] - resid[t-1])^2 for t in 2:n) / sum(resid[t]^2 for t in 1:n)
+
+-- matches Python's `statsmodels.stats.stattools.durbin_watson` exactly
+(confirmed directly from its source, not just its docstring: same
+formula, no additional correction). `DW` is always in `[0, 4]`; `DW ≈ 2`
+indicates no first-order autocorrelation, `DW < 2` positive
+autocorrelation, `DW > 2` negative autocorrelation.
+
+**`alternative` defaults to `:greater`**, matching R's `lmtest::dwtest`
+default (confirmed directly: `args(dwtest)` shows
+`alternative = c("greater", "two.sided", "less")`, `"greater"` first) --
+a one-sided test specifically for *positive* autocorrelation, the
+classical econometric convention, not a two-sided default.
+
+**`method=:approx` is a genuinely cruder method than R's `lmtest::dwtest`,
+documented explicitly, not silently passed off as equivalent.** R's exact
+method computes the DW statistic's true null distribution -- a weighted
+sum of chi-squared variables whose weights are eigenvalues of a matrix
+built from the regression design `X` (via Pan's or Imhof's algorithm) --
+which is **not** computable from `resid` alone; Python's own version
+doesn't provide a p-value at all for the same reason. `:approx` instead
+treats `z = (DW - 2) / sqrt(4/n)` as approximately standard normal, a
+large-sample approximation that ignores `X` entirely. Cross-checked
+against real R on two series (`test/verification/durbinwatson/`): close
+but not identical to the exact p-value (e.g. `0.1579` here vs R's exact
+`0.1564` on a borderline case; both agree to several significant figures
+on a clearly-significant case, e.g. `4.6e-12` here vs R's exact
+`3.0e-12`). `X` is accepted now (currently unused) so
+`method=:exact` can be added later without a breaking signature change;
+requesting it now throws a clear, named `ArgumentError` rather than
+silently falling back to `:approx` under that name.
+
+`resid` accepts anything [`tsvalues`](@ref) does.
+
+# Examples
+```jldoctest
+julia> using TSAnalytics, DelimitedFiles
+
+julia> d = readdlm(joinpath(dirname(pathof(TSAnalytics)), "..", "test", "verification", "durbinwatson", "durbinwatson_ar1.csv"), ','; skipstart=1);
+
+julia> x, y = d[:, 1], d[:, 2];
+
+julia> _, resid, _ = TSAnalytics._ols(hcat(ones(length(x)), x), y);
+
+julia> t = durbin_watson_test(resid);
+
+julia> round(t.statistic, digits=4)  # matches real statsmodels.stats.stattools.durbin_watson on this series
+0.6363
+
+julia> t.pvalue < 0.001   # strong evidence of positive autocorrelation
+true
+
+julia> durbin_watson_test(resid; method=:exact)
+ERROR: ArgumentError: method=:exact (Pan's/Imhof's algorithm, matching R's lmtest::dwtest) is not yet implemented -- use :approx
+```
+"""
+function durbin_watson_test(resid, X::Union{Nothing,AbstractMatrix{<:Real}}=nothing;
+                             alternative::Symbol=:greater, method::Symbol=:approx)
+    alternative in (:greater, :less, :two_sided) ||
+        throw(ArgumentError("alternative must be :greater, :less, or :two_sided"))
+    method in (:approx, :exact) || throw(ArgumentError("method must be :approx or :exact"))
+    method == :exact && throw(ArgumentError(
+        "method=:exact (Pan's/Imhof's algorithm, matching R's lmtest::dwtest) " *
+        "is not yet implemented -- use :approx"))
+
+    e = tsvalues(resid)
+    n = length(e)
+    n >= 2 || throw(ArgumentError("durbin_watson_test: need at least 2 observations"))
+
+    dw = sum(abs2, diff(e, 1)) / sum(abs2, e)
+
+    z = (dw - 2.0) / sqrt(4.0 / n)
+    pval = alternative == :greater ? _std_normal_cdf(z) :
+           alternative == :less    ? 1 - _std_normal_cdf(z) :
+                                      2 * min(_std_normal_cdf(z), 1 - _std_normal_cdf(z))
+
+    return DurbinWatsonTest(dw, pval, alternative, method, n)
 end

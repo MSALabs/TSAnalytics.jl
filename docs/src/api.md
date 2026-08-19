@@ -60,9 +60,11 @@ PPTest
 ljungbox_test
 qs_test
 jarque_bera_test
+durbin_watson_test
 LjungBoxTest
 QSTest
 JarqueBeraTest
+DurbinWatsonTest
 ```
 
 ## Univariate models

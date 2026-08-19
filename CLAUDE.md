@@ -56,6 +56,19 @@ roadmap, dependency graph, and what's built vs. planned.
   a different order might read more intuitively, for the same
   validate-directly-against-reference reason.
 
+## Unscheduled but ready
+
+- **Classical AutoReg (Yule-Walker/ULS)** — SAS `PROC AUTOREG`'s basic
+  tier. Needs nothing beyond what's already built. Deliberately kept off
+  `development-sequence.md`'s numbered stages, to avoid roadmap churn —
+  a good candidate for spare-capacity filler work whenever it comes up.
+  The full ML + AR-GARCH tier *is* numbered, as Stage 8.5 (needs 8.2 and
+  Stage 7). Neither R nor Python has as clean a single equivalent as
+  `PROC AUTOREG` — R's closest analogs (`nlme::gls()` + the separate
+  `orcutt` package) are scattered, Python has nothing comparably
+  integrated — worth remembering this isn't just "catching up to
+  R/Python" the way most of this roadmap's items are.
+
 ## Working style
 
 - Every function gets a test validated against a real reference number

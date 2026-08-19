@@ -82,6 +82,16 @@ Hyndman-Khandakar). Exogenous regressors are next. See
   default-behavior discrepancy to document) -- verified against real
   `statsmodels` output to full floating-point precision; returns
   `skewness`/`kurtosis` directly alongside the statistic/p-value
+- `durbin_watson_test` -- Durbin-Watson test for first-order
+  autocorrelation in regression residuals; statistic matches
+  `statsmodels.stats.stattools.durbin_watson` exactly (verified against
+  its source), `alternative=:greater` matches R `lmtest::dwtest`'s
+  default. `method=:approx` (large-sample normal approximation) is the
+  only method implemented, honestly documented as cruder than R's exact
+  method (which needs the eigenvalues of an `X`-derived matrix, not
+  computable from residuals alone -- the same reason Python's own
+  version skips a p-value entirely); `method=:exact` throws a clear,
+  named error rather than silently approximating under that name
 - `classical_decompose` -- classical (moving-average) seasonal
   decomposition, matching both R's `stats::decompose()` and Python's
   `statsmodels.tsa.seasonal.seasonal_decompose()` exactly at their shared

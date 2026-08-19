@@ -220,3 +220,62 @@ end
     # container-agnostic
     @test jarque_bera_test(1:100).statistic == jarque_bera_test(collect(1.0:100)).statistic
 end
+
+@testset "durbin_watson_test (exact statsmodels/R validation)" begin
+    # ground truth: test/verification/durbinwatson/gen_and_verify.py (real
+    # statsmodels.stats.stattools.durbin_watson) + fit_r.R (real R
+    # lmtest::dwtest, exact p-values, cross-checked separately below)
+    d_ar1 = readdlm(joinpath(@__DIR__, "verification", "durbinwatson", "durbinwatson_ar1.csv"), ','; skipstart=1)
+    x_ar1, y_ar1 = d_ar1[:, 1], d_ar1[:, 2]
+    _, resid_ar1, _ = TSAnalytics._ols(hcat(ones(length(x_ar1)), x_ar1), y_ar1)
+
+    d_wn = readdlm(joinpath(@__DIR__, "verification", "durbinwatson", "durbinwatson_wn.csv"), ','; skipstart=1)
+    x_wn, y_wn = d_wn[:, 1], d_wn[:, 2]
+    _, resid_wn, _ = TSAnalytics._ols(hcat(ones(length(x_wn)), x_wn), y_wn)
+
+    # Case A: AR(1) residuals (phi=0.6) -- strong positive autocorrelation.
+    # statsmodels: 0.6363488878642116; R lmtest::dwtest: 0.6363489 (both agree)
+    rA = durbin_watson_test(resid_ar1)
+    @test isapprox(rA.statistic, 0.6363488878642116; atol=1e-8)
+    @test 0 <= rA.statistic <= 4
+    @test rA.pvalue < 0.001   # R's exact p-value here is 2.95e-12; :approx gives 4.6e-12, same order
+    @test rA.alternative == :greater
+    @test rA.method == :approx
+    @test rA.n == 100
+
+    # Case B: white-noise residuals -- no strong autocorrelation.
+    # statsmodels: 1.7993979646727234; R lmtest::dwtest: 1.799398 (both agree)
+    rB = durbin_watson_test(resid_wn)
+    @test isapprox(rB.statistic, 1.7993979646727234; atol=1e-8)
+    @test 0 <= rB.statistic <= 4
+    @test rB.pvalue > 0.1    # R's exact p-value here is 0.1564; :approx gives 0.1579, close
+    @test rB.pvalue < 0.2
+
+    # alternative: :greater, :less, :two_sided all covered
+    rA_less = durbin_watson_test(resid_ar1; alternative=:less)
+    @test rA_less.pvalue > 0.99   # data shows POSITIVE autocorrelation; testing for NEGATIVE should fail hard
+    rA_two = durbin_watson_test(resid_ar1; alternative=:two_sided)
+    @test rA_two.pvalue < 0.001
+    @test isapprox(rA_two.pvalue, 2 * rA.pvalue; atol=1e-10)   # two-sided is 2x the smaller one-sided tail here
+
+    # statistic()/pvalue() generic HypothesisTest accessors
+    @test statistic(rA) == rA.statistic
+    @test pvalue(rA) == rA.pvalue
+
+    # container-agnostic (tsvalues interface)
+    @test durbin_watson_test(resid_ar1).statistic == durbin_watson_test(collect(resid_ar1)).statistic
+
+    # error paths
+    @test_throws ArgumentError durbin_watson_test(resid_ar1; alternative=:bogus)
+    @test_throws ArgumentError durbin_watson_test(resid_ar1; method=:bogus)
+    @test_throws ArgumentError durbin_watson_test(resid_ar1; method=:exact)  # deliberately unimplemented
+    @test_throws ArgumentError durbin_watson_test(Float64[])
+    @test_throws ArgumentError durbin_watson_test([1.0])
+
+    # _std_normal_cdf sanity against well-known textbook values
+    @test isapprox(TSAnalytics._std_normal_cdf(0.0), 0.5; atol=1e-10)
+    @test isapprox(TSAnalytics._std_normal_cdf(1.96), 0.975; atol=1e-4)
+    @test isapprox(TSAnalytics._std_normal_cdf(-1.96), 0.025; atol=1e-4)
+    @test isapprox(TSAnalytics._std_normal_cdf(1.6449), 0.95; atol=1e-4)
+    @test isapprox(TSAnalytics._std_normal_cdf(-1.6449), 0.05; atol=1e-4)
+end
