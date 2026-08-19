@@ -83,6 +83,16 @@ SarimaModel
 auto_arima
 ```
 
+## Volatility models
+
+```@docs
+fit_garch
+fit_garch_multi
+GarchModel
+forecast_volatility
+VolatilityForecast
+```
+
 ## Accuracy metrics
 
 ```@docs

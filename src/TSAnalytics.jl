@@ -1,6 +1,7 @@
 module TSAnalytics
 
 using LinearAlgebra
+using Random
 using Statistics
 using StatsAPI
 using StatsBase: StatsBase, CoefTable
@@ -31,6 +32,8 @@ include("forecast.jl")
 include("accuracy.jl")
 include("tscv.jl")
 include("holtwinters.jl")
+include("garch.jl")
+include("garchforecast.jl")
 
 export TimeSeriesModel, StateSpaceModel, UnivariateModel, HypothesisTest
 export statistic, pvalue

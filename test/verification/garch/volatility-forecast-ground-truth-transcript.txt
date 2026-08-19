@@ -1,0 +1,30 @@
+=== Stage 7.3 volatility forecasting verification ===
+
+GARCH analytic, horizon=10 (garch_shared.csv):
+  [0.7851982, 0.79572589, 0.80581733, 0.81549058, 0.82476299,
+   0.83365116, 0.84217101, 0.85033781, 0.85816618, 0.86567016]
+
+GJR-GARCH analytic, horizon=5 (gjr_shared.csv):
+  [1.88458103, 1.82791446, 1.77469063, 1.72470037, 1.67774724]
+
+EGARCH analytic, horizon=5: ERRORS
+  ValueError: "Analytic forecasts not available for horizon > 1"
+  -- confirms EGARCH structurally requires simulation for h>1
+
+EGARCH simulation, horizon=5, simulations=1000:
+  [1.63891725, 1.59380227, 1.55091121, 1.51659772, 1.45843736]
+  fit time: 0.0018s
+
+EGARCH simulation, simulations=10000: 0.0181s (~10x time for ~10x paths,
+  confirms linear per-path cost -- embarrassingly parallel structure)
+
+GARCH simulation (50000 paths) vs analytic agreement:
+  analytic  : [0.7852, 0.7957, 0.8058, 0.8155, 0.8248]
+  simulation: [0.7852, 0.7954, 0.8054, 0.8158, 0.8238]
+  max abs diff: 0.00098 -- correctness check on simulation engine
+
+R rugarch precedent (documented, not executed -- CRAN unreachable):
+  ugarchboot docs, quoted directly: "This process, while more accurate,
+  is very time consuming which is why choice of parallel computation
+  via a cluster... is available and recommended."
+  Default example: n.bootpred = 2000 simulation paths.

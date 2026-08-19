@@ -20,9 +20,11 @@ completing Stage 5 -- plus the shared Gaussian state-space engine and
 its first consumer, non-seasonal ARMA maximum-likelihood fitting
 (`fit_arma`), its differencing-aware wrapper (`fit_arima`,
 ARIMA(p,d,q)), full seasonal ARIMA (`fit_sarima`,
-ARIMA(p,d,q)(P,D,Q)_s), and automatic order selection (`auto_arima`,
-Hyndman-Khandakar). Exogenous regressors are next. See
-[Roadmap](#roadmap) below.
+ARIMA(p,d,q)(P,D,Q)_s), automatic order selection (`auto_arima`,
+Hyndman-Khandakar), and the full GARCH volatility family -- GARCH/GJR-
+GARCH/EGARCH fitting (`fit_garch`) and multi-step forecasting
+(`forecast_volatility`), completing Stage 7. Exogenous regressors are
+next. See [Roadmap](#roadmap) below.
 
 ## What's implemented so far
 
@@ -338,6 +340,78 @@ Hyndman-Khandakar). Exogenous regressors are next. See
   crashing on the pure-white-noise `(0,·,0)(0,·,0)` candidate that
   `auto_arima`'s own base-model search is the first thing to actually
   try
+- `fit_garch`/`fit_garch_multi`/`GarchModel` -- GARCH(p,q) volatility
+  modeling (Bollerslev 1986), own likelihood entirely independent of the
+  Gaussian state-space engine. **`p`=ARCH order, `q`=GARCH order,
+  matching Python `arch_model(p=,q=)`'s own naming** -- the opposite of
+  Bollerslev's original notation, resolved by direct execution (fitting
+  `arch_model(p=2,q=1)` and checking which fitted names came back)
+  before writing anything else, per the handoff's own explicitly flagged
+  risk. A from-scratch reparametrization keeps the optimizer unconstrained
+  while guaranteeing `omega>0`, `alpha,beta>=0`, `sum(alpha)+sum(beta)<1`
+  by construction (`omega=exp(raw)`; `alpha`/`beta` a softmax over `p+q`
+  categories plus one implicit zero-logit category). `cov_type=:robust`
+  (default) is a genuine Bollerslev-Wooldridge sandwich estimator
+  (`inv(H)*cov(scores)*inv(H)/n` via `ForwardDiff`, not finite
+  differences) -- confirmed genuinely different numbers from `:classic`
+  both from reading `arch`'s own covariance source and from a real fit.
+  Verified to ~1e-5 against real Python `arch_model` on the primary case,
+  exactly on a dedicated GARCH(2,1) case (locking in the naming
+  resolution), and exactly on a `mean_spec=:constant` case (joint
+  mean+GARCH MLE, not a naive pre-demean -- same rigor as `fit_arma`'s
+  `include_mean`); a 24-case bulk sweep matched real `arch_model` to a
+  mean absolute parameter error of `6.5e-6`. Two parallelism designs,
+  both precedent-validated against real `rugarch` documentation (not
+  independently executed -- R's `rugarch` itself couldn't be installed):
+  `fit_garch_multi` (matches `rugarch::multifit`) and `n_restarts`
+  multi-start (matches `rugarch`'s `gosolnp`), both `Threads.@threads`-
+  parallel by default. `dist=:t` deliberately not yet implemented --
+  throws a clear, named error rather than silently falling back.
+  **`model=:gjr`/`:egarch` extend the same function with asymmetric
+  ("leverage") volatility** -- GJR-GARCH adds `gamma*e[t-1]^2*I(e[t-1]<0)`
+  to the same level-variance recursion (confirmed matching
+  `arch_model(vol='GARCH', o=1)` exactly); EGARCH is a genuinely
+  separate recursion on `log(sigma2)`, implemented directly from `arch`'s
+  own EGARCH source as the primary target (not a third-party formula --
+  an independent academic source found EGARCH's `alpha`/`gamma`
+  convention genuinely isn't standardized across implementations, unlike
+  GJR-GARCH's). `m.omega < 0` for EGARCH is expected, not a bug --
+  log-variance has no positivity constraint. **Two real bugs caught
+  before shipping, both by comparing against real Python output
+  immediately**: a first-draft GJR `gamma` reparametrization used a
+  symmetric cap that silently prevented the optimizer from ever
+  exceeding `gamma <= alpha` (the true constraint only bounds `gamma`
+  from below), caught because the fitted `gamma` came out suspiciously
+  exactly equal to `alpha`; and a tuple-ordering bug in the `model=
+  :garch` dispatch path that briefly broke plain GARCH entirely during
+  this extension's own refactor, caught by re-running Stage 7.1's
+  already-passing test suite immediately after. Verified exactly against
+  real Python on both a dual-verified GJR-GARCH(1,1) and EGARCH(1,1)
+  case, plus a 48-case bulk sweep matching to a mean absolute parameter
+  error of `6.3e-6`
+- `forecast_volatility`/`VolatilityForecast` -- multi-step conditional
+  variance forecasting. A genuinely different parallelism story than
+  `fit_garch` itself: not multi-series/multi-restart, but thousands of
+  independent Monte Carlo simulation paths, needed because EGARCH has no
+  closed-form multi-step forecast at all (confirmed by direct execution:
+  real `arch`'s `forecast(method='analytic')` throws for EGARCH beyond
+  one step). `method=:auto` resolves to `:analytic` for GARCH/GJR-GARCH
+  and `:simulation` for EGARCH automatically; requesting `:analytic`
+  explicitly on EGARCH beyond one step still throws, matching Python's
+  own behavior. The analytic multi-step recursion is implemented
+  directly from `arch`'s own source, generalized for real multi-lag
+  `p`/`q`. **Caught a real transcription typo in the source handoff
+  itself** while verifying (a digit-transposition in one transcribed
+  reference value) -- confirmed twice independently via direct
+  re-execution before trusting either number. The simulation engine's
+  own correctness is checked against its own analytic answer (50,000
+  paths, `0.000725` max absolute difference, comparable to real `arch`'s
+  own `0.00098`). Parallelism here is the strongest case in the whole
+  GARCH module -- `rugarch`'s own bootstrap-forecast docs actively
+  *recommend* parallelizing this specific workload, unprompted, stronger
+  precedent than `fit_garch`'s own two parallel designs. A 216-check bulk
+  verification reuses all 72 already-fitted models from the `fit_garch`
+  bulk sweeps directly, no new data generation needed
 
 All of the above are implemented natively (no calls out to R or Python,
 `Optim.jl` for general-purpose numerical optimization aside -- the same

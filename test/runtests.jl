@@ -33,4 +33,9 @@ using Statistics: mean
     include("test_accuracy.jl")
     include("test_tscv.jl")
     include("test_holtwinters.jl")
+    include("test_garch.jl")
+    include("test_garch_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally
+    include("test_garch_gjr_egarch_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally
+    include("test_garchforecast.jl")
+    include("test_garchforecast_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally
 end

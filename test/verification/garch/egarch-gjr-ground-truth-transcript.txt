@@ -1,0 +1,29 @@
+=== Stage 7.2 EGARCH/GJR-GARCH verification ===
+
+gjr_shared.csv: n=1500, seed=21, true GJR-GARCH(1,1):
+  omega=0.05, alpha=0.05, gamma=0.10, beta=0.85
+
+GJR-GARCH fit (arch_model, vol='GARCH', p=1, o=1, q=1):
+  omega=0.057830  alpha[1]=0.051251  gamma[1]=0.091763  beta[1]=0.842113
+  loglik=-2040.876850  aic=4089.753699
+  fit time: 0.0201s
+
+EGARCH fit on the SAME series (arch_model, vol='EGARCH', p=1, o=1, q=1):
+  omega=-0.007737  alpha[1]=0.174770  gamma[1]=-0.059759  beta[1]=0.940519
+  loglik=-2042.754584  aic=4093.509168
+  fit time: 0.0159s
+  (negative omega is correct for EGARCH -- log-variance formulation,
+   no positivity constraint)
+
+R rugarch confirmation (documented, not executed -- CRAN unreachable):
+  - GJR-GARCH: separate "gjrGARCH" model, formula matches Python exactly
+  - EGARCH: separate "eGARCH" model, formula matches Nelson (1991) exactly
+  - garchOrder=c(p,q): ARCH order first, GARCH order second --
+    CONFIRMED matching Python's p=ARCH,q=GARCH convention exactly,
+    resolving the naming-convention risk flagged in Stage 7.1
+  - Parameter naming (omega/alpha1/beta1/gamma1) matches Python's
+    (omega/alpha[1]/beta[1]/gamma[1]) exactly for GJR-GARCH
+  - FLAGGED RISK: one independent source found EGARCH's alpha/gamma
+    scaling is NOT universally standardized across implementations
+    ("gamma1 of rugarch = alpha1 of my Egarch program") -- verify
+    against this handoff's Python-executed numbers as primary target

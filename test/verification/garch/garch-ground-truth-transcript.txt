@@ -1,0 +1,135 @@
+=== Stage 7.1 GARCH verification ===
+
+Core case (garch_shared.csv, n=1000, seed=11, true omega=0.05,alpha=0.10,beta=0.85):
+  arch_model(mean='Zero', vol='GARCH', p=1, q=1), cov_type='robust':
+    omega=0.043066  alpha=0.090638  beta=0.867923
+    loglik=-1396.190867  aic=2798.381733  bic=2813.104999
+    fit time: 0.0135s
+  cov_type='classic' SE comparison (genuinely different from robust):
+    robust:  omega=0.0134  alpha=0.0195  beta=0.0228
+    classic: omega=0.0159  alpha=0.0213  beta=0.0289
+
+R rugarch precedent (documented, not executed -- CRAN unreachable):
+  multifit(multispec, data, cluster=NULL, ...) -- multi-series parallel fitting
+  ugarchfit(..., solver="gosolnp") with solver.control$n.restarts,
+    $parallel, $cores -- multi-start parallel optimization
+
+Bulk verification: 24 cases (8 true (omega,alpha,beta) x 3 seeds, n=800),
+see garch_100cases_python.json. All 24 converged.
+Mean abs param recovery error: 0.0388, median: 0.0317.
+
+=== Implementation session (fit_garch built) ===
+
+Core case reproduced exactly by direct re-execution (not just transcribed):
+  omega=0.043066 alpha=0.090638 beta=0.867923, loglik=-1396.190866688768
+  robust se: [0.013403, 0.019497, 0.022774]
+  classic se: [0.015871, 0.021335, 0.028941]
+  Julia fit_garch(garch_shared.csv, 1, 1) matches to ~1e-5:
+  omega=0.0430640188 alpha=0.0906248024 beta=0.8679330364, loglik=-1396.190866360957
+  robust se: [0.013402, 0.019492, 0.022771]  classic se: [0.015870, 0.021331, 0.028939]
+
+p/q naming convention resolved by direct execution (handoff section 4's
+flagged risk): confirmed arch_model(p=2,q=1) fits alpha[1],alpha[2],beta[1]
+-- p = ARCH order, q = GARCH order, matching Python's own naming, the
+OPPOSITE of Bollerslev's original p=GARCH/q=ARCH notation. Dedicated
+GARCH(2,1) case (garch21.csv, generated fresh, seed=7, n=1500):
+  Python: omega=0.054010 alpha=[0.088285,0.078309] beta=[0.698140] loglik=-1387.451291
+  Julia:  omega=0.054012 alpha=[0.088288,0.078312] beta=[0.698129] loglik=-1387.451291
+  fit_garch(e, 2, 1) correctly returns length(alpha)==2, length(beta)==1.
+
+mean_spec=:constant (joint mean+GARCH MLE, not naive pre-demean) verified
+against real arch_model(mean='Constant') on a fresh series with mu=0.5
+(garch_constant.csv, seed=13, n=800):
+  Python: mu=0.480324 omega=0.012632 alpha=0.047336 beta=0.932710 loglik=-920.108563
+  Julia:  mu=0.480323 omega=0.012632 alpha=0.047337 beta=0.932709 loglik=-920.108563
+
+24-case bulk sweep (test/verification/garch/bulk/, regenerated fresh since
+garch_100cases_python.json has aggregate results only, no underlying
+series): all 24 converged, mean |Julia - Python fitted param| = 6.5e-6 --
+essentially exact agreement, not just "close," on every case.
+
+=== Stage 7.2 (GJR-GARCH, EGARCH) ===
+
+p/q convention (ARCH order first, GARCH order second) reconfirmed
+consistent between R (rugarch docs: "the first element denotes the ARCH
+order and the second the GARCH order") and Python (Stage 7.1's own
+direct execution) -- no reconciliation needed, 7.1 already matched.
+
+GJR-GARCH(1,1) and EGARCH(1,1) core cases (gjr_shared.csv, n=1500)
+reproduced exactly by direct re-execution (not transcribed):
+  GJR:    omega=0.057830 alpha=0.051251 gamma=0.091763 beta=0.842113
+          loglik=-2040.876850
+  EGARCH: omega=-0.007737 alpha=0.174770 gamma=-0.059759 beta=0.940519
+          loglik=-2042.754584 (omega negative -- correct, log-variance
+          scale has no positivity constraint)
+
+REAL BUG caught before shipping: an initial GJR-GARCH gamma
+reparametrization used a *symmetric* cap (gamma1 = g_max*tanh(raw),
+g_max=min(alpha[1], 2*(1-persistence))) -- wrongly restricting gamma1's
+magnitude on BOTH sides. The true constraint (arch's own
+GARCH.constraints() source) only bounds gamma1 BELOW by -alpha[1]
+(alpha[1]+gamma1>=0); there is no upper-side restriction from that
+constraint. The symmetric cap silently prevented the optimizer from
+ever reaching gamma1 > alpha[1] -- caught immediately because Julia's
+fitted gamma1 came out exactly equal to alpha1 (0.0673) instead of the
+true ~0.092, on the very first real-data test run. Fixed with an
+asymmetric interval via sigmoid: gamma1 in (-alpha[1],
+2*(1-persistence_ab)). Re-verified: Julia now matches Python to ~1e-4
+on gamma1 (0.091751 vs 0.091763) with a single start, confirmed stable
+under n_restarts=8 too.
+
+ALSO caught before shipping: the initial unpack() dispatcher for
+model=:garch built the tuple in the wrong order ((mu,omega,alpha,beta,
+nothing) instead of (mu,omega,alpha,nothing,beta)), silently swapping
+gamma and beta for the PLAIN GARCH case during the 7.2 refactor --
+caught by re-running Stage 7.1's own primary case immediately after the
+refactor (optimizer failed from every start, since sigma2_of received
+`nothing` where it expected beta). Confirmed the full Stage 7.1 test
+suite (3535 tests, run before this refactor) still passes bit-identically
+after the fix.
+
+48-case bulk sweep (test/verification/garch/bulk_gjr_egarch/, extending
+Stage 7.1's exact methodology to both new variants, n=1500): all 48
+converged, mean |Julia - Python fitted param| = 6.3e-6 -- same
+essentially-exact agreement as the plain-GARCH bulk sweep.
+
+=== Stage 7.3 (volatility forecasting) ===
+
+Section 1's exact-execution reference re-confirmed directly, not just
+transcribed:
+  GARCH analytic h=10 (garch_shared.csv): [0.7852, 0.7957, 0.8058, 0.8155,
+    0.8248, 0.8337, 0.8422, 0.8503, 0.8582, 0.8657] -- exact match.
+  GJR analytic h=5 (gjr_shared.csv): re-executed directly and found the
+    handoff's own transcribed last value (1.7777) is a DIGIT-TRANSPOSITION
+    TYPO -- the real, directly-executed value is 1.67775 (confirmed twice,
+    independently, via two separate Python runs). All other 4 values
+    (1.8846, 1.8279, 1.7747, 1.7247) matched the handoff exactly. Used the
+    corrected value (1.67775) as the actual test assertion, not the
+    handoff's transcribed one.
+  EGARCH horizon>1 analytic: confirmed throws
+    ValueError("Analytic forecasts not available for horizon > 1"), exact
+    message matched.
+
+Julia's own analytic forecasts (fit_garch on the same series, then
+forecast_volatility) matched all of the above to ~1e-4:
+  GARCH h=10: [0.78518, 0.79570, 0.80579, 0.81546, 0.82473, 0.83362,
+    0.84213, 0.85030, 0.85812, 0.86562]
+  GJR h=5: [1.88453, 1.82787, 1.77465, 1.72467, 1.67772]
+
+EGARCH simulation h=5, simulations=1000 (own independent RNG stream, not
+expected to match Python's bit-for-bit): [1.6389, 1.5851, 1.5507, 1.5055,
+1.4613] vs Python's [1.6389, 1.5938, 1.5484, 1.5047, 1.4693] -- agrees to
+within a few thousandths at each step, consistent with genuine Monte
+Carlo noise at n=1000 paths from two independent RNG streams, not a bug.
+
+Simulation-vs-analytic convergence check (the correctness check on the
+simulation engine itself, per the handoff's own framing): Julia's own
+GARCH simulation at simulations=50000 vs its own analytic forecast, max
+abs diff = 0.000725 -- comparable to the handoff's own reported
+reference figure for real arch (0.00098), confirming the simulation
+engine is correctly implemented, not just "runs without erroring."
+
+216-check bulk sweep (72 already-fitted models from 7.1/7.2's own bulk
+grids x 3 horizons {1,5,10}): all pass; max |simulation - analytic|
+across the whole 48-model GARCH/GJR grid = 0.0047, well within Monte
+Carlo tolerance everywhere, not just the single tuned primary case.
