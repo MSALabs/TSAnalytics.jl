@@ -72,6 +72,8 @@ arx
 ARXModel
 forecast
 Forecast
+fit_arma
+ArmaModel
 ```
 
 ## Accuracy metrics

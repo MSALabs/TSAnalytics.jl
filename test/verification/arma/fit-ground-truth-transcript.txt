@@ -1,0 +1,26 @@
+=== Stage 6.5 fitting ground truth, dual-verified R + Python ===
+Dataset: arma11_fit.csv, seed=7, n=200, generating phi=0.6, theta=0.25
+
+R, method="ML":
+  ar1=0.5465817922  ma1=0.2717023914
+  loglik=-280.5177637  aic=567.0355274
+  se (Hessian): ar1=0.0878534233  ma1=0.1074810562
+  fit time: 0.0082s
+
+R, method="CSS-ML" (default):
+  ar1=0.5465783235  ma1=0.2717063783
+  loglik=-280.5177637
+  fit time: 0.0022s
+
+Python statsmodels ARIMA, default fit:
+  ar.L1=0.54658944  ma.L1=0.27169267  sigma2=0.96440005
+  loglik=-280.51776373493647  aic=567.0355274698729  bic=576.930479569517
+  se (OPG): ar.L1=0.081  ma.L1=0.092
+  fit time: 0.0351s
+
+Key findings:
+- Coefficients match across all three runs (R-ML, R-CSS-ML, Python).
+- loglik/AIC match R vs Python to full precision.
+- Standard errors genuinely differ: R uses Hessian-based, Python uses
+  OPG-based by default -- both valid, not the same numbers.
+- R is faster than Python here (2-8ms vs 35ms), both compiled backends.

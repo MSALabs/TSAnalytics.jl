@@ -16,8 +16,10 @@ every MLE-fit model will share, its first fitted model (`arx`) with
 forecasting (`forecast`), accuracy metrics (`mae`/`rmse`/`mape`/
 `smape`/`mase`/`accuracy`), rolling-origin cross-validation (`tscv` and
 friends), and classical exponential smoothing (`holt_winters`) --
-completing Stage 5. ARIMA/SARIMAX via a shared state-space engine is
-next. See [Roadmap](#roadmap) below.
+completing Stage 5 -- plus the shared Gaussian state-space engine and
+its first consumer, non-seasonal ARMA maximum-likelihood fitting
+(`fit_arma`). Differencing (ARIMA's `d`), seasonality, and exogenous
+regressors are next. See [Roadmap](#roadmap) below.
 
 ## What's implemented so far
 
@@ -222,6 +224,27 @@ next. See [Roadmap](#roadmap) below.
   sigmoid-bounded objective (verified by direct testing), so
   `holt_winters` uses `:nelder_mead` with a generous iteration budget
   instead
+- `fit_arma`/`ArmaModel` -- non-seasonal ARMA(p,q) maximum-likelihood
+  fitting via the shared `GaussianSSM` state-space engine (Durbin &
+  Koopman companion form; time-invariant, stationary Lyapunov
+  initialization), wired to the Monahan reparametrization (`partrans`)
+  and the Stage 4.1 optimizer. Verified end-to-end against real R
+  `stats::arima()` and real Python `statsmodels.tsa.arima.model.ARIMA`.
+  `include_mean=true` (default) estimates the mean *jointly* with the
+  AR/MA coefficients, matching R's actual behavior -- not a one-time
+  sample-mean subtraction, which was checked directly against R and
+  found to give a different, wrong point estimate. `se_type=:hessian`
+  (default, R's convention) vs. `:opg` (Python's) are confirmed
+  genuinely different numbers, both valid, via `ForwardDiff.hessian`/
+  `ForwardDiff.jacobian` -- exact automatic differentiation, no
+  numerical-differencing pass, a real structural advantage over R's and
+  Python's compiled-but-hand-differentiated backends. Also fixed two
+  latent bugs surfaced by building this: `partrans`/`invpartrans`
+  (Stage 4.2) weren't `ForwardDiff`-safe (hardcoded `Float64` internally,
+  harmless until something called them from inside an autodiff'd
+  optimizer objective, which this stage is the first to do), and an
+  AIC/BIC formula omitting `sigma2` from the parameter count (confirmed
+  wrong against R's actual `BIC()` output)
 
 All of the above are implemented natively (no calls out to R or Python,
 `Optim.jl` for general-purpose numerical optimization aside -- the same

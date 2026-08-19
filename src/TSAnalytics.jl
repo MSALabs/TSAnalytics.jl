@@ -5,6 +5,7 @@ using Statistics
 using StatsAPI
 using StatsBase: StatsBase, CoefTable
 using Optim: Optim, optimize, LBFGS, BFGS, NelderMead
+using ForwardDiff: ForwardDiff
 
 include("interface.jl")
 include("statespace/gaussianssm.jl")
@@ -21,6 +22,7 @@ include("stl.jl")
 include("mstl.jl")
 include("optim.jl")
 include("monahan.jl")
+include("arma.jl")
 include("arx.jl")
 include("forecast.jl")
 include("accuracy.jl")

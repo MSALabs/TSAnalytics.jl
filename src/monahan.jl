@@ -23,6 +23,12 @@ Python-based implementation, even fitting the identical model to
 identical data -- only the final *constrained* AR/MA coefficients (where
 the likelihood is actually maximized) are comparable across conventions.
 
+Element-type-generic (via `eltype(raw)`, not hardcoded `Float64`) so a
+`ForwardDiff.Dual`-typed `raw` -- as `_optimize` (Stage 4.1) passes when
+`fit_arma`'s objective calls this from inside the optimizer -- flows
+through without a `MethodError`; confirmed by direct testing (Stage 6.5),
+since this had no caller inside an AD-differentiated closure before then.
+
 # Examples
 ```jldoctest
 julia> using TSAnalytics
@@ -37,7 +43,7 @@ julia> partrans([0.5, -0.3, 0.2])
 function partrans(raw::AbstractVector{<:Real})
     p = length(raw)
     p == 0 && return Float64[]
-    new = tanh.(collect(Float64, raw))
+    new = tanh.(collect(eltype(raw), raw))
     work = copy(new)
     for j in 2:p
         a = new[j]
@@ -72,7 +78,7 @@ julia> invpartrans(partrans([0.5, -0.3, 0.2]))
 function invpartrans(phi::AbstractVector{<:Real})
     p = length(phi)
     p == 0 && return Float64[]
-    new = collect(Float64, phi)
+    new = collect(eltype(phi), phi)
     work = copy(new)
     for j in p:-1:2
         a = new[j]
