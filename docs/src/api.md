@@ -78,6 +78,7 @@ fit_arima
 ArimaModel
 fit_sarima
 SarimaModel
+auto_arima
 ```
 
 ## Accuracy metrics

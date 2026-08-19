@@ -1,0 +1,302 @@
+[
+  {
+    "case": "case00_p0d0q1_seed1",
+    "true_order": [
+      0,
+      0,
+      1
+    ],
+    "seed": 1,
+    "selected_order": [
+      0,
+      0,
+      0
+    ],
+    "aic": 387.4053407891293
+  },
+  {
+    "case": "case01_p0d0q1_seed2",
+    "true_order": [
+      0,
+      0,
+      1
+    ],
+    "seed": 2,
+    "selected_order": [
+      0,
+      0,
+      0
+    ],
+    "aic": 446.9360063130491
+  },
+  {
+    "case": "case02_p0d0q1_seed3",
+    "true_order": [
+      0,
+      0,
+      1
+    ],
+    "seed": 3,
+    "selected_order": [
+      0,
+      0,
+      1
+    ],
+    "aic": 420.03252119129104
+  },
+  {
+    "case": "case03_p0d0q2_seed1",
+    "true_order": [
+      0,
+      0,
+      2
+    ],
+    "seed": 1,
+    "selected_order": [
+      2,
+      0,
+      3
+    ],
+    "aic": 385.12843092220487
+  },
+  {
+    "case": "case04_p0d0q2_seed2",
+    "true_order": [
+      0,
+      0,
+      2
+    ],
+    "seed": 2,
+    "selected_order": [
+      0,
+      0,
+      0
+    ],
+    "aic": 447.06681461546964
+  },
+  {
+    "case": "case05_p0d0q2_seed3",
+    "true_order": [
+      0,
+      0,
+      2
+    ],
+    "seed": 3,
+    "selected_order": [
+      2,
+      0,
+      0
+    ],
+    "aic": 422.58952153025325
+  },
+  {
+    "case": "case06_p0d1q1_seed1",
+    "true_order": [
+      0,
+      1,
+      1
+    ],
+    "seed": 1,
+    "selected_order": [
+      0,
+      1,
+      0
+    ],
+    "aic": 385.8717855754829
+  },
+  {
+    "case": "case07_p0d1q1_seed2",
+    "true_order": [
+      0,
+      1,
+      1
+    ],
+    "seed": 2,
+    "selected_order": [
+      0,
+      1,
+      0
+    ],
+    "aic": 445.44536960168364
+  },
+  {
+    "case": "case08_p0d1q1_seed3",
+    "true_order": [
+      0,
+      1,
+      1
+    ],
+    "seed": 3,
+    "selected_order": [
+      0,
+      1,
+      1
+    ],
+    "aic": 419.0410172230455
+  },
+  {
+    "case": "case09_p0d1q2_seed1",
+    "true_order": [
+      0,
+      1,
+      2
+    ],
+    "seed": 1,
+    "selected_order": [
+      2,
+      1,
+      3
+    ],
+    "aic": 383.63701908333053
+  },
+  {
+    "case": "case10_p0d1q2_seed2",
+    "true_order": [
+      0,
+      1,
+      2
+    ],
+    "seed": 2,
+    "selected_order": [
+      0,
+      1,
+      0
+    ],
+    "aic": 445.771178743886
+  },
+  {
+    "case": "case11_p0d1q2_seed3",
+    "true_order": [
+      0,
+      1,
+      2
+    ],
+    "seed": 3,
+    "selected_order": [
+      1,
+      1,
+      0
+    ],
+    "aic": 421.5214784247339
+  },
+  {
+    "case": "case12_p0d2q1_seed1",
+    "true_order": [
+      0,
+      2,
+      1
+    ],
+    "seed": 1,
+    "selected_order": [
+      0,
+      2,
+      0
+    ],
+    "aic": 389.89032185254996
+  },
+  {
+    "case": "case13_p0d2q1_seed2",
+    "true_order": [
+      0,
+      2,
+      1
+    ],
+    "seed": 2,
+    "selected_order": [
+      0,
+      2,
+      0
+    ],
+    "aic": 438.12191177055104
+  },
+  {
+    "case": "case14_p0d2q1_seed3",
+    "true_order": [
+      0,
+      2,
+      1
+    ],
+    "seed": 3,
+    "selected_order": [
+      0,
+      2,
+      1
+    ],
+    "aic": 415.11047339584485
+  },
+  {
+    "case": "case15_p0d2q2_seed1",
+    "true_order": [
+      0,
+      2,
+      2
+    ],
+    "seed": 1,
+    "selected_order": [
+      1,
+      2,
+      2
+    ],
+    "aic": 389.51992429892596
+  },
+  {
+    "case": "case16_p0d2q2_seed2",
+    "true_order": [
+      0,
+      2,
+      2
+    ],
+    "seed": 2,
+    "selected_order": [
+      0,
+      2,
+      0
+    ],
+    "aic": 442.598009731067
+  },
+  {
+    "case": "case17_p0d2q2_seed3",
+    "true_order": [
+      0,
+      2,
+      2
+    ],
+    "seed": 3,
+    "selected_order": [
+      1,
+      2,
+      0
+    ],
+    "aic": 418.2912571839546
+  },
+  {
+    "case": "case18_p1d0q0_seed1",
+    "true_order": [
+      1,
+      0,
+      0
+    ],
+    "seed": 1,
+    "selected_order": [
+      1,
+      0,
+      0
+    ],
+    "aic": 387.06443259739143
+  },
+  {
+    "case": "case19_p1d0q0_seed2",
+    "true_order": [
+      1,
+      0,
+      0
+    ],
+    "seed": 2,
+    "selected_order": [
+      1,
+      0,
+      0
+    ],
+    "aic": 448.8668389417864
+  }
+]

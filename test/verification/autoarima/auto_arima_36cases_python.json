@@ -1,0 +1,506 @@
+[
+  {
+    "true_order": [
+      0,
+      0,
+      1
+    ],
+    "seed": 1,
+    "selected_order": [
+      0,
+      0,
+      0
+    ],
+    "aic": 387.4053407891293
+  },
+  {
+    "true_order": [
+      0,
+      0,
+      1
+    ],
+    "seed": 2,
+    "selected_order": [
+      0,
+      0,
+      0
+    ],
+    "aic": 446.9360063130491
+  },
+  {
+    "true_order": [
+      0,
+      0,
+      1
+    ],
+    "seed": 3,
+    "selected_order": [
+      0,
+      0,
+      1
+    ],
+    "aic": 420.03252119129104
+  },
+  {
+    "true_order": [
+      0,
+      0,
+      2
+    ],
+    "seed": 1,
+    "selected_order": [
+      2,
+      0,
+      3
+    ],
+    "aic": 385.41544553831085
+  },
+  {
+    "true_order": [
+      0,
+      0,
+      2
+    ],
+    "seed": 2,
+    "selected_order": [
+      0,
+      0,
+      0
+    ],
+    "aic": 447.06681461546964
+  },
+  {
+    "true_order": [
+      0,
+      0,
+      2
+    ],
+    "seed": 3,
+    "selected_order": [
+      2,
+      0,
+      0
+    ],
+    "aic": 422.58952153025325
+  },
+  {
+    "true_order": [
+      0,
+      1,
+      1
+    ],
+    "seed": 1,
+    "selected_order": [
+      0,
+      1,
+      0
+    ],
+    "aic": 385.8717855754829
+  },
+  {
+    "true_order": [
+      0,
+      1,
+      1
+    ],
+    "seed": 2,
+    "selected_order": [
+      0,
+      1,
+      0
+    ],
+    "aic": 445.44536960168364
+  },
+  {
+    "true_order": [
+      0,
+      1,
+      1
+    ],
+    "seed": 3,
+    "selected_order": [
+      0,
+      1,
+      1
+    ],
+    "aic": 419.0410172230356
+  },
+  {
+    "true_order": [
+      0,
+      1,
+      2
+    ],
+    "seed": 1,
+    "selected_order": [
+      1,
+      1,
+      2
+    ],
+    "aic": 383.8303026700204
+  },
+  {
+    "true_order": [
+      0,
+      1,
+      2
+    ],
+    "seed": 2,
+    "selected_order": [
+      0,
+      1,
+      0
+    ],
+    "aic": 445.771178743886
+  },
+  {
+    "true_order": [
+      0,
+      1,
+      2
+    ],
+    "seed": 3,
+    "selected_order": [
+      1,
+      1,
+      0
+    ],
+    "aic": 421.5214784247339
+  },
+  {
+    "true_order": [
+      0,
+      2,
+      1
+    ],
+    "seed": 1,
+    "selected_order": [
+      0,
+      2,
+      0
+    ],
+    "aic": 389.89032185254996
+  },
+  {
+    "true_order": [
+      0,
+      2,
+      1
+    ],
+    "seed": 2,
+    "selected_order": [
+      0,
+      2,
+      0
+    ],
+    "aic": 438.12191177055104
+  },
+  {
+    "true_order": [
+      0,
+      2,
+      1
+    ],
+    "seed": 3,
+    "selected_order": [
+      0,
+      2,
+      1
+    ],
+    "aic": 415.11047339593154
+  },
+  {
+    "true_order": [
+      0,
+      2,
+      2
+    ],
+    "seed": 1,
+    "selected_order": [
+      1,
+      2,
+      2
+    ],
+    "aic": 389.51992427348
+  },
+  {
+    "true_order": [
+      0,
+      2,
+      2
+    ],
+    "seed": 2,
+    "selected_order": [
+      0,
+      2,
+      0
+    ],
+    "aic": 442.598009731067
+  },
+  {
+    "true_order": [
+      0,
+      2,
+      2
+    ],
+    "seed": 3,
+    "selected_order": [
+      1,
+      2,
+      0
+    ],
+    "aic": 418.2912571852408
+  },
+  {
+    "true_order": [
+      1,
+      0,
+      0
+    ],
+    "seed": 1,
+    "selected_order": [
+      1,
+      0,
+      0
+    ],
+    "aic": 387.06443259739143
+  },
+  {
+    "true_order": [
+      1,
+      0,
+      0
+    ],
+    "seed": 2,
+    "selected_order": [
+      1,
+      0,
+      0
+    ],
+    "aic": 448.86683894178634
+  },
+  {
+    "true_order": [
+      1,
+      0,
+      0
+    ],
+    "seed": 3,
+    "selected_order": [
+      1,
+      0,
+      0
+    ],
+    "aic": 420.0197137957932
+  },
+  {
+    "true_order": [
+      1,
+      0,
+      1
+    ],
+    "seed": 1,
+    "selected_order": [
+      1,
+      0,
+      2
+    ],
+    "aic": 387.35247922353005
+  },
+  {
+    "true_order": [
+      1,
+      0,
+      1
+    ],
+    "seed": 2,
+    "selected_order": [
+      1,
+      0,
+      0
+    ],
+    "aic": 448.9636173421935
+  },
+  {
+    "true_order": [
+      1,
+      0,
+      1
+    ],
+    "seed": 3,
+    "selected_order": [
+      1,
+      0,
+      1
+    ],
+    "aic": 422.25628389372537
+  },
+  {
+    "true_order": [
+      1,
+      0,
+      2
+    ],
+    "seed": 1,
+    "selected_order": [
+      1,
+      0,
+      2
+    ],
+    "aic": 386.79601437953687
+  },
+  {
+    "true_order": [
+      1,
+      0,
+      2
+    ],
+    "seed": 2,
+    "selected_order": [
+      1,
+      0,
+      0
+    ],
+    "aic": 448.06680447796117
+  },
+  {
+    "true_order": [
+      1,
+      0,
+      2
+    ],
+    "seed": 3,
+    "selected_order": [
+      1,
+      0,
+      0
+    ],
+    "aic": 421.87174822362647
+  },
+  {
+    "true_order": [
+      1,
+      1,
+      0
+    ],
+    "seed": 1,
+    "selected_order": [
+      1,
+      1,
+      0
+    ],
+    "aic": 385.56123065430563
+  },
+  {
+    "true_order": [
+      1,
+      1,
+      0
+    ],
+    "seed": 2,
+    "selected_order": [
+      0,
+      1,
+      0
+    ],
+    "aic": 448.32713970458053
+  },
+  {
+    "true_order": [
+      1,
+      1,
+      0
+    ],
+    "seed": 3,
+    "selected_order": [
+      1,
+      1,
+      0
+    ],
+    "aic": 419.09932907873235
+  },
+  {
+    "true_order": [
+      1,
+      1,
+      1
+    ],
+    "seed": 1,
+    "selected_order": [
+      1,
+      1,
+      2
+    ],
+    "aic": 385.0588890146188
+  },
+  {
+    "true_order": [
+      1,
+      1,
+      1
+    ],
+    "seed": 2,
+    "selected_order": [
+      1,
+      1,
+      0
+    ],
+    "aic": 447.01050097238607
+  },
+  {
+    "true_order": [
+      1,
+      1,
+      1
+    ],
+    "seed": 3,
+    "selected_order": [
+      1,
+      1,
+      1
+    ],
+    "aic": 421.1953807934626
+  },
+  {
+    "true_order": [
+      1,
+      1,
+      2
+    ],
+    "seed": 1,
+    "selected_order": [
+      1,
+      1,
+      2
+    ],
+    "aic": 384.4016891764836
+  },
+  {
+    "true_order": [
+      1,
+      1,
+      2
+    ],
+    "seed": 2,
+    "selected_order": [
+      1,
+      1,
+      0
+    ],
+    "aic": 446.64889509733905
+  },
+  {
+    "true_order": [
+      1,
+      1,
+      2
+    ],
+    "seed": 3,
+    "selected_order": [
+      1,
+      1,
+      0
+    ],
+    "aic": 420.8127066147223
+  }
+]

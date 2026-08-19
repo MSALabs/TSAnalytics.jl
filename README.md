@@ -19,8 +19,9 @@ friends), and classical exponential smoothing (`holt_winters`) --
 completing Stage 5 -- plus the shared Gaussian state-space engine and
 its first consumer, non-seasonal ARMA maximum-likelihood fitting
 (`fit_arma`), its differencing-aware wrapper (`fit_arima`,
-ARIMA(p,d,q)), and full seasonal ARIMA (`fit_sarima`,
-ARIMA(p,d,q)(P,D,Q)_s). Exogenous regressors are next. See
+ARIMA(p,d,q)), full seasonal ARIMA (`fit_sarima`,
+ARIMA(p,d,q)(P,D,Q)_s), and automatic order selection (`auto_arima`,
+Hyndman-Khandakar). Exogenous regressors are next. See
 [Roadmap](#roadmap) below.
 
 ## What's implemented so far
@@ -300,6 +301,33 @@ ARIMA(p,d,q)(P,D,Q)_s). Exogenous regressors are next. See
   directly rather than duplicating the Hessian/OPG/CSS logic -- verified
   no regression against the full Stage 6.5/6.6 suite before building on
   top of the refactor
+- `auto_arima` -- automatic order selection (Hyndman & Khandakar 2008),
+  built entirely on `fit_arima`/`fit_sarima`; contributes no new fitting
+  math, only the `(p,q,P,Q)` search. `stepwise` (default) is the actual
+  Hyndman-Khandakar greedy hill-climb (four base models, then repeated
+  ±1 neighbor moves, taking the best-improving move each round);
+  `stepwise=false` is a genuinely parallel exhaustive grid search
+  (`Threads.@threads`, same guarded pattern as MSTL's `parallel`
+  keyword) -- confirmed as the literal documented scope of both R's
+  `parallel=`/`num.cores=` and Python's `n_jobs=`, which apply *only* to
+  this non-default mode. `information_criterion` defaults to `:aicc`,
+  matching R's default (not Python's `:aic`). `d` is auto-detected via
+  repeated `kpss_test`; `D` is **not** auto-detected -- neither seasonal
+  unit-root test either reference uses (R's Canova-Hansen, Python's
+  OCSB) exists in this project yet, so `seasonal=true` requires `D`
+  passed explicitly, an honest documented limitation rather than a
+  silent default. Verified against 20 synthetic series (of a documented
+  36-case sweep) dual-checked against real `pmdarima.auto_arima` --
+  Julia's selected order matches pmdarima's own on 17/20 (85%), well
+  above the 33.3% true-order-recovery rate even pmdarima itself achieves
+  at this sample size, confirming the project's own accuracy framing:
+  matching the reference's search is the meaningful, checkable bar, not
+  recovering the unknowable true order. Building this surfaced and fixed
+  a real pre-existing bug in `fit_sarima` (Stage 6.7): its optimizer call
+  was missing the zero-free-parameters guard `fit_arma` already had,
+  crashing on the pure-white-noise `(0,·,0)(0,·,0)` candidate that
+  `auto_arima`'s own base-model search is the first thing to actually
+  try
 
 All of the above are implemented natively (no calls out to R or Python,
 `Optim.jl` for general-purpose numerical optimization aside -- the same

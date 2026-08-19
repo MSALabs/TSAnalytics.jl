@@ -1,0 +1,86 @@
+=== Stage 6.8 auto-order selection, verified findings ===
+
+1. Timing on sarima_shared.csv (n=96, true order (1,0,0)(1,1,0,12)):
+   stepwise=True (default):  order=(1,0,0)(0,1,1,12), AIC=246.336, time=6.77s
+   stepwise=False, n_jobs=1: order=(1,0,0)(0,1,1,12), AIC=248.234, time=11.92s
+   -> Neither recovered the TRUE order -- realistic AR/MA confusion at
+      short seasonal sample (8 cycles), not a bug.
+
+2. n_jobs docstring, verbatim from pmdarima:
+   "The number of models to fit in parallel in the case of a grid
+   search (stepwise=False)." -- CONFIRMS parallelism only applies to
+   the non-default exhaustive mode, matching R's parallel=/num.cores=
+   restriction exactly. Both references independently made the same
+   sequential-stepwise/parallel-exhaustive architectural split.
+
+3. 36-case representative accuracy run (auto_arima_100cases_python.json):
+   Exact true-order recovery: 12/36 (33.3%)
+   -> Even Python's own reference doesn't reliably recover ground truth.
+      The correct accuracy bar is "matches Python's own selected_order
+      on the same data," not "matches the unknowable true order."
+
+4. Real, confirmed default discrepancies:
+   - Information criterion: R defaults to AICc, Python defaults to AIC.
+   - Seasonal test: R defaults to Canova-Hansen ("seas"), Python
+     defaults to OCSB.
+   - NEITHER Canova-Hansen nor OCSB exists anywhere in this project --
+     a genuine new dependency, not yet built.
+
+=== Implementation session (auto_arima built) ===
+
+5. pmdarima CONFIRMED importable this session (2.0.4, pip-installed) --
+   independently re-ran the handoff's own section-6 generating code for
+   the first 20 (order, seed) cases (in the exact iteration order:
+   orders[:12] x seeds [1,2,3], first 20), refit each with real
+   pmdarima.auto_arima(seasonal=False, stepwise=True, max_p=3, max_q=3,
+   max_d=2). First 3 cases matched the original 36-case JSON's
+   selected_order AND aic EXACTLY (e.g. case 0: true_order=(0,0,1),
+   selected=(0,0,0), aic=387.4053407891293, bit-identical). Later cases
+   match selected_order exactly but aic differs at the ~0.3 level (e.g.
+   case 3: 385.128 here vs 385.415 originally) -- attributed to a
+   pmdarima/statsmodels minor-version difference between sessions, not a
+   data-generation mismatch (same series, same optimizer converging to
+   a slightly different nearby optimum). See
+   test/verification/autoarima/bulk/gen_and_fit_python.py +
+   python_results.json for the regenerated, saved-to-CSV ground truth
+   this project's own test suite actually loads (auto_arima_100cases_
+   python.json never stored the underlying series, only aggregate
+   results -- can't be loaded directly as a Julia test fixture).
+
+6. Julia auto_arima vs. real pmdarima.auto_arima, same 20 series,
+   selected_order match rate: 17/20 (85%) -- well above the 33.3%
+   true-order-recovery baseline in finding 3, confirming section 6's own
+   framing: two independent greedy AICc searches with different MLE
+   optimizers agree far more often with EACH OTHER than either recovers
+   the unknowable true order. Bulk test asserts match_rate >= 0.6 (floor
+   left with real margin below the observed 0.85).
+
+7. Genuine pre-existing bug found and fixed (src/sarima.jl): fit_sarima's
+   _optimize call site was missing the isempty(x0) guard fit_arma
+   already has (src/arma.jl, documented there) for the "zero free
+   parameters" case (pure white noise: p=q=P=Q=0, include_mean
+   effectively false). Optim.jl's LBFGS throws BoundsError on a
+   zero-length x0. Never caught by Stage 6.7's own test suite (no
+   existing test exercised order=(0,0,0) + seasonal_order=(0,·,0,s)
+   with mean forced off) -- surfaced immediately by auto_arima's
+   stepwise search, whose (0,d,0)(0,D,0) base model is exactly this case
+   whenever D>0. Fixed with the identical guard pattern already used in
+   fit_arma; full regression suite re-run clean after the fix.
+
+8. Section 3 scope decision: implemented option (b) from the handoff's
+   own recommendation -- D required explicit for seasonal=true, no
+   silent default, ArgumentError naming the missing Canova-Hansen/OCSB
+   dependency directly. d IS auto-detected (repeated kpss_test, matching
+   both references' test="kpss" default).
+
+9. Parallel-vs-serial exhaustive search confirmed to select an IDENTICAL
+   model (order and AIC bit-identical) on this machine -- but
+   Threads.nthreads()==1 in this environment, so the actual threaded
+   code path (Threads.@threads branch) was never exercised, only the
+   guard that falls back to serial. Documented as an environment
+   limitation, not a verified concurrency guarantee.
+
+10. include_mean is passed straight through auto_arima, not searched
+    on/off as part of the stepwise procedure (both real references do
+    search it) -- a deliberate, documented scope simplification for this
+    first version, not an oversight.

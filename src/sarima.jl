@@ -249,7 +249,14 @@ function fit_sarima(y, order::Tuple{Int,Int,Int}, seasonal_order::Tuple{Int,Int,
         return converged ? -loglik : T(1e10)
     end
 
-    result = _optimize(objective, x0; method=optimizer_method)
+    # order (0,·,0) seasonal_order (0,·,0) with include_mean effectively
+    # false: no free parameters at all (pure white noise, only sigma2
+    # estimated directly from the data) -- _optimize (Optim.jl's LBFGS)
+    # throws BoundsError on a zero-length x0, same case already guarded
+    # in fit_arma; evaluated directly here rather than routed through
+    # the optimizer.
+    result = isempty(x0) ? (minimizer=Float64[], converged=true) :
+                            _optimize(objective, x0; method=optimizer_method)
     n0 = result.minimizer
     phi_hat   = p > 0 ? partrans(n0[1:p]) : Float64[]
     theta_hat = q > 0 ? partrans(n0[(p + 1):(p + q)]) : Float64[]
