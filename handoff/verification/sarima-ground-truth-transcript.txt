@@ -1,0 +1,24 @@
+=== Stage 6.7 SARIMA ground truth, dual-verified R + Python ===
+Series: sarima_shared.csv, n=96 (8 years monthly), genuine SARIMA(1,0,0)(1,1,0)_12 process
+
+R:      arima(y, order=c(1,0,0), seasonal=list(order=c(1,1,0), period=12), method="ML")
+        phi=0.3424276441  Phi=0.3242885717
+        loglik=-121.334298  aic=248.6685961  nobs=84
+        se (Hessian): 0.1048658295  0.1105468955
+        fit time: 0.0438s
+
+Python: SARIMAX(y, order=(1,0,0), seasonal_order=(1,1,0,12), trend='n')
+        ar.L1=0.34243076  seasonal.ar.L12=0.32429148  sigma2=1.03423996
+        llf=-121.334298012569  aic=248.668596025138  nobs=96
+        se (OPG): 0.13195281  0.12930198
+        fit time: 0.0708s
+
+Confirms every pattern from Stage 6.6 extends to seasonal differencing:
+- nobs = n - D*s (R) vs full n (Python), same architectural split.
+- Hessian vs OPG standard errors genuinely differ.
+- R faster than Python, both compiled backends.
+- Coefficients/loglik/AIC match R-to-Python to full precision.
+
+GAP: this case has q=Q=0, so theta/Theta parameter-unpacking indices in
+fit_sarima's objective function are NOT exercised by this ground truth.
+A dedicated p,q,P,Q>0 case is needed before trusting that arithmetic.

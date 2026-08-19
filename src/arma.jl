@@ -91,13 +91,18 @@ function _arma_loglik_contributions(params::AbstractVector, yv::Vector{Float64},
 end
 
 """
-    _hessian_se(params_hat, yv, p, q, include_mean) -> Vector{Float64}
+    _hessian_se(natural_objective, params_hat) -> Vector{Float64}
 
 R-style asymptotic standard errors: `sqrt(diag(inv(H)))` where `H` is
-the Hessian of the negative log-likelihood in the natural (untransformed)
-parametrization, evaluated at the fitted coefficients, via
-`ForwardDiff.hessian` -- exact automatic differentiation, not a
-numerical-differencing approximation.
+the Hessian of `natural_objective` (the negative log-likelihood as a
+function of the *natural*, untransformed parameters -- no `partrans`/
+Monahan reparametrization) at `params_hat`, via `ForwardDiff.hessian` --
+exact automatic differentiation, not a numerical-differencing
+approximation. Generic over `natural_objective` (a single-argument
+closure) so both [`fit_arma`](@ref) (`_arma_natural_objective`) and
+`fit_sarima` (Stage 6.7, its own seasonal natural-objective) share this
+one implementation rather than duplicating the Hessian/error-handling
+logic per model type.
 
 Returns `NaN` entries (not a thrown error) if `H` is numerically
 singular -- this genuinely happens at an invertibility-boundary optimum
@@ -106,8 +111,8 @@ which the ML surface can have as a real local optimum, matching R's own
 documented starting-value sensitivity) rather than something to paper
 over with a misleadingly small pseudo-inverse-based number.
 """
-function _hessian_se(params_hat::Vector{Float64}, yv::Vector{Float64}, p::Integer, q::Integer, include_mean::Bool)
-    H = ForwardDiff.hessian(params -> _arma_natural_objective(params, yv, p, q, include_mean), params_hat)
+function _hessian_se(natural_objective, params_hat::Vector{Float64})
+    H = ForwardDiff.hessian(natural_objective, params_hat)
     vc = try
         inv(H)
     catch e
@@ -119,18 +124,19 @@ function _hessian_se(params_hat::Vector{Float64}, yv::Vector{Float64}, p::Intege
 end
 
 """
-    _opg_se(params_hat, yv, p, q, include_mean) -> Vector{Float64}
+    _opg_se(loglik_contributions, params_hat) -> Vector{Float64}
 
 Python-`statsmodels`-style outer-product-of-gradients standard errors:
 `sqrt(diag(inv(J'J)))` where `J` is the `n x k` Jacobian of
-per-observation log-likelihood contributions with respect to the
-natural parameters, evaluated at the fitted coefficients, via
-`ForwardDiff.jacobian`. Genuinely different numbers from
+`loglik_contributions` (per-observation log-likelihood terms, as a
+function of the natural parameters) at `params_hat`, via
+`ForwardDiff.jacobian`. Generic over `loglik_contributions`, same
+reasoning as `_hessian_se`. Genuinely different numbers from
 `_hessian_se` -- both asymptotically valid estimators of the
 same quantity, not a bug in either (see [`fit_arma`](@ref)'s docstring).
 """
-function _opg_se(params_hat::Vector{Float64}, yv::Vector{Float64}, p::Integer, q::Integer, include_mean::Bool)
-    J = ForwardDiff.jacobian(params -> _arma_loglik_contributions(params, yv, p, q, include_mean), params_hat)
+function _opg_se(loglik_contributions, params_hat::Vector{Float64})
+    J = ForwardDiff.jacobian(loglik_contributions, params_hat)
     vc = try
         inv(J' * J)
     catch e
@@ -142,43 +148,59 @@ function _opg_se(params_hat::Vector{Float64}, yv::Vector{Float64}, p::Integer, q
 end
 
 """
+    _css_objective(raw, yc, unpack) -> scalar
+
+Generic conditional-sum-of-squares objective: `unpack(raw)` maps the
+current trial raw (Monahan/`partrans`-space) parameter vector to
+`(ar, ma)` -- already-`partrans`-transformed, already-combined AR/MA
+coefficient vectors -- and this function runs the standard textbook CSS
+recursion against `yc` using those: `e_t = y_t - sum(ar_i*y_{t-i}) -
+sum(ma_j*e_{t-j})`, treating presample `y`/`e` as zero, `css =
+sum(e_t^2)`. Cheap (no Kalman filter/Lyapunov solve) relative to the
+full ML objective. Shared by `_css_start_values` (plain ARMA,
+`unpack` is the identity after `partrans`) and `fit_sarima`'s (Stage
+6.7) seasonal warm-start (`unpack` additionally runs `combined_ar_ma`),
+which differ only in how `raw` maps to `(ar, ma)`, not in the recursion
+itself.
+"""
+function _css_objective(raw::AbstractVector, yc::Vector{Float64}, unpack)
+    T = eltype(raw)
+    ar, ma = unpack(raw)
+    p, q = length(ar), length(ma)
+    n = length(yc)
+    e = zeros(T, n)
+    css = zero(T)
+    for t in 1:n
+        pred = zero(T)
+        for i in 1:p
+            pred += ar[i] * (t - i >= 1 ? yc[t - i] : zero(T))
+        end
+        for j in 1:q
+            pred += ma[j] * (t - j >= 1 ? e[t - j] : zero(T))
+        end
+        e[t] = yc[t] - pred
+        css += e[t]^2
+    end
+    return css
+end
+
+"""
     _css_start_values(yc, p, q) -> Vector{Float64}
 
 Conditional-sum-of-squares starting values for the `:css_ml` method's
-AR/MA block: minimizes `sum(e_t^2)` where `e_t = y_t -
-sum(phi_i*y_{t-i}) - sum(theta_j*e_{t-j})`, treating presample `y`/`e`
-as zero -- the standard textbook CSS technique, and cheap (no Kalman
-filter/Lyapunov solve) relative to the full ML objective. `yc` is
-already demeaned (using the sample mean as `:css_ml`'s starting guess
-for the mean itself, refined only in the subsequent full-ML stage,
-matching R's actual two-stage behavior). Returns a raw
+AR/MA block -- see `_css_objective` for the recursion itself.
+`yc` is already demeaned (using the sample mean as `:css_ml`'s starting
+guess for the mean itself, refined only in the subsequent full-ML
+stage, matching R's actual two-stage behavior). Returns a raw
 (Monahan/`partrans`-space) parameter vector of length `p+q`, suitable as
 part of `_optimize`'s starting point for the ML stage (see
 `handoff/stage-6.5-arma-mle-handoff.md` §1, §3).
 """
 function _css_start_values(yc::Vector{Float64}, p::Integer, q::Integer)
-    n = length(yc)
-    function css_objective(raw::AbstractVector)
-        T = eltype(raw)
-        phi = p > 0 ? partrans(raw[1:p]) : T[]
-        theta = q > 0 ? partrans(raw[(p + 1):(p + q)]) : T[]
-        e = zeros(T, n)
-        css = zero(T)
-        for t in 1:n
-            pred = zero(T)
-            for i in 1:p
-                pred += phi[i] * (t - i >= 1 ? yc[t - i] : zero(T))
-            end
-            for j in 1:q
-                pred += theta[j] * (t - j >= 1 ? e[t - j] : zero(T))
-            end
-            e[t] = yc[t] - pred
-            css += e[t]^2
-        end
-        return css
-    end
     p + q == 0 && return Float64[]  # nothing to warm-start (order (0,0))
-    res = _optimize(css_objective, zeros(p + q))
+    unpack(raw) = (p > 0 ? partrans(raw[1:p]) : eltype(raw)[],
+                   q > 0 ? partrans(raw[(p + 1):(p + q)]) : eltype(raw)[])
+    res = _optimize(raw -> _css_objective(raw, yc, unpack), zeros(p + q))
     return res.minimizer
 end
 
@@ -318,8 +340,9 @@ function fit_arma(y, order::Tuple{Int,Int};
     loglik, sigma2, = kalman_filter(ssm, yc_hat)
 
     params_hat = include_mean ? vcat(phi_hat, theta_hat, mu_hat) : vcat(phi_hat, theta_hat)
-    se = se_type == :hessian ? _hessian_se(params_hat, yv, p, q, include_mean) :
-                                 _opg_se(params_hat, yv, p, q, include_mean)
+    se = se_type == :hessian ?
+         _hessian_se(params -> _arma_natural_objective(params, yv, p, q, include_mean), params_hat) :
+         _opg_se(params -> _arma_loglik_contributions(params, yv, p, q, include_mean), params_hat)
 
     k = nparam + 1  # +1 for sigma2, matching R's actual AIC/BIC exactly
     aic = -2 * loglik + 2 * k

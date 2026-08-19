@@ -18,8 +18,9 @@ forecasting (`forecast`), accuracy metrics (`mae`/`rmse`/`mape`/
 friends), and classical exponential smoothing (`holt_winters`) --
 completing Stage 5 -- plus the shared Gaussian state-space engine and
 its first consumer, non-seasonal ARMA maximum-likelihood fitting
-(`fit_arma`), and its differencing-aware wrapper (`fit_arima`,
-ARIMA(p,d,q)). Seasonality and exogenous regressors are next. See
+(`fit_arma`), its differencing-aware wrapper (`fit_arima`,
+ARIMA(p,d,q)), and full seasonal ARIMA (`fit_sarima`,
+ARIMA(p,d,q)(P,D,Q)_s). Exogenous regressors are next. See
 [Roadmap](#roadmap) below.
 
 ## What's implemented so far
@@ -272,6 +273,33 @@ ARIMA(p,d,q)). Seasonality and exogenous regressors are next. See
   differencing -- common, and R supports it directly) was previously
   rejected as "nothing to fit"; now matches R's
   `arima(order=c(0,0,0))` exactly, with or without a mean
+- `fit_sarima`/`SarimaModel` -- full seasonal ARIMA(p,d,q)(P,D,Q)_s.
+  Unlike `fit_arima`, not a thin wrapper -- `combined_ar_ma` (already
+  dual-verified for 20 seasonal cases) has to run *inside* the optimizer
+  loop, since the combined polynomial changes every iteration across
+  four independently-searched blocks, so this stage recomposes the
+  actual numerical primitives (`partrans`, `build_statespace`,
+  `kalman_filter`, `_optimize`, the CSS recursion) rather than
+  delegating to `fit_arma` directly. `nobs = n - d - D*s`, extending
+  `fit_arima`'s convention (verified directly against real R);
+  `include_mean` silently forced off whenever `d>0` **or** `D>0`
+  (confirmed directly that `D>0` alone also drops the mean, not just
+  assumed to extend from the non-seasonal case). Verified against a
+  dedicated synthetic case with all four polynomial blocks nonzero
+  (`p,q,P,Q > 0`) -- explicitly flagged as untested in its own handoff,
+  since the primary reference case only exercised `P`/`Phi` -- plus a
+  12-case dual R+Python bulk sweep (`test/verification/sarima/bulk/`,
+  full regeneration pipeline included). Building the bulk sweep also
+  surfaced a real Windows-filesystem gotcha: case-insensitive filename
+  collisions between generated series (`P_only.csv`/`p_only.csv`) that
+  silently overwrote data, the same class of issue this package's own
+  `gaussianssm.jl` merge had already flagged. Refactored Stage 6.5's
+  `_hessian_se`/`_opg_se`/CSS-recursion helpers to be generic (a
+  closure-based natural-objective/contributions/unpack argument instead
+  of hardcoded ARMA-specific parameters) so this stage reuses them
+  directly rather than duplicating the Hessian/OPG/CSS logic -- verified
+  no regression against the full Stage 6.5/6.6 suite before building on
+  top of the refactor
 
 All of the above are implemented natively (no calls out to R or Python,
 `Optim.jl` for general-purpose numerical optimization aside -- the same

@@ -164,9 +164,13 @@ end
     phi = TSAnalytics.partrans(raw[1:1])
     @test isapprox(phi[1], 0.5465783235; atol=1e-2)  # close to R's CSS-ML ar1
 
-    # _hessian_se / _opg_se agree with the public se_type= dispatch
+    # _hessian_se / _opg_se agree with the public se_type= dispatch --
+    # both are generic (Stage 6.7 refactor: they take a natural-objective/
+    # contributions closure, not ARMA-specific p/q/include_mean args
+    # baked in, so fit_sarima can reuse them identically)
     m_hess = fit_arma(y, (1, 1); include_mean=false, se_type=:hessian)
     params_hat = vcat(m_hess.ar, m_hess.ma)
-    se_direct = TSAnalytics._hessian_se(params_hat, y, 1, 1, false)
+    se_direct = TSAnalytics._hessian_se(
+        params -> TSAnalytics._arma_natural_objective(params, y, 1, 1, false), params_hat)
     @test isapprox(m_hess.se, se_direct; atol=1e-10)
 end

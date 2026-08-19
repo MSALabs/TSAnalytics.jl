@@ -25,6 +25,8 @@ using Statistics: mean
     include("test_arma.jl")
     include("test_arima.jl")
     include("test_arima_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally
+    include("test_sarima.jl")
+    include("test_sarima_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally
     include("test_forecast.jl")
     include("test_accuracy.jl")
     include("test_tscv.jl")

@@ -1,0 +1,69 @@
+=== Stage 6.7 SARIMA ground truth, dual-verified R + Python ===
+Series: sarima_shared.csv, n=96 (8 years monthly), genuine SARIMA(1,0,0)(1,1,0)_12 process
+
+R:      arima(y, order=c(1,0,0), seasonal=list(order=c(1,1,0), period=12), method="ML")
+        phi=0.3424276441  Phi=0.3242885717
+        loglik=-121.334298  aic=248.6685961  nobs=84
+        se (Hessian): 0.1048658295  0.1105468955
+        fit time: 0.0438s
+
+Python: SARIMAX(y, order=(1,0,0), seasonal_order=(1,1,0,12), trend='n')
+        ar.L1=0.34243076  seasonal.ar.L12=0.32429148  sigma2=1.03423996
+        llf=-121.334298012569  aic=248.668596025138  nobs=96
+        se (OPG): 0.13195281  0.12930198
+        fit time: 0.0708s
+
+Confirms every pattern from Stage 6.6 extends to seasonal differencing:
+- nobs = n - D*s (R) vs full n (Python), same architectural split.
+- Hessian vs OPG standard errors genuinely differ.
+- R faster than Python, both compiled backends.
+- Coefficients/loglik/AIC match R-to-Python to full precision.
+
+GAP: this case has q=Q=0, so theta/Theta parameter-unpacking indices in
+fit_sarima's objective function are NOT exercised by this ground truth.
+A dedicated p,q,P,Q>0 case is needed before trusting that arithmetic.
+
+=== GAP CLOSED: sarima_full.csv, n=200, synthetic SARIMA(1,0,1)(1,0,1)_4 ===
+(generated via a direct combined-polynomial recursion, seed=4242 -- see
+gen_arima_cases.py-style generation logic in the bulk/ sibling folder;
+this specific file was generated ad hoc and is not part of the bulk sweep)
+
+R:      arima(y, order=c(1,0,1), seasonal=list(order=c(1,0,1), period=4),
+              include.mean=FALSE, method="ML")
+        ar1=0.3172665537  ma1=0.4069508635  sar1=0.8599145050  sma1=-0.7597378821
+        loglik=-291.3972474151  aic=592.7944948303  nobs=200
+        se (Hessian): 0.1371657073  0.1364037718  0.1118915840  0.1449169720
+
+Python: SARIMAX(y, order=(1,0,1), seasonal_order=(1,0,1,4), trend='n')
+        ar.L1=0.31724708  ma.L1=0.40697284  sar.L4=0.86001889  sma.L4=-0.75986672
+        llf=-291.3972468138  aic=592.7944936276  nobs=200
+        se (OPG): 0.09993967  0.09670695  0.12696177  0.16760364
+
+fit_sarima (Julia): ar1=0.31724699 ma1=0.40697617 sar1=0.86003607
+        sma1=-0.75988787 loglik=-291.39724679867606 aic=592.7944935973521
+All four coefficients match R and Python closely (within 1e-3) --
+confirms the theta/Theta parameter-unpacking indices
+(raw[p+q+1:p+q+P], raw[p+q+P+1:p+q+P+Q]) are correct.
+
+=== Combined d>0 AND D>0: sarima_dD.csv, n=150, seasonal period 4 ===
+(synthetic AR(1)+seasonal-AR(1) process, seed=999, integrated once
+regularly and once seasonally)
+
+R:      arima(y, order=c(1,1,0), seasonal=list(order=c(1,1,0), period=4), method="ML")
+        ar1=0.3274163693  sar1=0.4435180303
+        loglik=-182.8764091079  aic=371.7528182158  nobs=145  (= 150 - 1 - 1*4)
+
+fit_sarima (Julia): ar1=0.32741594 sar1=0.44351801 loglik=-182.87639329
+        aic=371.75278658 nobs=145 (StatsAPI.nobs) -- matches exactly.
+        mean === nothing confirmed (include_mean defaults to true but is
+        silently forced off since d>0).
+
+Also confirms: R's include.mean=TRUE is silently ignored when D>0 (not
+just d>0) -- tested directly on sarima_shared.csv
+(order=(1,0,0), seasonal=(1,1,0,12), D=1, d=0): coef(m) identical
+between include.mean=TRUE and include.mean=FALSE. fit_sarima's
+`include_mean_effective = (d > 0 || D > 0) ? false : include_mean`
+matches this exactly.
+
+method=:css_ml verified to converge to essentially the same answer as
+:ml on sarima_dD.csv (ar1=0.32741594, sar1=0.44351801, converged=true).

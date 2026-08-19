@@ -76,6 +76,8 @@ fit_arma
 ArmaModel
 fit_arima
 ArimaModel
+fit_sarima
+SarimaModel
 ```
 
 ## Accuracy metrics
