@@ -21,10 +21,11 @@ its first consumer, non-seasonal ARMA maximum-likelihood fitting
 (`fit_arma`), its differencing-aware wrapper (`fit_arima`,
 ARIMA(p,d,q)), full seasonal ARIMA (`fit_sarima`,
 ARIMA(p,d,q)(P,D,Q)_s), automatic order selection (`auto_arima`,
-Hyndman-Khandakar), and the full GARCH volatility family -- GARCH/GJR-
-GARCH/EGARCH fitting (`fit_garch`) and multi-step forecasting
-(`forecast_volatility`), completing Stage 7. Exogenous regressors are
-next. See [Roadmap](#roadmap) below.
+Hyndman-Khandakar), and the full GARCH-family volatility toolkit --
+GARCH/GJR-GARCH/EGARCH fitting (`fit_garch`), multi-step forecasting
+(`forecast_volatility`), and nonparametric realized volatility measures
+(`realized_variance`, `jump_test`, ...), completing Stage 7. Exogenous
+regressors are next. See [Roadmap](#roadmap) below.
 
 ## What's implemented so far
 
@@ -412,6 +413,33 @@ next. See [Roadmap](#roadmap) below.
   precedent than `fit_garch`'s own two parallel designs. A 216-check bulk
   verification reuses all 72 already-fitted models from the `fit_garch`
   bulk sweeps directly, no new data generation needed
+- `realized_variance`/`bipower_variation`/`jump_test`/
+  `realized_semivariance`/`realized_measures` -- nonparametric
+  intraday-return volatility measures (Andersen & Bollerslev 1998;
+  Barndorff-Nielsen & Shephard 2004/2006/2010), no dependency on
+  `fit_garch` at all -- a fundamentally different, quadratic-variation-
+  based approach. **The reference situation here is the reverse of every
+  other Stage 7 sub-stage**: the originally-planned Python reference
+  (`arch.realized`) doesn't exist -- confirmed directly, `arch` has no
+  `realized` submodule at all, and no mature Python equivalent exists
+  anywhere in that ecosystem. R's `highfrequency` turned out to be
+  installable in this environment (unlike most R packages referenced
+  earlier in this project), upgrading verification to full direct
+  execution: every formula read from real, executed source, matched to
+  full displayed precision on a numeric cross-check, not transcribed
+  from documentation. **Found and fixed a real formula discrepancy**
+  along the way -- the originally-cited bipower-variation formula
+  included a finite-sample correction factor the actual reference
+  implementation doesn't apply. `jump_test` deliberately uses the more
+  robust `max(1, TQ/BV²)` variant of the BNS jump-test statistic, not
+  `highfrequency`'s own less conservative default, documented
+  explicitly. Verified by full statistical calibration across 1000
+  simulated trading days (500 no-jump, 500 with a real injected jump)
+  rather than point-matching a single reference output -- correct test
+  size and high power confirmed directly, not assumed. `realized_measures`
+  is the most naturally parallel design in the whole GARCH-family chapter:
+  parallelizing over independent trading days is the actual default shape
+  of how this gets used, not an add-on capability
 
 All of the above are implemented natively (no calls out to R or Python,
 `Optim.jl` for general-purpose numerical optimization aside -- the same

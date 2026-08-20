@@ -38,4 +38,5 @@ using Statistics: mean
     include("test_garch_gjr_egarch_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally
     include("test_garchforecast.jl")
     include("test_garchforecast_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally
+    include("test_realizedvol.jl")
 end

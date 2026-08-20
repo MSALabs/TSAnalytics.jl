@@ -34,6 +34,7 @@ include("tscv.jl")
 include("holtwinters.jl")
 include("garch.jl")
 include("garchforecast.jl")
+include("realizedvol.jl")
 
 export TimeSeriesModel, StateSpaceModel, UnivariateModel, HypothesisTest
 export statistic, pvalue

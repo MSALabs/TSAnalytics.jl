@@ -93,6 +93,17 @@ forecast_volatility
 VolatilityForecast
 ```
 
+## Realized volatility
+
+```@docs
+realized_variance
+bipower_variation
+jump_test
+realized_semivariance
+realized_measures
+JumpTest
+```
+
 ## Accuracy metrics
 
 ```@docs
