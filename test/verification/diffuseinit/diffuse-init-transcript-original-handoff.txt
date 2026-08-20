@@ -1,0 +1,40 @@
+=== Stage 8.2 exact diffuse initialization verification ===
+
+Test system: local level (unit root) + regression coefficient (no prior),
+n=50, seed=7. transition=I, selection=[[1],[0]], state_cov=[[0.01]],
+obs_cov=[[0.09]].
+
+STEP 1 -- naive full-sum comparison (WRONG, kept for the record since
+the correction itself is the important finding):
+  EXACT diffuse total loglik: -13.845557
+  APPROX kappa=1e4:  -23.057337  diff: -9.212
+  APPROX kappa=1e6:  -27.661082  diff: -13.816
+  APPROX kappa=1e8:  -32.266237  diff: -18.421
+  APPROX kappa=1e10: -36.871403  diff: -23.026
+  APPROX kappa=1e12: -41.477153  diff: -27.632
+  (looked like divergence as kappa grows -- this comparison was flawed,
+   not the method; see step 2)
+
+STEP 2 -- per-observation breakdown, showing WHY step 1 was wrong:
+  EXACT per-obs[0:5]: [-1.594, -1.012, -0.034, -0.482, -0.075]
+  APPROX kappa=1e4  per-obs[0:5]: [-6.200, -5.618, -0.034, -0.482, -0.075]
+  APPROX kappa=1e6  per-obs[0:5]: [-8.502, -7.920, -0.034, -0.482, -0.075]
+  APPROX kappa=1e8  per-obs[0:5]: [-10.804, -10.223, -0.034, -0.482, -0.075]
+  APPROX kappa=1e10 per-obs[0:5]: [-13.107, -12.525, -0.034, -0.482, -0.075]
+  APPROX kappa=1e12 per-obs[0:5]: [-15.410, -14.828, -0.034, -0.482, -0.075]
+  -- only the first 2 (diffuse-affected) observations diverge with kappa;
+     obs[2] onward are essentially identical across all kappa values.
+
+STEP 3 -- CORRECT comparison, excluding first d=2 observations:
+  EXACT total (excl first 2): -11.239210224444543
+  APPROX kappa=1e4:  total=-11.23918399  diff=0.00002623
+  APPROX kappa=1e6:  total=-11.23920996  diff=0.00000026  <- R's actual default
+  APPROX kappa=1e8:  total=-11.23921012  diff=0.00000010
+  APPROX kappa=1e10: total=-11.23920516  diff=0.00000506  <- getting worse
+  APPROX kappa=1e12: total=-11.23978494  diff=-0.00057471 <- real numerical instability
+
+STEP 4 -- diffuse phase length scaling (efficiency):
+  n=50:   nobs_diffuse = 2
+  n=500:  nobs_diffuse = 2
+  n=5000: nobs_diffuse = 2
+  -- confirmed O(d), NOT O(n). Bounded overhead regardless of series length.

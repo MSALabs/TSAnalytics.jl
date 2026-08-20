@@ -1,0 +1,106 @@
+=== Stage 8.2 exact diffuse initialization verification ===
+
+Algorithm sourced directly, not from memory of the textbook alone: the
+statsmodels 0.14.1 Cython source itself was fetched and read this
+session (statsmodels/tsa/statespace/_filters/_univariate_diffuse.pyx.in,
+raw GitHub source -- confirmed reachable, unlike most R packages
+referenced throughout this project) to resolve the exact branching
+logic (F_infty>0 vs F_star>0 cases, the K0/K1/L0/L1 update formulas,
+which quantities the diffuse-phase log-likelihood contribution actually
+uses) before implementing anything -- this is a case where reading a
+mature reference's real, executable source to resolve an ambiguous
+textbook description is exactly what this project's own "reference,
+never port" policy sanctions (resolve ambiguity, validate numbers,
+never copy code) -- and it mattered: the diffuse-phase per-observation
+loglikelihood contribution is `-0.5*log(2*pi*F_infty)` ONLY, with NO
+`v^2/F` term at all, a detail easy to get wrong from a textbook
+description alone.
+
+tolerance_diffuse = 1e-10 confirmed directly from source
+(`self.tolerance_diffuse = 1e-10`, hardcoded, `_kalman_filter.pyx.in`
+line 385) -- used for both the F_infty/F_star branch decisions and the
+collapse-detection check `sum(P_infty**2) > tolerance_diffuse`
+(statsmodels' own Frobenius-norm-squared convention, also confirmed
+directly from source, line ~1288).
+
+=== Reproducing the handoff's own worked example ===
+
+The handoff's own y/x data wasn't fully specified (only the system
+structure: local level + time-varying-regression, n=50, seed=7) --
+regenerated independently (level: random walk, state_cov=0.01; y =
+level + true_beta*x + noise, obs_cov=0.09, true_beta=1.5) rather than
+guessed bit-for-bit. Real statsmodels (kf.initialize_diffuse(), same
+structure) on this regenerated data gives:
+  nobs_diffuse = 2
+  loglik excl. first 2 obs = -11.239210224444564
+-- remarkably close to the handoff's own claimed -11.239210224444543
+(differs only past the 10th significant digit), strongly suggesting the
+regenerated scenario matches their actual one very closely even without
+their exact unstated generation script.
+
+Julia's kalman_filter_diffuse on the SAME regenerated data
+(test/verification/diffuseinit/diffuse_case1.csv):
+  nobs_diffuse = 2                          -- exact match
+  loglik = -11.23921022444457                -- matches to 1e-13
+  forecasts[1:5], F[1:5]                     -- match real statsmodels
+                                                 to full displayed precision
+
+NOTE (debugging artifact worth recording): `kf.bind(y)` mutates `y` in
+place (reshapes it to (n,1)) -- the first save-to-CSV attempt silently
+produced bracket-wrapped single-element values in the y column
+(`[5.003432000158538]` instead of `5.003432000158538`) because `y` was
+saved AFTER binding. Caught by checking the actual CSV content directly
+rather than assuming the save succeeded; fixed by extracting plain
+floats into their own list before ever calling bind().
+
+=== Regression / structural guarantees ===
+
+diffuse_idx=Int[] reduces EXACTLY to Stage 8.1's kalman_filter(
+::TimeVaryingSSM,...): loglik bit-identical (diff=0.0) on
+arma11_fit.csv's TimeVaryingSSM (built via to_time_varying); v/F agree
+to ~1e-16 (floating-point noise from the different filtering-form vs
+prediction-form intermediate factorization -- the same relationship
+already proven algebraically in to_time_varying's own docstring for the
+Stage 8.1 case, and empirically reconfirmed here for the Stage 8.2
+zero-diffuse-dimension case).
+
+Single diffuse state (pure local level, d=1, own synthetic n=30 case):
+nobs_diffuse=1, converged, finite loglik -- confirms diffuse_idx of
+length 1 works correctly, not just the length-2 case from the primary
+verified example.
+
+Mixed proper + diffuse state (one diffuse local level + one KNOWN exact
+constant, own synthetic n=20 case): confirms the a0/P_star0 keyword
+generalization (beyond the handoff's own minimal proposed signature,
+added anticipating Stage 8.3's SARIMAX, which will genuinely need a
+mixed proper-ARMA-stationary + diffuse-regression-coefficient state)
+works correctly -- nobs_diffuse=1 (only the genuinely diffuse
+coordinate contributes to it), converged, finite loglik.
+
+Diffuse phase length is O(d), not O(n) -- confirmed directly by
+execution on the SAME 2-diffuse-state structure at n=50/500/5000:
+nobs_diffuse=2 in every case, not scaling with n. Timing (excluding
+first-call JIT compilation): n=500 -> 0.0017s, n=5000 -> 0.017s --
+roughly 10x time for 10x n, consistent with the OVERALL per-step cost
+staying O(n) with a fixed O(d) diffuse-specific prefix, exactly as
+designed (the diffuse phase is implemented as a short prefix that stops
+updating P_infty entirely once it collapses to numerically zero,
+falling through to the identical per-step math Stage 8.1's own
+kalman_filter already uses, rather than adding diffuse-related
+branching to every iteration of the main loop).
+
+=== Deliberately deferred (not silently skipped) ===
+
+The handoff's own section 6 second block ("extend the bulk-verification
+pattern... an ARIMA(1,1,0) case run through diffuse-init should be
+consistent with Stage 6.6's differencing approach") was NOT built this
+session -- it requires a genuine, new undifferenced-ARIMA-to-state-space
+constructor (mapping a non-stationary ARIMA(p,d,q) process directly to
+a TimeVaryingSSM with a diffuse integration component), which is
+substantively Stage 8.3's own scope (the same machinery SARIMAX needs),
+not an extension of kalman_filter_diffuse itself. Flagged explicitly as
+deferred, not silently dropped, per the handoff's own framing of this
+as "worth doing as a deeper validation, not just a convenience" -- i.e.
+valuable but not a strict requirement for this stage's own test matrix,
+all of which (the block above section 6's bulk-extension suggestion)
+is otherwise fully covered.

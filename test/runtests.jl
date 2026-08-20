@@ -11,6 +11,7 @@ using Statistics: mean
     include("test_gaussianssm_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally
     include("test_timevaryingssm.jl")
     include("test_timevaryingssm_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally; reuses test_gaussianssm_bulk.jl's 364 cases
+    include("test_diffuseinit.jl")
     include("test_stattools.jl")
     include("test_unitroot.jl")
     include("test_diagnostics.jl")
