@@ -380,6 +380,27 @@ against real R and Python. See [Roadmap](#roadmap) below.
   share an internal `_fit_arimax_core`, verified to satisfy the
   reduction property (`seasonal_order=(0,0,0,·)` exactly matches
   `fit_arimax`) directly
+- `auto_arimax` -- automatic order selection extended to exogenous
+  regressors, sharing `auto_arima`'s own `_stepwise_search`/
+  `_exhaustive_search` algorithms verbatim (generalized to take a
+  `fitfn(p,q,P,Q)` closure rather than being hardcoded to
+  `fit_arima`/`fit_sarima`, regression-verified to cause zero behavior
+  change in `auto_arima` itself before building on top of it). **`d`/`D`
+  detected on the residuals of `y` regressed on `exog`, never raw `y`**
+  -- confirmed directly from `pmdarima`'s actual source, guarding
+  against a trending regressor making `y` look non-stationary when it's
+  actually stationary once the regressor's effect is removed. This
+  guard is real but not perfect, reported honestly: on a genuine
+  cointegration setup (`x` a random walk, `y` stationary given `x`'s
+  effect removed), real `pmdarima` itself still selects `d=1`, not the
+  naively-hypothesized `d=0` -- Julia matches this exactly (`d=1`,
+  `(p,q)=(1,1)`, `aic≈574.819`, `beta≈1.2254`, stepwise and exhaustive
+  search agreeing). **Searches `model=:mle` only** -- `pmdarima` itself
+  has no first-class `time_varying_regression` search parameter either;
+  comparing `:tvss` candidates by AICc across a grid would repeat the
+  exact model-vs-model comparison error `fit_arimax` itself flags as
+  invalid. AICc's parameter count includes `k_exog` via `beta`'s own
+  length, verified against the exact AICc formula directly
 - `fit_garch`/`fit_garch_multi`/`GarchModel` -- GARCH(p,q) volatility
   modeling (Bollerslev 1986), own likelihood entirely independent of the
   Gaussian state-space engine. **`p`=ARCH order, `q`=GARCH order,

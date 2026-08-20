@@ -73,9 +73,15 @@ each of p/q/P/Q, refit them, and move to the single best-improving
 neighbor -- stopping when no neighbor improves `ic`. A plain greedy
 hill-climb over a finite, `max_order`-bounded grid, so it always
 terminates; a small `cache` avoids refitting a candidate visited more
-than once (neighbor sets from adjacent steps can overlap)."
-function _stepwise_search(yv, d, D, s, seasonal, max_p, max_q, max_P, max_Q, max_order,
-                           include_mean, method, se_type, optimizer_method, ic, trace)
+than once (neighbor sets from adjacent steps can overlap).
+
+`fitfn(p, q, P, Q)` is the only piece that differs between `auto_arima`
+(fits `fit_arima`/`fit_sarima`) and Stage 8.4's `auto_arimax` (fits
+`fit_arimax`/`fit_sarimax`, `d`/`D`/`s`/`exog` already closed over by
+the caller) -- the search algorithm itself (candidate generation, IC
+comparison, caching, trace printing) is identical either way, so it's
+injected rather than duplicated."
+function _stepwise_search(fitfn, seasonal, max_p, max_q, max_P, max_Q, max_order, ic, trace)
     cache = Dict{NTuple{4,Int},Any}()
 
     function fitcand(p, q, P, Q)
@@ -85,10 +91,10 @@ function _stepwise_search(yv, d, D, s, seasonal, max_p, max_q, max_P, max_Q, max
             cache[key] = nothing
             return nothing
         end
-        m = _try_fit(yv, p, d, q, P, D, Q, s, seasonal, include_mean, method, se_type, optimizer_method)
+        m = fitfn(p, q, P, Q)
         cache[key] = m
         if trace
-            label = seasonal ? "ARIMA($p,$d,$q)($P,$D,$Q)[$s]" : "ARIMA($p,$d,$q)"
+            label = seasonal ? "(p=$p,q=$q)(P=$P,Q=$Q)" : "(p=$p,q=$q)"
             println("  ", label, " : ", m === nothing ? "failed" : string(ic, "=", round(_ic_value(m, ic), digits=4)))
         end
         return m
@@ -161,9 +167,12 @@ actually available (and the grid is non-trivial) -- same guarded
 pattern as MSTL's own `parallel` keyword. Threading changes only which
 order the candidates are fit in, never which one wins: every thread
 writes to its own `results[i]` slot, and the arg-min pass is strictly
-sequential afterwards."
-function _exhaustive_search(yv, d, D, s, seasonal, max_p, max_q, max_P, max_Q, max_order,
-                             include_mean, method, se_type, optimizer_method, ic, parallel, trace)
+sequential afterwards.
+
+`fitfn(p, q, P, Q)` -- see `_stepwise_search`'s own docstring for why
+this is injected rather than duplicated between `auto_arima` and
+Stage 8.4's `auto_arimax`."
+function _exhaustive_search(fitfn, seasonal, max_p, max_q, max_P, max_Q, max_order, ic, parallel, trace)
     P_range = seasonal ? (0:max_P) : (0:0)
     Q_range = seasonal ? (0:max_Q) : (0:0)
     candidates = vec([(p, q, P, Q) for p in 0:max_p, q in 0:max_q, P in P_range, Q in Q_range
@@ -175,12 +184,12 @@ function _exhaustive_search(yv, d, D, s, seasonal, max_p, max_q, max_P, max_Q, m
     if use_threads
         Threads.@threads for i in eachindex(candidates)
             p, q, P, Q = candidates[i]
-            results[i] = _try_fit(yv, p, d, q, P, D, Q, s, seasonal, include_mean, method, se_type, optimizer_method)
+            results[i] = fitfn(p, q, P, Q)
         end
     else
         for i in eachindex(candidates)
             p, q, P, Q = candidates[i]
-            results[i] = _try_fit(yv, p, d, q, P, D, Q, s, seasonal, include_mean, method, se_type, optimizer_method)
+            results[i] = fitfn(p, q, P, Q)
         end
     end
 
@@ -191,7 +200,7 @@ function _exhaustive_search(yv, d, D, s, seasonal, max_p, max_q, max_P, max_Q, m
         isfinite(v) || continue
         if trace
             p, q, P, Q = candidates[i]
-            label = seasonal ? "ARIMA($p,$d,$q)($P,$D,$Q)[$s]" : "ARIMA($p,$d,$q)"
+            label = seasonal ? "(p=$p,q=$q)(P=$P,Q=$Q)" : "(p=$p,q=$q)"
             println("  ", label, " : ", ic, "=", round(v, digits=4))
         end
         if v < best_ic
@@ -311,10 +320,10 @@ function auto_arima(y; d::Union{Nothing,Integer}=nothing, D::Union{Nothing,Integ
     dsel >= 0 || throw(ArgumentError("d must be non-negative"))
     dsel <= max_d || throw(ArgumentError("d=$dsel exceeds max_d=$max_d"))
 
+    fitfn(p, q, P, Q) = _try_fit(yv, p, dsel, q, P, Dsel, Q, s, seasonal, include_mean, method, se_type, optimizer_method)
+
     return stepwise ?
-           _stepwise_search(yv, dsel, Dsel, s, seasonal, max_p, max_q, max_P, max_Q, max_order,
-                             include_mean, method, se_type, optimizer_method, information_criterion, trace) :
-           _exhaustive_search(yv, dsel, Dsel, s, seasonal, max_p, max_q, max_P, max_Q, max_order,
-                               include_mean, method, se_type, optimizer_method, information_criterion,
+           _stepwise_search(fitfn, seasonal, max_p, max_q, max_P, max_Q, max_order, information_criterion, trace) :
+           _exhaustive_search(fitfn, seasonal, max_p, max_q, max_P, max_Q, max_order, information_criterion,
                                parallel, trace)
 end

@@ -85,6 +85,7 @@ fit_arimax
 ArimaxModel
 fit_sarimax
 SarimaxModel
+auto_arimax
 ```
 
 ## Volatility models

@@ -1,0 +1,66 @@
+=== Stage 8.4 auto_arimax verification ===
+
+SOURCE FINDING, confirmed directly from pmdarima's actual auto_arima.py
+source (not documentation), lines ~161-164:
+  xx = y.copy()
+  if X is not None:
+      lm = LinearRegression().fit(X, y)
+      xx = y - lm.predict(X)
+-- d/D detection runs on regression RESIDUALS, never raw y, when exog is
+   present. sklearn's LinearRegression defaults to fit_intercept=True,
+   so this project's own _ols_residuals always includes an intercept in
+   the OLS regression regardless of auto_arimax's own include_mean
+   keyword (a separate, preliminary step, not tied to the final fitted
+   model's own mean treatment).
+
+REAL TEST DATA (test/verification/autoarimax/auto_arimax_shared.csv,
+n=200): x = random walk (unit root), y = 1.2*x + e, e = stationary
+AR(1) process -- a genuine cointegration setup (y IS stationary given
+x's effect removed, Stock 1987's superconsistency setting).
+
+REAL pmdarima.auto_arima output (from
+handoff/verification/auto-arimax-transcript.txt, now moved here):
+  Selected order: (1, 1, 1)      <- d=1, NOT the naively-hypothesized d=0
+  Best model: ARIMA(1,1,1)(0,0,0)[0], AIC=574.819
+  params: [1.22540591, 0.3455296, -0.97490068, 0.99884471]
+    (beta, ar1, ma1, sigma2)
+
+Julia auto_arimax(y, x; seasonal=false, stepwise=true) on the same data:
+  d = 1                              -- exact match
+  (p, q) = (1, 1)                    -- exact match
+  aic = 574.8193617092422            -- matches to <1e-3
+  beta[1] = 1.2254088838691808       -- matches to <1e-4
+  converged = true
+
+Julia auto_arimax(...; stepwise=false, max_p=3, max_q=3) (exhaustive
+grid search, independent of the stepwise hill-climb): selects the
+identical (1,1,1), same AIC -- confirms the fitfn-injection refactor of
+_stepwise_search/_exhaustive_search (shared verbatim with Stage 6.8's
+own auto_arima) didn't introduce any asymmetry between the two search
+modes for the exog-aware case, matching Stage 6.8's own already-verified
+"exhaustive matches stepwise" regression property.
+
+HONEST CONCLUSION (matching the handoff's own framing, not adjusted to
+look cleaner): the residual-based correction protects against the WORST
+failure mode (testing raw y directly, which would show even stronger
+apparent non-stationarity) but does not perfectly solve differencing
+detection in near-cointegrated finite samples -- real pmdarima itself,
+with the correction already applied, still selects d=1 here. This is
+the same class of honest limitation already documented for Stage 6.8's
+own order-selection accuracy (33% exact-order recovery at n=96).
+
+SCOPE FINDING, confirmed directly from pmdarima's full auto_arima
+signature: no first-class time_varying_regression parameter exists
+(only reachable via a generic sarimax_kwargs={} passthrough dict) --
+confirms this project's model=:mle-only scope for auto_arimax is
+consistent with Python's own design priorities, not an arbitrary
+simplification.
+
+REGRESSION CHECK: refactoring _stepwise_search/_exhaustive_search
+(autoarima.jl) to accept a generic fitfn(p,q,P,Q) closure -- so
+auto_arimax could share them verbatim instead of duplicating ~150 lines
+-- was verified to cause zero behavior change in auto_arima itself:
+full existing suite (test/test_autoarima.jl, 47 assertions;
+test/test_autoarima_bulk.jl, 42 assertions across 20 dual R+Python
+cases) re-run after the refactor, identical pass counts and match rates
+(py_match_rate=0.85, r_match_rate=0.9) to before.
