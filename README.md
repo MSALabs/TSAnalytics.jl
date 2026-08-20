@@ -24,12 +24,14 @@ ARIMA(p,d,q)(P,D,Q)_s), automatic order selection (`auto_arima`,
 Hyndman-Khandakar), and the full GARCH-family volatility toolkit --
 GARCH/GJR-GARCH/EGARCH fitting (`fit_garch`), multi-step forecasting
 (`forecast_volatility`), and nonparametric realized volatility measures
-(`realized_variance`, `jump_test`, ...), completing Stage 7. Chapter
-Nine's engine generalization is underway internally (time-varying
-`Z_t`/`T_t`/`R_t`/`Q_t`/`H_t` state-space matrices plus exact diffuse
-initialization, the machinery SARIMAX/exogenous regressors need) -- not
-user-facing yet, no public API surface until SARIMAX itself lands on
-top of it. See [Roadmap](#roadmap) below.
+(`realized_variance`, `jump_test`, ...), completing Stage 7. Stage 8's
+engine generalization (time-varying `Z_t`/`T_t`/`R_t`/`Q_t`/`H_t`
+state-space matrices, exact diffuse initialization) now has its first
+user-facing consumer: full ARIMAX/SARIMAX with exogenous regressors
+(`fit_arimax`, `fit_sarimax`) -- two genuinely different ways to treat
+the regression coefficient, `model=:mle` (fixed, jointly-estimated) or
+`model=:tvss` (a real latent, time-varying state), verified directly
+against real R and Python. See [Roadmap](#roadmap) below.
 
 ## What's implemented so far
 
@@ -345,6 +347,39 @@ top of it. See [Roadmap](#roadmap) below.
   crashing on the pure-white-noise `(0,·,0)(0,·,0)` candidate that
   `auto_arima`'s own base-model search is the first thing to actually
   try
+- `fit_arimax`/`fit_sarimax`/`ArimaxModel`/`SarimaxModel` -- (S)ARIMA
+  with exogenous regressors, two genuinely different models behind one
+  function, confirmed directly against real Python `SARIMAX(
+  time_varying_regression=True, mle_regression=False,
+  use_exact_diffuse=True)`, not assumed: `model=:mle` (default) treats
+  `beta` as an ordinary joint-MLE coefficient (`y - X·beta`, both
+  differenced exactly as `fit_arima`/`fit_sarima`'s own convention, fed
+  to the unmodified Stage 6 likelihood -- no Stage 8.1/8.2 machinery
+  needed); `model=:tvss` makes `beta` a genuinely latent, time-varying
+  **state**, recovered via Stage 8.1's `TimeVaryingSSM` + Stage 8.2's
+  `kalman_filter_diffuse` -- only its process variance `Q_beta` is
+  optimized, `beta` itself never is (matching real `SARIMAX`'s own
+  reported parameter list exactly). Named `model`, deliberately not
+  `method` -- `method` was already Stage 6.5/6.7's `:ml`/`:css_ml`
+  estimation-procedure choice, and both are needed simultaneously
+  (`model=:tvss, method=:css_ml` is a real, sensible combination).
+  Constraining `Q_beta=0` makes `model=:tvss`'s point estimates converge
+  closely to `model=:mle`'s, but their likelihoods still genuinely
+  differ -- `model=:tvss`'s diffuse-phase observations carry a different
+  likelihood formula entirely (a diffuse marginal term, not an ordinary
+  fixed-parameter density), asserted as an explicit inequality in the
+  test suite rather than "fixed" into equality. Building this caught and
+  fixed a real bug in Stage 8.2's own `kalman_filter_diffuse`: its
+  `loglik` was excluding diffuse-phase observations entirely, when real
+  `statsmodels`'s own genuine default includes them (`loglikelihood_burn
+  = 0` under exact diffuse init) -- caught because `model=:tvss`,
+  evaluated at Python's own exact fitted parameters, showed the *same*
+  small constant loglik offset across two different parameter settings,
+  ruling out optimizer noise. `fit_sarimax` is not a thin wrapper over
+  `fit_arimax` (same reasoning as `fit_sarima` over `fit_arima`) -- both
+  share an internal `_fit_arimax_core`, verified to satisfy the
+  reduction property (`seasonal_order=(0,0,0,·)` exactly matches
+  `fit_arimax`) directly
 - `fit_garch`/`fit_garch_multi`/`GarchModel` -- GARCH(p,q) volatility
   modeling (Bollerslev 1986), own likelihood entirely independent of the
   Gaussian state-space engine. **`p`=ARCH order, `q`=GARCH order,

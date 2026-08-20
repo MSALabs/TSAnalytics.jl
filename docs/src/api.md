@@ -81,6 +81,10 @@ ArimaModel
 fit_sarima
 SarimaModel
 auto_arima
+fit_arimax
+ArimaxModel
+fit_sarimax
+SarimaxModel
 ```
 
 ## Volatility models

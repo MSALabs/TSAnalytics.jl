@@ -1,0 +1,25 @@
+=== Stage 8.3 v2: :mle vs :tvss verification ===
+
+:mle (already verified in v1):
+  R:      ar=0.476774167  x=1.894806442  loglik=-211.1256527
+  Python: ar=0.47677706   x=1.89480149   llf=-211.1256527433344
+
+:tvss, Q_beta freely estimated (Python default):
+  param_names: ['ar.L1', 'var.x1', 'sigma2']  -- beta itself NOT optimized
+  params: ar.L1=0.475909212  var.x1=0.000109371580  sigma2=0.979298992
+  llf: -213.74793442697535
+  filtered beta[:5]:  [2.000, 1.778, 1.458, 1.925, 2.133]
+  filtered beta[-5:]: [1.871, 1.875, 1.864, 1.869, 1.875]
+  -- beta genuinely evolves over time, confirmed.
+
+:tvss, Q_beta forced to exactly 0:
+  params: ar.L1=0.47465807  var.x1=0.0  sigma2=0.98227306
+  llf: -213.76718527012807
+  filtered beta converges to ~1.895 by series end
+
+KEY FINDING: :tvss(Q_beta=0) point estimates converge closely to :mle's
+(beta ~1.895 vs 1.8948; ar 0.4747 vs 0.4768) but likelihoods do NOT
+match (-213.767 vs -211.126) -- because :tvss carries a diffuse-
+initialization phase (nobs_diffuse, per Stage 8.2) that :mle never has.
+This is expected and correct, not a bug -- test suite must assert
+INEQUALITY of likelihood here, not equality.

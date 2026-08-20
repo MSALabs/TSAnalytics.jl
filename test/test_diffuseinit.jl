@@ -12,7 +12,13 @@ using DelimitedFiles, Random, LinearAlgebra
         loglik, v, F, nobs_diffuse, converged = T_.kalman_filter_diffuse(ssm, y; diffuse_idx=[1, 2])
         @test converged
         @test nobs_diffuse == 2
-        @test isapprox(loglik, -11.239210224444564; atol=1e-8)
+        # loglik is the full, inclusive sum (statsmodels' own genuine `res.llf`,
+        # loglikelihood_burn=0) -- NOT np.sum(llf_obs[nobs_diffuse:]), a
+        # manually-sliced, non-default figure this test asserted before Stage
+        # 8.3's own verification caught the discrepancy (see
+        # test/verification/diffuseinit/diffuseinit-inclusive-sum-correction.txt).
+        # Both numbers are in diffuse_case1.json: loglik_full vs. loglik_excl_diffuse.
+        @test isapprox(loglik, -14.53870388541507; atol=1e-8)
         forecasts = y .- v
         @test isapprox(forecasts[1:5], [0.0, -0.86562006, 0.33425629, 1.43040012, -2.04550969]; atol=1e-6)
         @test isapprox(F[1:5], [0.09, 0.10269377, 0.15853232, 0.13515254, 0.18103155]; atol=1e-6)

@@ -42,34 +42,44 @@ beyond what this handoff's own minimal proposed signature showed).
 Verified directly (`test/verification/diffuseinit/`) that the intuitive
 "just make `kappa` really big" approach has a genuine sweet spot, not a
 limit that keeps improving: comparing R's actual default (`kappa=1e6`)
-against this exact method, correctly excluding the diffuse-affected
-observations from both sums, agreement is excellent (`2.6e-7` in the
+against this exact method, agreement is excellent (`2.6e-7` in the
 reference case) -- but accuracy measurably *degrades* past roughly
 `1e8`-`1e10` (floating-point cancellation from an excessively large
 initial variance, a real numerical instability, not hypothetical).
-Using the approximate method correctly also requires knowing the exact
-diffuse dimension to exclude the right number of initial observations,
-with no error if that's gotten wrong silently. The exact method has
-neither fragility, which is the actual reason it's worth building, not
-because the approximate method is inherently crude -- it isn't, when
-used correctly.
+The exact method has no such fragility, which is the actual reason it's
+worth building, not because the approximate method is inherently crude
+-- it isn't, when used correctly.
 
-**`loglik` sums only the *post-diffuse-phase* observations' likelihood
-contributions** (`nobs_diffuse` of them excluded), matching this
-project's already-established `nobs = n - d` convention (Stage 6.6's
-differencing, Stage 6.7's seasonal extension) for the identical reason:
-the diffuse-phase contribution (`-0.5*log(2π*F_infty,t)`, confirmed
-directly from `statsmodels`'s own source -- no `v_t^2/F_t` term at all
-for those observations, a genuinely different quantity, not just a
-missing piece of the usual one) isn't comparable to an ordinary
-observation's likelihood contribution and isn't what downstream AIC/BIC
-computations want. `v`/`F` are returned for **every** observation
-(length `n`, `F` always the ordinary `F_star,t`, well-defined at every
-step regardless of whether that particular step's likelihood
-contribution was excluded) for full residual-diagnostic usefulness,
-matching `GaussianSSM`/`TimeVaryingSSM`'s own existing convention of
-keeping the full-length series available even when `nobs` itself is
-smaller.
+**`loglik` sums *every* observation's likelihood contribution,
+`nobs_diffuse` included** -- this is a correction from an earlier
+version of this function (and its docstring) that excluded the first
+`nobs_diffuse` observations, modeled on this project's `nobs = n - d`
+differencing convention (Stage 6.6/6.7). That convention doesn't apply
+here: confirmed directly against real, directly-executed `statsmodels`
+(`res.llf` on `kf.initialize_diffuse()`, **not** a manually-summed
+subset of `res.llf_obs`) that the diffuse-phase contribution
+(`-0.5*log(2π*F_infty,t)`, confirmed directly from `statsmodels`'s own
+source -- no `v_t^2/F_t` term at all, a genuinely different quantity
+from an ordinary observation's) is a well-defined, finite quantity that
+*is* included in the reported total, not burned -- exactly the point of
+"exact" diffuse initialization (Durbin & Koopman): unlike the
+approximate `kappa` method, which genuinely needs the initial
+observations discarded because their likelihood is unreliable for large
+finite `kappa`, the exact method's diffuse-phase term is fully valid on
+its own and SARIMAX's own default `loglikelihood_burn` for it is `0`.
+On `test/verification/diffuseinit/diffuse_case1.csv`'s own system,
+`res.llf = -14.53870388541507` (the genuine default) vs.
+`np.sum(res.llf_obs[res.nobs_diffuse:]) = -11.239210224444564` (a
+manually-sliced, non-default figure this function's own first attempt
+was mistakenly compared against) -- both numbers were captured side by
+side in `diffuse_case1.json` (`loglik_full` vs. `loglik_excl_diffuse`)
+from the very first verification run, but only the non-default one was
+checked at the time. `nobs_diffuse` is still returned -- genuinely
+useful diagnostic information (how many leading observations were
+diffuse-influenced) -- it just no longer changes what `loglik` sums.
+`v`/`F` are returned for **every** observation (length `n`, `F` always
+the ordinary `F_star,t`) for full residual-diagnostic usefulness,
+matching `GaussianSSM`/`TimeVaryingSSM`'s own existing convention.
 
 **The diffuse phase is `O(d)` fixed overhead, not `O(n)`** -- confirmed
 directly by execution (`n=50/500/5000` on an identical structure all
@@ -88,13 +98,17 @@ proven in `to_time_varying`'s own docstring for the Stage 8.1 case).
 
 Verified against real, directly-executed `statsmodels`
 (`kf.initialize_diffuse()`, confirmed matching this function's own
-`diffuse_idx` covering every state): `nobs_diffuse` and the
-post-diffuse-phase log-likelihood total both match to machine precision
-on a local-level-plus-time-varying-regression-coefficient system, the
-same structural shape as this handoff's own worked example (see
+`diffuse_idx` covering every state): `nobs_diffuse` and `loglik` (the
+genuine, default, fully-inclusive `res.llf`, re-verified against Stage
+8.3's own SARIMAX `time_varying_regression=True` scenario too -- see
+`test/verification/arimax/arimax-ground-truth-transcript.txt`) both
+match to machine precision on a local-level-plus-time-varying-
+regression-coefficient system, the same structural shape as this
+handoff's own worked example (see
 `test/verification/diffuseinit/diffuseinit-ground-truth-transcript.txt`
-for the full numeric comparison, including the corrected-from-a-wrong-
-first-attempt naive-full-sum finding preserved for the record).
+for the original numeric comparison and
+`test/verification/diffuseinit/diffuseinit-inclusive-sum-correction.txt`
+for this correction's own record).
 
 `converged=false` (`loglik=-Inf`, `v`/`F` empty) on a degenerate `F_t`
 at any step, matching `TimeVaryingSSM`'s own sentinel convention.
@@ -153,7 +167,7 @@ function kalman_filter_diffuse(ssm::TimeVaryingSSM, y::AbstractVector{<:Real};
             a_filt = a + K0 .* vt
             P_filt = P * L0' + Pinf * L1'
             Pinf_filt = Pinf * L0'
-            # excluded from `acc` deliberately -- see docstring
+            acc += log(Finf)   # diffuse-phase contribution -- see docstring: no v^2/F term
         elseif Fstar > _TOLERANCE_DIFFUSE
             K0 = P * z ./ Fstar
             L0 = Ir - K0 * z'
@@ -181,6 +195,6 @@ function kalman_filter_diffuse(ssm::TimeVaryingSSM, y::AbstractVector{<:Real};
         end
     end
 
-    loglik = -0.5 * ((n - nobs_diffuse) * log(2π) + acc)
+    loglik = -0.5 * (n * log(2π) + acc)
     return (loglik, v, F, nobs_diffuse, true)
 end
