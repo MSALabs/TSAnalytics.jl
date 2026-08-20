@@ -500,6 +500,35 @@ against real R and Python. See [Roadmap](#roadmap) below.
   is the most naturally parallel design in the whole GARCH-family chapter:
   parallelizing over independent trading days is the actual default shape
   of how this gets used, not an add-on capability
+- `fit_autoreg_garch`/`AutoregGarchModel` -- SAS `PROC AUTOREG`'s
+  regression-with-AR(m)-errors model, optionally with a jointly-fitted
+  GARCH(p,q) variance. **Dependency corrected from the original roadmap
+  listing**: Stage 8.2's diffuse init isn't actually needed (`beta` here
+  is an ordinary fixed coefficient, no diffuse state), the same
+  correction Stage 8.3 made for the identical reason. **`garch_order=
+  nothing` (plain AR(m) errors) is Stage 8.3's own `fit_arimax(y,(m,0,0),
+  exog;model=:mle)` construction exactly** -- confirmed algebraically
+  (substituting `nu_t=Y_t-X_t·beta` into the AR(m)-errors recursion gives
+  that exact model) and verified directly (bit-identical `beta`/`loglik`,
+  a literal delegation, not a reimplementation). **The genuinely new
+  work -- AR(m) errors jointly optimized with a GARCH(p,q) variance in
+  one likelihood -- has no direct software reference** (Python's
+  `arch.univariate.ARX` combines `Y`'s own lags with `X` instead, `arx`'s
+  own framing, not `PROC AUTOREG`'s); verified via the "reduces to an
+  already-trusted case" methodology instead: constraining
+  `alpha=garch_beta=0` reduces this construction to Stage 8.3's
+  already-verified plain likelihood (confirmed to `~7.7e-9`). The
+  hand-verified `m=1` presample-observation treatment (the first AR
+  residual's own proper stationary variance, not a dropped or
+  conditioned-away term) is **generalized to arbitrary `m`** via this
+  project's *existing* Kalman-filter stationary-covariance machinery
+  (`stationary_cov`/`build_statespace`, the same primitives every
+  stationary AR/ARMA polynomial in this project already uses), confirmed
+  to reduce exactly to the `m=1` case algebraically. A genuine
+  non-degenerate AR-GARCH recovery check against known generating
+  parameters (`n=1000` synthetic series, since no direct software
+  reference exists for this exact combination) recovers all five
+  parameters within normal finite-sample MLE error
 
 All of the above are implemented natively (no calls out to R or Python,
 `Optim.jl` for general-purpose numerical optimization aside -- the same

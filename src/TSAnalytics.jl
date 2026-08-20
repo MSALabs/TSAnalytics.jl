@@ -37,6 +37,7 @@ include("accuracy.jl")
 include("tscv.jl")
 include("holtwinters.jl")
 include("garch.jl")
+include("autoregarch.jl")
 include("garchforecast.jl")
 include("realizedvol.jl")
 

@@ -1,0 +1,72 @@
+=== Stage 8.5 fit_autoreg_garch verification ===
+
+HANDOFF'S OWN FINDING (handoff/stage-8.5-autoreg-garch-handoff.md
+section 0): garch_order=nothing IS Stage 8.3's fit_arimax(y,(m,0,0),
+exog;model=:mle) construction exactly -- nu_t = Y_t - X_t*beta,
+Y_t - X_t*beta = phi_1*(Y_{t-1}-X_{t-1}*beta) + ... + e_t is literally
+that model. Verified directly, not assumed: on
+test/verification/arimax/sarimax_exog_shared.csv (n=150, the same
+series Stage 8.3's own AR(1)+1-exog case used):
+  fit_autoreg_garch(y, 1, x; garch_order=nothing).beta  == fit_arimax(y,(1,0,0),x;model=:mle).beta   (bit-identical, atol=1e-10)
+  fit_autoreg_garch(y, 1, x; garch_order=nothing).loglik == fit_arimax(...).loglik = -211.12565273564493
+
+GENERAL-m PRESAMPLE-BLOCK CONSTRUCTION (ar-garch-transcript.txt's own
+m=1 hand-derivation, generalized here to arbitrary m via this project's
+existing stationary_cov/build_statespace machinery -- see
+_ar_garch_loglik's own docstring in src/autoregarch.jl for the full
+derivation): confirmed to reduce to the handoff's own hand-verified m=1
+formula algebraically (Sigma_1 = [1/(1-phi^2)] under stationary_cov's
+own unit-innovation-variance convention).
+
+Re-verified numerically on the same data: calling
+TSAnalytics._ar_garch_loglik directly at Stage 8.3's own fitted
+beta/phi/sigma2 (as omega, with alpha=[0.0], garch_beta=[0.0], the
+exact degenerate-to-constant-variance case):
+  loglik = -211.125652735645
+  Stage 8.3 target (fit_arimax's own loglik) = -211.1256527433344
+  diff = 7.689408221267513e-9
+
+-- matches the handoff's own claimed 7.676334234929527e-09 to the same
+order of magnitude (this project's independent re-derivation, not a
+copy of the handoff's own number -- both confirm the construction is
+correct to float64 precision).
+
+Full joint optimizer fit (garch_order=(1,1)) on this SAME n=150 series:
+converges to alpha~3e-16, garch_beta~0.99999 -- i.e. the optimizer
+correctly finds that there is NO genuine ARCH effect in this series
+(it's the same i.i.d.-Gaussian-noise AR(1)+exog series used throughout
+Stage 8.3, with no real volatility clustering), landing on the
+well-known GARCH near-IGARCH degenerate ridge rather than a spurious
+positive alpha -- not a bug, exactly the flagged gap in the handoff's
+own section 3 ("only the degenerate-case reduction has been verified
+numerically here... a genuinely time-varying-volatility case ... hasn't
+been run yet").
+
+=== Closing the flagged gap: genuine non-degenerate recovery check ===
+
+Per the handoff's own suggested methodology ("the same generate-known-
+parameters-and-check-recovery methodology used for Stage 7.1's GARCH
+bulk tests, not a cross-language point-match" -- no direct software
+reference exists for this exact AR-errors+GARCH combination, confirmed
+in section 1 of the handoff: Python's arch.univariate.ARX combines Y's
+OWN lags with X, not PROC AUTOREG's regression-then-AR-residual
+framing).
+
+Synthetic series generated directly in Julia (own RNG, no cross-language
+comparison needed for a recovery test -- see
+test/verification/autoregarch/gen_ar_garch_recovery.jl), n=1000:
+  true beta=1.5, phi=0.5, omega=0.05, alpha=0.15, garch_beta=0.75
+  (persistence=0.90, unconditional variance=0.5)
+
+fit_autoreg_garch(y, 1, x; garch_order=(1,1)) recovers:
+  beta       = 1.4685731418139674   (true 1.5,  diff 0.031)
+  phi        = 0.5333745910574872   (true 0.5,  diff 0.033)
+  omega      = 0.05038434738554304  (true 0.05, diff 0.004)
+  alpha      = 0.1362640617960791   (true 0.15, diff 0.014)
+  garch_beta = 0.7507052989775713   (true 0.75, diff 0.001)
+  converged  = true
+
+All within normal finite-sample MLE estimation error at n=1000 -- the
+combined likelihood construction genuinely recovers a real, non-
+degenerate GARCH signal when the data actually contains one, closing
+the handoff's own flagged verification gap.

@@ -41,6 +41,7 @@ using Statistics: mean
     include("test_garch.jl")
     include("test_garch_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally
     include("test_garch_gjr_egarch_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally
+    include("test_autoregarch.jl")   # after test_garch.jl: reuses GarchModel
     include("test_garchforecast.jl")
     include("test_garchforecast_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally
     include("test_realizedvol.jl")

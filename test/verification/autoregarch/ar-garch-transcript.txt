@@ -1,0 +1,23 @@
+=== Stage 8.5 AR-errors + GARCH verification ===
+
+FIRST ATTEMPT (bug -- dropped first observation via conditioning shortcut):
+  AR-GARCH loglik (degenerate, alpha=garch_beta=0): -210.08764793283007
+  Stage 8.3 verified target: -211.1256527433344
+  Difference: 1.038004810504333  -- WRONG, a real bug
+
+CORRECTED (proper stationary treatment of first AR-error observation):
+  e[0] = nu[0]  (the AR process's own first value)
+  h[0] = (omega/(1-alpha-garch_beta)) / (1 - phi^2)  -- stationary variance
+  AR-GARCH loglik (degenerate): -211.12565273565806
+  Stage 8.3 verified target:    -211.1256527433344
+  Difference: 7.676334234929527e-09  -- essentially exact, CONFIRMED CORRECT
+
+SCOPE FINDING: Python's arch.univariate.ARX combines Y's OWN LAGS with
+X and a volatility= process -- matches Stage 5.1's arx() framing, NOT
+PROC AUTOREG's "regression + AR-structured residual" framing. No direct
+software reference exists for the exact combination this stage needs;
+verified instead via reduces-to-already-trusted-case methodology.
+
+DEPENDENCY CORRECTION: Stage 8.2 (diffuse init) is NOT needed for this
+stage -- same reasoning as Stage 8.3's own correction. Real dependencies
+are Stage 7 (GARCH) and Stage 8.3 (fit_arimax), not Stage 8.2.
