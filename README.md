@@ -24,8 +24,12 @@ ARIMA(p,d,q)(P,D,Q)_s), automatic order selection (`auto_arima`,
 Hyndman-Khandakar), and the full GARCH-family volatility toolkit --
 GARCH/GJR-GARCH/EGARCH fitting (`fit_garch`), multi-step forecasting
 (`forecast_volatility`), and nonparametric realized volatility measures
-(`realized_variance`, `jump_test`, ...), completing Stage 7. Exogenous
-regressors are next. See [Roadmap](#roadmap) below.
+(`realized_variance`, `jump_test`, ...), completing Stage 7. Chapter
+Nine's engine generalization is underway internally (time-varying
+`Z_t`/`T_t`/`R_t`/`Q_t`/`H_t` state-space matrices, the machinery
+SARIMAX/exogenous regressors need) -- not user-facing yet, no public API
+surface until diffuse initialization (next) and SARIMAX itself land on
+top of it. See [Roadmap](#roadmap) below.
 
 ## What's implemented so far
 

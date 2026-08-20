@@ -10,6 +10,7 @@ using ForwardDiff: ForwardDiff
 
 include("interface.jl")
 include("statespace/gaussianssm.jl")
+include("statespace/timevaryingssm.jl")
 include("abstract.jl")
 include("datasets.jl")
 include("differencing.jl")

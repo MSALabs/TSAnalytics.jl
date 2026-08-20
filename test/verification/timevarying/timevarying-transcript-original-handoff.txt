@@ -1,0 +1,38 @@
+=== Stage 8.1 time-varying GaussianSSM verification ===
+
+1. Array-axis convention (statsmodels KalmanFilter, real construction):
+   Time-invariant 2D 'design' shape: (1, 2)
+   Time-varying 3D 'design' shape:   (1, 2, 6)   -- time is LAST axis
+   design[:,:,0] = [[1, 1]]   (matches x[0]=1.0)
+   design[:,:,2] = [[1, -1]]  (matches x[2]=-1.0)
+
+2. CRITICAL: exact reduction to time-invariant case
+   AR(1), phi=0.6, n=100, seed=3:
+   Time-invariant (2D) path: loglik = -147.7115960747244
+   Time-varying (3D, constant-valued) path: loglik = -147.7115960747244
+   Max abs diff in filtered_state: 0.0
+   loglik diff: 0.0
+   -- EXACT, bit-identical match. This is the regression guard
+      protecting all existing GaussianSSM verification work.
+
+3. Genuine time-varying case (Z_t = [1, x_t], x_t real changing regressor):
+   x = [1.0, 2.0, -1.0, 0.5, 3.0, -0.5]
+   y = [2.1, 4.5, -0.8, 1.6, 6.9, -0.4]
+   transition = [[0.5,0],[0,0.5]]  (stationary, deliberately, to isolate
+                                     from diffuse-init, Stage 8.2's scope)
+   Known initial state: mean=[0,0], cov=0.5*I
+   loglikelihood = -186.3544625437698
+   forecasts = [0, 1.43181818, -0.78848842, 0.19589125, 0.6789244, 0.23150176]
+   filtered_state[:, :3] =
+     [[0.9545455, -0.0005990, -0.0030982],
+      [0.9545455,  1.5763778,  0.7897614]]
+
+FLAGGED GAP: only Z_t varying was independently verified. T_t/R_t/Q_t/H_t
+varying individually have NOT been checked against real reference output.
+Do not assume validated by extension -- construct dedicated cases first.
+
+FLAGGED CORRECTION: an early attempt used transition=I (non-stationary)
+with initialize_stationary(), producing all-zero output -- this is
+expected/correct behavior (no valid stationary distribution exists for
+a unit-root system), and is itself a preview of why Stage 8.2 (diffuse
+initialization) needs to exist as a separate stage.
