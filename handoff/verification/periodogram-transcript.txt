@@ -1,0 +1,25 @@
+=== Stage 1.5 periodogram verification, real base R execution ===
+
+set.seed(42); n=96; t=1:n
+x <- 5*sin(2*pi*t/12) + 3*cos(2*pi*t/12) + rnorm(n, sd=0.5)
+spec.pgram(x, taper=0.1, plot=FALSE)
+
+Confirmed real R defaults:
+  taper=0.1, detrend=TRUE, demean=FALSE, pad=0, fast=TRUE
+
+Real output:
+  frequencies (first 5): 0.01041666667 0.02083333333 0.03125 0.04166666667 0.05208333333
+  spectrum (first 5): 5.787370716 1.375818839 2.646642418 2.651190832 9.823573797
+  peak frequency: 0.08333333333 (exactly 1/12, matching the injected period-12 component)
+  df: 1.791590494  bandwidth: 0.003007032652
+
+KEY FINDING: astsa::mvspec (Shumway & Stoffer's companion) deliberately
+overrides base R's taper=0.1 default to taper=0, "forcing conscious
+tapering" -- confirmed from its own documentation. Two real, different
+design choices from two sources on the same computation.
+
+=== Stage 1.6 Box-Cox / Guerrero's method ===
+NOT independently executed this session -- forecast package needed for
+BoxCox.lambda(method="guerrero"), CRAN confirmed unreachable again
+(fresh install attempt failed). Algorithm documented from fpp3's own
+text, flagged honestly as not cross-verified against real output.

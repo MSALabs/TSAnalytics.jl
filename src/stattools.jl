@@ -50,11 +50,13 @@ function Base.show(io::IO, r::ACFResult)
     r.qstat !== nothing && print(io, ", with Ljung-Box qstat/pvalues")
 end
 
-function _confidence_z(alpha::Real)
-    0 < alpha < 1 || throw(ArgumentError("alpha must be in (0,1)"))
-    # inverse standard normal CDF via a rational (Acklam-style) approximation
-    # avoids a hard Distributions.jl dependency just for a z-quantile.
-    p = 1 - alpha / 2
+"_std_normal_quantile(p) -- inverse standard normal CDF via a rational
+(Acklam-style) approximation, for any `p` in `(0,1)`. Avoids a hard
+Distributions.jl dependency just for a z-quantile; reused by both
+`_confidence_z` (ACF confidence bands) and `diagnostic_plot`'s Q-Q plot
+theoretical quantiles."
+function _std_normal_quantile(p::Real)
+    0 < p < 1 || throw(ArgumentError("p must be in (0,1)"))
     a = (-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
           1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00)
     b = (-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
@@ -79,6 +81,11 @@ function _confidence_z(alpha::Real)
         return -(((((c[1]*q+c[2])*q+c[3])*q+c[4])*q+c[5])*q+c[6]) /
                 ((((d[1]*q+d[2])*q+d[3])*q+d[4])*q+1)
     end
+end
+
+function _confidence_z(alpha::Real)
+    0 < alpha < 1 || throw(ArgumentError("alpha must be in (0,1)"))
+    return _std_normal_quantile(1 - alpha / 2)
 end
 
 _default_lags(n::Integer, from::Integer) = from:min(n-1, floor(Int, 10*log10(n)))

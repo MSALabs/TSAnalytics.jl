@@ -1,0 +1,80 @@
+=== Stage 2 (fill-gap) response-surface p-values ground truth ===
+
+ADF (mackinnonp/mackinnoncrit), direct calls to the real, installed
+`statsmodels.tsa.adfvalues.mackinnonp`/`mackinnoncrit` (statsmodels
+0.14.1) -- not the copied `adfvalues_source.py` file, the actual
+installed module:
+
+mackinnonp(-4.5,'n',N=1)=0.0000094436  mackinnonp(-3.5,'n',N=1)=0.0004837274
+mackinnonp(-2.5,'n',N=1)=0.0120040374  mackinnonp(-1.5,'n',N=1)=0.1252400585
+mackinnonp(0.0,'n',N=1)=0.6842796360   mackinnonp(1.0,'n',N=1)=0.9159517564
+mackinnonp(-4.5,'c',N=1)=0.0001966399  mackinnonp(-3.5,'c',N=1)=0.0079870941
+mackinnonp(-2.5,'c',N=1)=0.1154743248  mackinnonp(-1.5,'c',N=1)=0.5335113389
+mackinnonp(0.0,'c',N=1)=0.9585320861   mackinnonp(1.0,'c',N=1)=0.9942659485
+mackinnonp(-4.5,'ct',N=1)=0.0015095181 mackinnonp(-3.5,'ct',N=1)=0.0393910280
+mackinnonp(-2.5,'ct',N=1)=0.3279622963 mackinnonp(-1.5,'ct',N=1)=0.8291322873
+mackinnonp(-4.5,'ctt',N=1)=0.0065164686 mackinnonp(-3.5,'ctt',N=1)=0.1129147458
+mackinnonp(-2.5,'ctt',N=1)=0.5693607333 mackinnonp(-1.5,'ctt',N=1)=0.9454187814
+
+mackinnoncrit(N=1,'c',nobs=100) = [-3.49750103 -2.89090644 -2.5824349]
+mackinnoncrit(N=1,'c',nobs=inf) = [-3.43035 -2.86154 -2.56677]  (matches
+  this project's existing _ADF_CRIT asymptotic table exactly)
+mackinnoncrit(N=1,'ct',nobs=100) = [-4.05227796 -3.45534297 -3.15332088]
+mackinnoncrit(N=1,'ctt',nobs=100) = [-4.49092795 -3.89281428 -3.59044886]
+
+adfuller() end-to-end on test/fixtures/ar1_ref_series.csv (autolag=None,
+maxlag=4), response-surface p-value:
+  regression=n:  stat=-3.9610625435 pvalue=0.0000853854
+  regression=c:  stat=-3.9658327865 pvalue=0.0016003761
+  regression=ct: stat=-3.8282767277 pvalue=0.0151827924
+  regression=ctt: stat=-3.8514845158 pvalue=0.0475428007
+
+All of the above independently reproduced by
+adf_pvalue_response_surface/adf_critical_values_response_surface, exact
+match to the digits shown.
+
+--- PP :rho, via arch.unitroot.PhillipsPerron (arch 5.1.0), real execution ---
+
+IMPORTANT FINDING: arch's own adf_z_* tables
+(arch.unitroot.critical_values.dickey_fuller) are NOT the same numbers
+as adfvalues_source.py's z_star_c/z_c_smallp/z_c_largep tables (e.g.
+arch's z_star['c']=-5.04709 vs adfvalues_source.py's z_star_c[0]=-8.9)
+-- confirmed these are for a different Z-test. arch's PhillipsPerron
+class computes stat_rho via the *exact same formula* this project's
+pp_test already implements, and gets its p-value from arch's adf_z_*
+tables via dist_type="ADF-z" -- that end-to-end match is what confirms
+arch's tables (not adfvalues_source.py's) are the correct ones for this
+project's pp_rho_pvalue. Implemented using arch's tables accordingly.
+
+PhillipsPerron(y, lags=15, trend=trend, test_type="rho") on the same
+ar1_ref_series.csv fixture:
+  trend=n: stat=-79.8121106987 pvalue=0.0000000005
+  trend=c: stat=-81.1307189319 pvalue=0.0000000033
+  trend=ct: stat=-82.0639005559 pvalue=0.0000000472
+  (test_type="tau", same trends, for cross-reference:
+   trend=n: stat=-6.6538284577 pvalue=0.0000000004
+   trend=c: stat=-6.7085068926 pvalue=0.0000000037
+   trend=ct: stat=-6.7162203580 pvalue=0.0000000613
+   -- confirms PP's :tau uses the SAME "ADF-t" tables as adf_test's tau,
+   since arch's own source sets dist_type="ADF-t" for test_type="tau".)
+
+Julia pp_test(y; trend=trend, test_type=..., lags=15) reproduces all six
+(stat, pvalue) pairs above (both :tau and :rho) to the digits shown.
+
+--- KPSS nlags="auto" (Hobijn), on this project's OWN bundled data ---
+
+Real statsmodels.tsa.stattools.kpss(..., nlags="auto") on
+data/nile.csv's "flow" column and data/sunspot_year.csv's "value"
+column (this project's own bundled series, not statsmodels' bundled
+ones -- though nile.csv's lags=5 result matches
+handoff/verification/KPSS_hobijn_autolag.py's own documented
+`nile.volume -> lags=5` benchmark exactly, confirming the two datasets
+are the same series):
+
+  nile, regression='c':  stat=0.86912 pval=0.01000 lags=5
+  sunspots, regression='c': stat=0.53006 pval=0.03490 lags=7
+  nile, regression='ct': stat=0.23759 pval=0.01000 lags=4
+
+Julia kpss_test(nile; regression=:c, nlags=:auto).lags == 5,
+kpss_test(sunspots; regression=:c, nlags=:auto).lags == 7,
+kpss_test(nile; regression=:ct, nlags=:auto).lags == 4 -- all confirmed.

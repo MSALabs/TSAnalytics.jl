@@ -1,6 +1,8 @@
 using LinearAlgebra: qr, dot, I, cholesky, Hermitian, PosDefException
 
-export ADFTest, KPSSTest, PPTest, adf_test, kpss_test, pp_test
+export ADFTest, KPSSTest, PPTest, adf_test, kpss_test, pp_test,
+       adf_pvalue_response_surface, adf_critical_values_response_surface,
+       pp_rho_pvalue, kpss_hobijn_autolag
 
 # ---------------------------------------------------------------------------
 # Shared OLS helper (QR-based, for performance and numerical stability)
@@ -97,6 +99,157 @@ end
 _diagvec(A) = [A[i, i] for i in 1:size(A, 1)]
 
 # ---------------------------------------------------------------------------
+# ADF / PP response-surface p-values (MacKinnon 1994/2010)
+# ---------------------------------------------------------------------------
+#
+# Transcribed directly from two real, installed, executable reference
+# implementations -- not reconstructed from the paper:
+#   - statsmodels.tsa.adfvalues (`mackinnonp`/`mackinnoncrit`, the ADF
+#     "tau"/ADF-t tables) -- handoff/verification/adfvalues_source.py.
+#   - arch.unitroot.critical_values.dickey_fuller (`adf_z_*` tables, the
+#     "ADF-z" family `arch.unitroot.PhillipsPerron` uses for the `:rho`
+#     statistic). These are genuinely DIFFERENT numbers from the
+#     similarly-named z_star_c/z_c_smallp/z_c_largep tables in
+#     adfvalues_source.py (confirmed by direct execution -- those are for
+#     a different Z-test); `arch`'s own `PhillipsPerron` computes
+#     `stat_rho` via the *exact same formula* this file's `pp_test`
+#     already does, and its p-value comes from these `adf_z_*` tables --
+#     that end-to-end match is what confirms they're the right ones.
+# Both cross-checked end-to-end in test/verification/unitroot/ against
+# real `adfuller()`/`PhillipsPerron()` output on the shared AR(1)
+# fixture, plus direct `mackinnonp()` calls across many (stat,
+# regression) combinations -- not just "coefficients copied correctly".
+#
+# Only N=1 (a single time series -- the only case `adf_test`/`pp_test`
+# ever need) is transcribed; statsmodels'/arch's own N=2:12
+# (multi-series cointegration) tables are not, so this project doesn't
+# carry untested numbers nobody calls.
+
+"Horner evaluation of `d0 + d1*x + d2*x^2 + ...` for ascending coefficients."
+_horner(coefs, x::Real) = foldr((c, acc) -> c + x * acc, coefs; init=0.0)
+
+const _ADF_TAU_STAR_N1 = Dict(:n => -1.04, :c => -1.61, :ct => -2.89, :ctt => -3.21)
+const _ADF_TAU_MIN_N1 = Dict(:n => -19.04, :c => -18.83, :ct => -16.18, :ctt => -17.17)
+const _ADF_TAU_MAX_N1 = Dict(:n => Inf, :c => 2.74, :ct => 0.7, :ctt => 0.54)
+const _ADF_TAU_SMALLP_N1 = Dict(
+    :n => (0.6344, 1.2378, 0.032496),
+    :c => (2.1659, 1.4412, 0.038269),
+    :ct => (3.2512, 1.6047, 0.049588),
+    :ctt => (4.0003, 1.658, 0.048288),
+)
+const _ADF_TAU_LARGEP_N1 = Dict(
+    :n => (0.4797, 0.93557, -0.06999, 0.033066),
+    :c => (1.7339, 0.93202, -0.12745, -0.010368),
+    :ct => (2.5261, 0.61654, -0.37956, -0.060285),
+    :ctt => (3.0778, 0.49529, -0.41477, -0.059359),
+)
+
+"""
+    adf_pvalue_response_surface(teststat, regression; N::Integer=1) -> Float64
+
+MacKinnon (1994) response-surface p-value for an ADF `tau` statistic --
+the actual method `statsmodels.tsa.stattools.adfuller` and R use, more
+accurate than the linear-interpolation p-value available via
+[`adf_test`](@ref)'s `pvalue_method=:interpolated`. `N=1` (a single
+series -- always the case for a plain ADF test) is the only supported
+value; see this file's response-surface section header for why N=2:12
+aren't transcribed.
+
+# Examples
+```jldoctest
+julia> using TSAnalytics
+
+julia> round(adf_pvalue_response_surface(-3.5, :c), digits=6)  # matches statsmodels' mackinnonp(-3.5, 'c', 1) exactly
+0.007987
+```
+"""
+function adf_pvalue_response_surface(teststat::Real, regression::Symbol; N::Integer=1)
+    regression in (:n, :c, :ct, :ctt) || throw(ArgumentError("regression must be :n, :c, :ct, or :ctt"))
+    N == 1 || throw(ArgumentError("adf_pvalue_response_surface: only N=1 is supported (transcribed from statsmodels' N=1 table only)"))
+    teststat > _ADF_TAU_MAX_N1[regression] && return 1.0
+    teststat < _ADF_TAU_MIN_N1[regression] && return 0.0
+    coefs = teststat <= _ADF_TAU_STAR_N1[regression] ? _ADF_TAU_SMALLP_N1[regression] : _ADF_TAU_LARGEP_N1[regression]
+    return _std_normal_cdf(_horner(coefs, teststat))
+end
+
+const _ADF_CRIT_2010_N1 = Dict(
+    :n => ((-2.56574, -2.2358, -3.627, 0.0), (-1.941, -0.2686, -3.365, 31.223), (-1.61682, 0.2656, -2.714, 25.364)),
+    :c => ((-3.43035, -6.5393, -16.786, -79.433), (-2.86154, -2.8903, -4.234, -40.040), (-2.56677, -1.5384, -2.809, 0.0)),
+    :ct => ((-3.95877, -9.0531, -28.428, -134.155), (-3.41049, -4.3904, -9.036, -45.374), (-3.12705, -2.5856, -3.925, -22.380)),
+    :ctt => ((-4.37113, -11.5882, -35.819, -334.047), (-3.83239, -5.9057, -12.490, -118.284), (-3.55326, -3.6596, -5.293, -63.559)),
+)
+
+"""
+    adf_critical_values_response_surface(regression; nobs=nothing, N::Integer=1) -> (p1, p5, p10)
+
+MacKinnon (2010) finite-sample response-surface critical values for the
+ADF `tau` statistic, at 1%/5%/10%. `nobs=nothing` (default) returns the
+asymptotic values (matching the existing `_ADF_CRIT` table used by
+[`adf_test`](@ref)'s `:interpolated` p-value method); an `Integer`
+`nobs` gives the finite-sample-corrected values via
+`c0 + c1/nobs + c2/nobs^2 + c3/nobs^3`. `N=1` is the only supported
+value (see [`adf_pvalue_response_surface`](@ref)).
+
+# Examples
+```jldoctest
+julia> using TSAnalytics
+
+julia> round.(collect(adf_critical_values_response_surface(:c; nobs=100)); digits=5)  # matches statsmodels' mackinnoncrit(1,'c',100) exactly
+3-element Vector{Float64}:
+ -3.4975
+ -2.89091
+ -2.58243
+```
+"""
+function adf_critical_values_response_surface(regression::Symbol; nobs::Union{Nothing,Integer}=nothing, N::Integer=1)
+    regression in (:n, :c, :ct, :ctt) || throw(ArgumentError("regression must be :n, :c, :ct, or :ctt"))
+    N == 1 || throw(ArgumentError("adf_critical_values_response_surface: only N=1 is supported"))
+    coefs = _ADF_CRIT_2010_N1[regression]
+    vals = nobs === nothing ? getindex.(coefs, 1) : _horner.(coefs, 1 / nobs)
+    return (p1=vals[1], p5=vals[2], p10=vals[3])
+end
+
+const _PP_Z_STAR = Dict(:n => -1.79146, :c => -5.04709, :ct => -9.22766)
+const _PP_Z_SMALLP = Dict(
+    :n => (0.05872, -0.69633, 0.02471, -0.04283),
+    :c => (1.94205, -1.47677, 0.21163, -0.06288),
+    :ct => (4.05596, -2.34128, 0.41403, -0.08312),
+)
+const _PP_Z_LARGEP = Dict(
+    :n => (0.56681, 0.67544, 0.06881, 0.00235),
+    :c => (1.70059, 0.49465, 0.02636, 0.00055),
+    :ct => (2.60323, 0.39217, 0.01321, 0.00019),
+)
+
+"""
+    pp_rho_pvalue(teststat, regression) -> Float64
+
+MacKinnon "ADF-z" response-surface p-value for the Phillips-Perron
+`:rho` statistic -- what [`pp_test`](@ref)`(x; test_type=:rho)` uses
+(replacing a previously-`NaN` p-value). Transcribed from, and verified
+end-to-end against, `arch.unitroot.PhillipsPerron(..., test_type="rho")`'s
+own real executed output (Python `arch` package) -- see this file's
+response-surface section header for why these tables, not the
+similarly-named ones in `adfvalues_source.py`.
+
+# Examples
+```jldoctest
+julia> using TSAnalytics
+
+julia> 0.0 <= pp_rho_pvalue(-80.0, :c) <= 1.0
+true
+```
+"""
+function pp_rho_pvalue(teststat::Real, regression::Symbol)
+    regression in (:n, :c, :ct) || throw(ArgumentError("regression must be :n, :c, or :ct"))
+    if teststat <= _PP_Z_STAR[regression]
+        return _std_normal_cdf(_horner(_PP_Z_SMALLP[regression], log(abs(teststat))))
+    else
+        return _std_normal_cdf(_horner(_PP_Z_LARGEP[regression], teststat))
+    end
+end
+
+# ---------------------------------------------------------------------------
 # Augmented Dickey-Fuller
 # ---------------------------------------------------------------------------
 
@@ -108,9 +261,10 @@ Result of an Augmented Dickey-Fuller test. `regression` is one of `:n`
 trend), `:ctt` (constant + linear + quadratic trend), matching Python's
 `statsmodels.tsa.stattools.adfuller`'s `regression` argument exactly --
 see [`adf_test`](@ref) for the full R-vs-Python comparison this naming is
-based on. `pvalue` is an approximate p-value interpolated among
-MacKinnon's asymptotic critical values -- see [`adf_test`](@ref) for the
-accuracy caveat.
+based on. `pvalue` is, by default, the MacKinnon response-surface p-value
+(see [`adf_pvalue_response_surface`](@ref)) -- the same method
+`statsmodels`/R use; pass `pvalue_method=:interpolated` for the older,
+cruder linear-interpolation approximation instead.
 """
 struct ADFTest <: HypothesisTest
     statistic::Float64
@@ -222,12 +376,14 @@ adf_test(x; regression=:ct, autolag=nothing, maxlag=trunc(Int, (n-1)^(1/3)))
 ```
 
 !!! note "p-value accuracy"
-    The reported p-value is linearly interpolated among MacKinnon's
-    asymptotic critical values, not the finite-sample response-surface
-    p-value used by `statsmodels`/R (nor `tseries::adf.test`'s own
-    Banerjee et al. table, which only ever applies to its one fixed
-    constant+trend case). Adequate for a significant/not-significant call
-    at 1/5/10%; exact p-values are a planned improvement.
+    `pvalue_method=:response_surface` (**default**) matches
+    `statsmodels`/R's own finite-sample-accurate method exactly (see
+    [`adf_pvalue_response_surface`](@ref)). `pvalue_method=:interpolated`
+    keeps the older, cruder linear-interpolation-among-asymptotic-critical-values
+    approximation available (nor `tseries::adf.test`'s own Banerjee et
+    al. table, which only ever applies to its one fixed constant+trend
+    case) -- adequate for a significant/not-significant call at
+    1/5/10%, not for quoting an exact p-value.
 
 # Examples
 ```jldoctest
@@ -243,11 +399,13 @@ julia> adf_test(y; regression=:n, autolag=:bic).regression
 ```
 """
 function adf_test(x; regression::Symbol=:c, maxlag::Union{Nothing,Integer}=nothing,
-                   autolag::Union{Nothing,Symbol}=:aic)
+                   autolag::Union{Nothing,Symbol}=:aic, pvalue_method::Symbol=:response_surface)
     regression in (:n, :c, :ct, :ctt) ||
         throw(ArgumentError("regression must be :n, :c, :ct, or :ctt"))
     autolag === nothing || autolag in (:aic, :bic, :tstat) ||
         throw(ArgumentError("autolag must be :aic, :bic, :tstat, or nothing"))
+    pvalue_method in (:response_surface, :interpolated) ||
+        throw(ArgumentError("pvalue_method must be :response_surface or :interpolated"))
 
     y = tsvalues(x)
     n0 = length(y)
@@ -326,7 +484,9 @@ function adf_test(x; regression::Symbol=:c, maxlag::Union{Nothing,Integer}=nothi
     end
 
     final = fit_at(chosen_p, chosen_p)
-    pval = _interp_pvalue_left(final.tstat, _ADF_CRIT[regression])
+    pval = pvalue_method == :response_surface ?
+           adf_pvalue_response_surface(final.tstat, regression) :
+           _interp_pvalue_left(final.tstat, _ADF_CRIT[regression])
 
     return ADFTest(final.tstat, pval, chosen_p, regression, final.nobs)
 end
@@ -368,6 +528,33 @@ const _KPSS_CRIT = Dict(
     :level => ((0.01, 0.739), (0.05, 0.463), (0.10, 0.347)),
     :trend => ((0.01, 0.216), (0.05, 0.146), (0.10, 0.119)),
 )
+
+"""
+    kpss_hobijn_autolag(resids, nobs) -> Int
+
+Hobijn, Franses & Ooms (1998) data-dependent lag-selection rule for
+KPSS's long-run variance bandwidth -- what [`kpss_test`](@ref)'s
+`nlags=:auto` uses. Transcribed directly from a real, short, portable
+implementation (`JimVaranelli/KPSS-autolag` on GitHub, submitted to
+`statsmodels`) rather than the paper -- see
+`handoff/verification/KPSS_hobijn_autolag.py`. Verified against real
+`statsmodels.tsa.stattools.kpss(..., nlags="auto")` output on this
+project's own bundled Nile and sunspot series
+(`test/verification/unitroot/`).
+"""
+function kpss_hobijn_autolag(resids::AbstractVector{<:Real}, nobs::Integer)
+    covlags = floor(Int, nobs^(2 / 9))
+    s0 = sum(abs2, resids) / nobs
+    s1 = 0.0
+    for i in 1:covlags
+        resids_prod = dot(view(resids, i+1:nobs), view(resids, 1:nobs-i)) / (nobs / 2)
+        s0 += resids_prod
+        s1 += i * resids_prod
+    end
+    s_hat = s1 / s0
+    gamma_hat = 1.1447 * (s_hat^2)^(1 / 3)
+    return min(nobs, floor(Int, gamma_hat * nobs^(1 / 3)))
+end
 
 function _interp_pvalue_right(stat::Real, table)
     sorted = sort(collect(table); by = x -> x[2])  # increasing critical value
@@ -415,16 +602,15 @@ already implemented here -- a confirmed non-discrepancy, unlike `adf_test`.
     this environment) -- treat "matches Python's `legacy` exactly" as the
     verified claim, "and R's `lshort=FALSE`" as unconfirmed.
   - an explicit `Integer` -- direct override, must be `< n`.
-  - `:auto` (Python's actual default -- the Hobijn et al. (1998)
-    data-dependent method) is **not yet implemented** and throws
-    `ArgumentError` rather than silently substituting a different formula
-    under that name.
+  - `:auto` (Python's actual default) -- the Hobijn, Franses & Ooms
+    (1998) data-dependent method, via [`kpss_hobijn_autolag`](@ref).
 
-!!! note "Default mismatch with Python, by necessity, not oversight"
+!!! note "Default mismatch with Python, by choice, not a gap"
     This function's default (`:short`) matches R's default, not Python's
-    (`:auto`/Hobijn, unimplemented). Pass `nlags=:legacy` if you
-    specifically want the bandwidth choice verified to match Python's
-    `"legacy"` mode.
+    (`:auto`/Hobijn) -- `:auto` is fully implemented and available, just
+    not the default here, to match this project's own established R
+    default. Pass `nlags=:auto` for Python's actual default behavior, or
+    `nlags=:legacy` for Python's non-default `"legacy"` mode.
 
 # Examples
 ```jldoctest
@@ -438,14 +624,17 @@ true
 julia> kpss_test(y; regression=:ct, nlags=:legacy).regression
 :ct
 
-julia> kpss_test(y; nlags=:auto)
-ERROR: ArgumentError: nlags=:auto (Hobijn et al. 1998 data-dependent method) is not yet implemented -- use :short, :legacy, or an explicit Integer. See handoff/stage-2.2-kpss-handoff.md for the reference to implement against.
+julia> kpss_test(y; nlags=:auto).lags >= 0
+true
 ```
 """
 function kpss_test(x; regression::Symbol=:c, nlags::Union{Symbol,Integer}=:short)
     regression in (:c, :ct) || throw(ArgumentError("regression must be :c or :ct"))
     y = tsvalues(x)
     n = length(y)
+
+    X = regression == :ct ? hcat(ones(n), collect(1.0:n)) : reshape(ones(n), n, 1)
+    _, resid, _ = _ols(X, y)
 
     l = if nlags isa Integer
         nlags >= 0 || throw(ArgumentError("nlags must be >= 0"))
@@ -456,15 +645,10 @@ function kpss_test(x; regression::Symbol=:c, nlags::Union{Symbol,Integer}=:short
     elseif nlags === :legacy
         min(ceil(Int, 12 * (n/100)^0.25), n-1)
     elseif nlags === :auto
-        throw(ArgumentError("nlags=:auto (Hobijn et al. 1998 data-dependent method) is not yet " *
-                             "implemented -- use :short, :legacy, or an explicit Integer. " *
-                             "See handoff/stage-2.2-kpss-handoff.md for the reference to implement against."))
+        min(kpss_hobijn_autolag(resid, n), n-1)
     else
         throw(ArgumentError("nlags must be :short, :legacy, :auto, or an Integer"))
     end
-
-    X = regression == :ct ? hcat(ones(n), collect(1.0:n)) : reshape(ones(n), n, 1)
-    _, resid, _ = _ols(X, y)
 
     S = cumsum(resid)
     numerator = sum(abs2, S) / n^2
@@ -493,9 +677,10 @@ end
 Result of a Phillips-Perron test. `trend` is one of `:n`/`:c`/`:ct`
 (matching [`adf_test`](@ref)'s `regression` values). `test_type` is
 `:tau` (t-stat based) or `:rho` (coefficient based) -- see
-[`pp_test`](@ref); `pvalue` is `NaN` for `test_type=:rho`, since its
-asymptotic null distribution isn't the one the interpolation table here
-covers (a documented gap, not a silently wrong number).
+[`pp_test`](@ref). `pvalue` uses the MacKinnon response-surface method
+for both variants ([`adf_pvalue_response_surface`](@ref) for `:tau`,
+[`pp_rho_pvalue`](@ref) for `:rho`), matching `arch.unitroot.PhillipsPerron`
+exactly.
 """
 struct PPTest <: HypothesisTest
     statistic::Float64
@@ -513,7 +698,7 @@ function Base.show(io::IO, t::PPTest)
     println(io, "  lags                : ", t.lags)
     println(io, "  n                   : ", t.n)
     println(io, "  test statistic      : ", round(t.statistic, digits=4))
-    print(io,   "  p-value (approx.)   : ", isnan(t.pvalue) ? "NaN (see test_type=:rho note)" : string(round(t.pvalue, digits=4)))
+    print(io,   "  p-value             : ", round(t.pvalue, digits=4))
 end
 
 """
@@ -556,18 +741,17 @@ doc), then independently re-verified here across all six
   `trunc(4*(n/100)^0.25)`; pass that explicitly for R-default
   equivalence).
 
-!!! note "`:rho`'s p-value is `NaN`, not an approximation"
+!!! note "`:rho`'s p-value"
     `:rho`'s asymptotic null distribution (the Dickey-Fuller "Z"/
     coefficient distribution) is genuinely different from `:tau`'s
-    (t-distribution-like) -- reusing the `:tau` critical-value table for
-    it would be a wrong number presented as a real one. A proper `:rho`
-    table is a known follow-up, not implemented here.
+    (t-distribution-like) -- computed via [`pp_rho_pvalue`](@ref)'s own
+    separate MacKinnon "ADF-z" table, not by reusing `:tau`'s table.
 
-!!! note "p-value accuracy (`:tau`)"
-    Same caveat as `adf_test`: approximate, via linear interpolation
-    among MacKinnon's asymptotic critical values -- not the finite-sample
-    response-surface p-value, and not Banerjee et al.'s table (what
-    `tseries::pp.test` specifically uses).
+!!! note "p-value method"
+    Both variants use the MacKinnon response-surface method (matching
+    `arch.unitroot.PhillipsPerron` exactly), not linear interpolation
+    and not Banerjee et al.'s table (what `tseries::pp.test`
+    specifically uses).
 
 # Examples
 ```jldoctest
@@ -578,7 +762,7 @@ julia> Random.seed!(1); y = cumsum(randn(300));
 julia> pp_test(y).pvalue > 0.10   # random walk: fails to reject the unit-root null
 true
 
-julia> isnan(pp_test(y; test_type=:rho).pvalue)
+julia> pp_test(y; test_type=:rho).pvalue > 0.10   # same conclusion under the :rho variant
 true
 ```
 """
@@ -624,8 +808,11 @@ function pp_test(x; trend::Symbol=:c, test_type::Symbol=:tau, lags::Union{Nothin
     stat = test_type == :tau ? stat_tau : stat_rho
 
     # :rho's asymptotic null distribution (Dickey-Fuller "Z") is NOT the
-    # tau/t-distribution family _ADF_CRIT tabulates -- NaN, not a wrong number.
-    pval = test_type == :tau ? _interp_pvalue_left(stat, _ADF_CRIT[trend]) : NaN
+    # tau/t-distribution family adf_pvalue_response_surface tabulates --
+    # pp_rho_pvalue's own separate "ADF-z" table, verified end-to-end
+    # against arch.unitroot.PhillipsPerron (which computes this exact
+    # stat_rho formula).
+    pval = test_type == :tau ? adf_pvalue_response_surface(stat, trend) : pp_rho_pvalue(stat, trend)
 
     return PPTest(stat, pval, l, trend, test_type, nobs)
 end

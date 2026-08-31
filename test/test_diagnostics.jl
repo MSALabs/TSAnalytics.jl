@@ -268,7 +268,7 @@ end
     # error paths
     @test_throws ArgumentError durbin_watson_test(resid_ar1; alternative=:bogus)
     @test_throws ArgumentError durbin_watson_test(resid_ar1; method=:bogus)
-    @test_throws ArgumentError durbin_watson_test(resid_ar1; method=:exact)  # deliberately unimplemented
+    @test_throws ArgumentError durbin_watson_test(resid_ar1; method=:exact)  # requires X, none given
     @test_throws ArgumentError durbin_watson_test(Float64[])
     @test_throws ArgumentError durbin_watson_test([1.0])
 
@@ -278,4 +278,96 @@ end
     @test isapprox(TSAnalytics._std_normal_cdf(-1.96), 0.025; atol=1e-4)
     @test isapprox(TSAnalytics._std_normal_cdf(1.6449), 0.95; atol=1e-4)
     @test isapprox(TSAnalytics._std_normal_cdf(-1.6449), 0.05; atol=1e-4)
+end
+
+@testset "durbin_watson_test :exact (AS153, real lmtest::dwtest-verified)" begin
+    # ground truth: test/verification/durbinwatson/dw-exact-ground-truth-transcript.txt
+    # (real lmtest::dwtest(exact=TRUE), lmtest's own real Fortran src/pan.f
+    # translated and verified end-to-end, including the eigenvalues themselves)
+    d1 = readdlm(joinpath(@__DIR__, "verification", "durbinwatson", "dw_exact_case.csv"), ','; skipstart=1)
+    y1, x1 = d1[:, 1], d1[:, 2]
+    X1 = hcat(ones(length(x1)), x1)
+    _, resid1, _ = TSAnalytics._ols(X1, y1)
+
+    r1 = durbin_watson_test(resid1, X1)   # n=60 < 100 -> auto-selects :exact
+    @test r1.method == :exact
+    @test isapprox(r1.statistic, 1.045945; atol=1e-5)
+    @test isapprox(r1.pvalue, 2.082794e-05; rtol=1e-4)
+    @test isapprox(durbin_watson_test(resid1, X1; alternative=:two_sided).pvalue, 4.165588e-05; rtol=1e-4)
+    @test isapprox(durbin_watson_test(resid1, X1; alternative=:less).pvalue, 0.9999792; rtol=1e-4)
+
+    d2 = readdlm(joinpath(@__DIR__, "verification", "durbinwatson", "dw_exact_case2.csv"), ','; skipstart=1)
+    y2, x2 = d2[:, 1], d2[:, 2]
+    X2 = hcat(ones(length(x2)), x2)
+    _, resid2, _ = TSAnalytics._ols(X2, y2)
+    r2 = durbin_watson_test(resid2, X2)
+    @test isapprox(r2.statistic, 0.775773; atol=1e-5)
+    @test isapprox(r2.pvalue, 1.58614e-11; rtol=1e-3)
+
+    # explicit method overrides both directions
+    @test durbin_watson_test(resid1, X1; method=:approx).method == :approx
+    @test durbin_watson_test(resid1; method=nothing).method == :approx  # no X -> can't auto-select :exact
+
+    # the eigenvalue helper matches lmtest::dwtest's own real numbers exactly
+    ev = TSAnalytics._dw_annihilator_eigenvalues(X1)
+    @test length(ev) == 58
+    @test isapprox(ev[1:5], [3.997259, 3.989044, 3.975377, 3.956295, 3.931852]; atol=1e-5)
+
+    # _pan_prob against pan.f's own self-documented Farebrother (1984) table
+    @test isapprox(TSAnalytics._pan_prob(0.0, [1.0,3,6], 1.0, 15), 0.0542; atol=1e-4)
+    @test isapprox(TSAnalytics._pan_prob(0.0, [1.0,3,6], 7.0, 15), 0.4936; atol=1e-4)
+    @test isapprox(TSAnalytics._pan_prob(0.0, [1.0,3,6], 20.0, 15), 0.8760; atol=1e-4)
+    @test isapprox(TSAnalytics._pan_prob(0.0, [1.0,3,5,7,9], 5.0, 15), 0.0544; atol=1e-4)
+    @test isapprox(TSAnalytics._pan_prob(0.0, [1.0,3,5,7,9], 20.0, 15), 0.4853; atol=1e-4)
+    @test isapprox(TSAnalytics._pan_prob(0.0, [1.0,3,5,7,9], 50.0, 15), 0.9069; atol=1e-4)
+    @test isapprox(TSAnalytics._pan_prob(0.0, [3.0,4,5,6,7], 5.0, 15), 0.0405; atol=1e-4)
+    @test isapprox(TSAnalytics._pan_prob(0.0, [3.0,4,5,6,7], 20.0, 15), 0.4603; atol=1e-4)
+    @test isapprox(TSAnalytics._pan_prob(0.0, [3.0,4,5,6,7], 50.0, 15), 0.9200; atol=1e-4)
+
+    @test_throws ArgumentError durbin_watson_pvalue_exact(1.5, X1; alternative=:bogus)
+end
+
+@testset "arch_lm_test (real statsmodels/scipy-verified)" begin
+    # ground truth: test/verification/diagnostics/ground-truth-transcript.txt
+    resid_arch = vec(readdlm(joinpath(@__DIR__, "verification", "diagnostics", "resid_arch.csv"), ','; skipstart=1))
+    resid_wn = vec(readdlm(joinpath(@__DIR__, "verification", "diagnostics", "resid_wn.csv"), ','; skipstart=1))
+
+    r_arch = arch_lm_test(resid_arch, 4)
+    @test isapprox(r_arch.statistic, 93.638812; atol=1e-4)
+    @test r_arch.pvalue < 1e-15   # numerically zero, chi-sq(4) tail far in the extreme
+    @test r_arch.lags == 4
+    @test r_arch.n == length(resid_arch)
+
+    r_wn = arch_lm_test(resid_wn, 4)
+    @test isapprox(r_wn.statistic, 6.254236; atol=1e-4)
+    @test isapprox(r_wn.pvalue, 0.1809493; atol=1e-6)
+
+    @test statistic(r_arch) == r_arch.statistic
+    @test pvalue(r_arch) == r_arch.pvalue
+    @test arch_lm_test(resid_wn, 4).statistic == arch_lm_test(collect(resid_wn), 4).statistic
+
+    @test_throws ArgumentError arch_lm_test(resid_wn, 0)
+    @test_throws ArgumentError arch_lm_test(randn(3), 4)
+end
+
+@testset "dk_heteroskedasticity_test (real scipy-verified)" begin
+    # ground truth: test/verification/diagnostics/ground-truth-transcript.txt
+    resid_hetero = vec(readdlm(joinpath(@__DIR__, "verification", "diagnostics", "resid_hetero.csv"), ','; skipstart=1))
+    resid_homo = vec(readdlm(joinpath(@__DIR__, "verification", "diagnostics", "resid_homo.csv"), ','; skipstart=1))
+
+    r_h = dk_heteroskedasticity_test(resid_hetero)
+    @test isapprox(r_h.statistic, 5.630345; atol=1e-4)
+    @test r_h.pvalue < 1e-10
+    @test r_h.h == 100
+    @test r_h.n == length(resid_hetero)
+
+    r_o = dk_heteroskedasticity_test(resid_homo)
+    @test isapprox(r_o.statistic, 0.893664; atol=1e-4)
+    @test isapprox(r_o.pvalue, 0.5750878; atol=1e-6)
+
+    @test statistic(r_h) == r_h.statistic
+    @test pvalue(r_h) == r_h.pvalue
+    @test dk_heteroskedasticity_test(resid_homo).statistic == dk_heteroskedasticity_test(collect(resid_homo)).statistic
+
+    @test_throws ArgumentError dk_heteroskedasticity_test([1.0, 2.0])
 end

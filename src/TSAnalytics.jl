@@ -7,6 +7,8 @@ using StatsAPI
 using StatsBase: StatsBase, CoefTable
 using Optim: Optim, optimize, LBFGS, BFGS, NelderMead
 using ForwardDiff: ForwardDiff
+using FFTW: fft
+using RecipesBase: RecipesBase, @recipe, @series
 
 include("interface.jl")
 include("statespace/gaussianssm.jl")
@@ -21,6 +23,8 @@ include("unitroot.jl")
 include("loess.jl")
 include("diagnostics.jl")
 include("decompose.jl")
+include("transforms.jl")
+include("spectral.jl")
 include("stl.jl")
 include("mstl.jl")
 include("optim.jl")
@@ -40,6 +44,8 @@ include("garch.jl")
 include("autoregarch.jl")
 include("garchforecast.jl")
 include("realizedvol.jl")
+include("diagnosticplot.jl")
+include("recipes.jl")
 
 export TimeSeriesModel, StateSpaceModel, UnivariateModel, HypothesisTest
 export statistic, pvalue

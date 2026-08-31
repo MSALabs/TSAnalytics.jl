@@ -1,0 +1,22 @@
+Real astsa::sarima() source, confirming the 4-panel diagnostic display
+and its exact lag-count formula (from astsa/R/sarima.R on GitHub):
+
+Panel 1: standardized residuals over time
+Panel 2: acf1(rs, main="ACF of Residuals")
+Panel 3: QQnorm(stdres, main="Normal Q-Q Plot of Std Residuals")
+Panel 4: Ljung-Box p-values across lags:
+
+  nlag = ifelse(S<7, 20, 3*S); nlag = min(nlag, 52)
+  ppq  = p+q+P+Q - sum(!is.na(fixed)) + abs(fitdf)
+  if (nlag < ppq + 8) nlag = ppq + 8
+  for (i in (ppq+1):nlag) {
+    u = Box.test(rs, i, type="Ljung-Box", fitdf=fitdf)$statistic
+    pval[i] = pchisq(u, i-ppq, lower.tail=FALSE)
+  }
+  tsplot((ppq+1):nlag, pval[(ppq+1):nlag], ..., ylim=c(-.14,1), ...)
+  abline(h=0.05, lty=2, col=4)
+
+Independently confirmed matching structure in:
+- R base tsdiag() (same 4 panels, documented generic)
+- Python statsmodels.tsa.statespace.sarimax.SARIMAXResults.plot_diagnostics()
+  ("the 2x2 grid will be created", residuals/histogram/QQ/ACF)

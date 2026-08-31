@@ -1,0 +1,41 @@
+=== Stage 1.6 boxcox/guerrero_lambda ground truth, R `forecast` package ===
+R 4.6.0, `forecast` package (built under R 4.6.1), real source read
+directly (`forecast:::guerrero`, `forecast:::guer.cv`,
+`forecast:::BoxCox.lambda`) -- not transcribed from fpp3's textbook
+description alone.
+
+Case 1 data (guerrero_case1.csv): set.seed(1); xg1 <- abs(rnorm(96)) + 5
+Case 2 data (guerrero_case2.csv): set.seed(2); t <- 1:96;
+  xg2 <- (1+0.1*t)*(1+0.2*rnorm(96)); xg2 <- pmax(xg2, 0.01)
+Case 3: real AirPassengers series (already bundled, data/AirPassengers.csv)
+
+BoxCox.lambda(xg1, method="guerrero")                        -> -0.9999242
+BoxCox.lambda(ts(xg2, frequency=12), method="guerrero")       ->  0.1574706
+BoxCox.lambda(AirPassengers, method="guerrero")               -> -0.2947156
+
+Julia guerrero_lambda results (test/verification/transforms/*.csv, exact
+same data):
+  case 1 (period=1):  -0.9999995017189036
+  case 2 (period=12):  0.15748111664886374
+  case 3 (AirPassengers): -0.29472356527037513
+
+Cases 2 and 3 agree to 5 significant figures. Case 1's residual gap
+(-0.9999995 vs -0.9999242) was investigated and is NOT an algorithm
+bug: `forecast:::guer.cv(-1, xg1) = 0.7278807` vs
+`guer.cv(-0.9999242, xg1) = 0.7278835` -- a 6th-decimal difference, i.e.
+the objective is essentially flat right at the lambda=-1 boundary for
+this dataset. Re-running R's own `optimize()` with `tol=1e-10` (instead
+of its default ~1.2e-4) converges to exactly -1, matching Julia's
+answer bit-for-bit in direction. This is a convergence-tolerance
+artifact of a degenerate boundary case, not a discrepancy in the
+transcribed formula.
+
+Bug found and fixed during verification:
+The original implementation split `period=1` (non-seasonal) series into
+2 full-length halves. R's real `guer.cv` source instead uses
+`period_eff = max(nonseasonal.length=2, frequency(x))` and splits into
+`n / period_eff` subseries of length `period_eff` (length 2 for the
+non-seasonal case, not two long halves), taking the *last*
+`nyr*period_eff` observations (trimming any remainder from the front).
+Fixed to match this exactly; also matches `BoxCox.lambda`'s own
+short-circuit (`length(x) <= 2*period` returns `1.0` unchanged).

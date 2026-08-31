@@ -206,8 +206,10 @@ end
     @test_throws ArgumentError kpss_test(y; nlags=n)
     @test_throws ArgumentError kpss_test(y; nlags=n+10)
 
-    # :auto is a documented, explicit gap -- not a silent fallback to :short
-    @test_throws ArgumentError kpss_test(y; nlags=:auto)
+    # :auto (Hobijn et al. 1998) now runs and gives a finite result
+    r_auto = kpss_test(y; nlags=:auto)
+    @test isfinite(r_auto.statistic)
+    @test r_auto.lags >= 0
 
     # the n-1 cap engages for a short series where the short/legacy formula
     # would otherwise exceed it
@@ -261,9 +263,9 @@ end
         @test r.test_type == test_type
     end
 
-    # :tau has a real p-value; :rho is honestly NaN, not a wrong number
+    # both :tau and :rho have real p-values (response-surface method)
     @test !isnan(pp_test(y; test_type=:tau).pvalue)
-    @test isnan(pp_test(y; test_type=:rho).pvalue)
+    @test !isnan(pp_test(y; test_type=:rho).pvalue)
 
     # explicit lags is honored directly, across several values
     for lags in (0, 1, 5, 20)
@@ -291,6 +293,92 @@ end
 
     # container-agnostic
     @test pp_test(1:100).statistic == pp_test(collect(1.0:100)).statistic
+end
+
+@testset "adf_pvalue_response_surface / adf_critical_values_response_surface (real statsmodels-verified)" begin
+    # ground truth: test/verification/unitroot/ground-truth-transcript.txt
+    # (real statsmodels.tsa.adfvalues.mackinnonp/mackinnoncrit, direct calls)
+    reference = Dict(
+        :n => [(-4.5,0.0000094436),(-3.5,0.0004837274),(-2.5,0.0120040374),(-1.5,0.1252400585),(0.0,0.6842796360),(1.0,0.9159517564)],
+        :c => [(-4.5,0.0001966399),(-3.5,0.0079870941),(-2.5,0.1154743248),(-1.5,0.5335113389),(0.0,0.9585320861),(1.0,0.9942659485)],
+        :ct => [(-4.5,0.0015095181),(-3.5,0.0393910280),(-2.5,0.3279622963),(-1.5,0.8291322873)],
+        :ctt => [(-4.5,0.0065164686),(-3.5,0.1129147458),(-2.5,0.5693607333),(-1.5,0.9454187814)],
+    )
+    for (reg, cases) in reference, (stat, expected) in cases
+        @test isapprox(adf_pvalue_response_surface(stat, reg), expected; atol=1e-6)
+    end
+
+    cv = adf_critical_values_response_surface(:c; nobs=100)
+    @test isapprox(collect(cv), [-3.49750103, -2.89090644, -2.5824349]; atol=1e-6)
+    cv_ct = adf_critical_values_response_surface(:ct; nobs=100)
+    @test isapprox(collect(cv_ct), [-4.05227796, -3.45534297, -3.15332088]; atol=1e-6)
+    cv_ctt = adf_critical_values_response_surface(:ctt; nobs=100)
+    @test isapprox(collect(cv_ctt), [-4.49092795, -3.89281428, -3.59044886]; atol=1e-6)
+
+    # nobs=nothing gives the asymptotic values, matching the existing _ADF_CRIT table
+    cv_inf = adf_critical_values_response_surface(:c)
+    @test isapprox(cv_inf.p1, -3.43035; atol=1e-5)
+    @test isapprox(cv_inf.p5, -2.86154; atol=1e-5)
+    @test isapprox(cv_inf.p10, -2.56677; atol=1e-5)
+
+    @test_throws ArgumentError adf_pvalue_response_surface(-3.5, :bogus)
+    @test_throws ArgumentError adf_pvalue_response_surface(-3.5, :c; N=2)
+    @test_throws ArgumentError adf_critical_values_response_surface(:c; N=2)
+
+    # end-to-end: adf_test's default pvalue_method now matches the response surface directly
+    fixture = joinpath(@__DIR__, "fixtures", "ar1_ref_series.csv")
+    y = vec(readdlm(fixture, ','; skipstart=1, header=false))
+    for (reg, expstat, exppval) in [(:n,-3.9610625435,0.0000853854),(:c,-3.9658327865,0.0016003761),
+                                      (:ct,-3.8282767277,0.0151827924),(:ctt,-3.8514845158,0.0475428007)]
+        r = adf_test(y; regression=reg, autolag=nothing, maxlag=4)
+        @test isapprox(r.statistic, expstat; atol=1e-6)
+        @test isapprox(r.pvalue, exppval; atol=1e-6)
+    end
+    # :interpolated fallback still works and gives a different (cruder) number
+    r_interp = adf_test(y; regression=:c, autolag=nothing, maxlag=4, pvalue_method=:interpolated)
+    r_rs = adf_test(y; regression=:c, autolag=nothing, maxlag=4, pvalue_method=:response_surface)
+    @test r_interp.pvalue != r_rs.pvalue
+    @test_throws ArgumentError adf_test(y; pvalue_method=:bogus)
+end
+
+@testset "pp_rho_pvalue (real arch.unitroot.PhillipsPerron-verified)" begin
+    # ground truth: test/verification/unitroot/ground-truth-transcript.txt
+    fixture = joinpath(@__DIR__, "fixtures", "ar1_ref_series.csv")
+    y = vec(readdlm(fixture, ','; skipstart=1, header=false))
+    reference = [
+        (:n, -79.8121106987, 0.0000000005, -6.6538284577, 0.0000000004),
+        (:c, -81.1307189319, 0.0000000033, -6.7085068926, 0.0000000037),
+        (:ct, -82.0639005559, 0.0000000472, -6.7162203580, 0.0000000613),
+    ]
+    for (trend, statrho, pvalrho, stattau, pvaltau) in reference
+        r_rho = pp_test(y; trend=trend, test_type=:rho, lags=15)
+        @test isapprox(r_rho.statistic, statrho; atol=1e-4)
+        @test isapprox(r_rho.pvalue, pvalrho; atol=1e-9)
+        r_tau = pp_test(y; trend=trend, test_type=:tau, lags=15)
+        @test isapprox(r_tau.statistic, stattau; atol=1e-4)
+        @test isapprox(r_tau.pvalue, pvaltau; atol=1e-9)
+    end
+    @test_throws ArgumentError pp_rho_pvalue(-10.0, :bogus)
+end
+
+@testset "kpss_hobijn_autolag :auto (real statsmodels-verified on bundled data)" begin
+    # ground truth: test/verification/unitroot/ground-truth-transcript.txt --
+    # real statsmodels.tsa.stattools.kpss(..., nlags="auto") on this
+    # project's own bundled nile.csv/sunspot_year.csv
+    nile = vec(readdlm(TSAnalytics.NILE, ','; skipstart=1)[:, 2])
+    sun = vec(readdlm(TSAnalytics.SUNSPOTS_YEAR, ','; skipstart=1)[:, 2])
+
+    r1 = kpss_test(nile; regression=:c, nlags=:auto)
+    @test r1.lags == 5
+    @test isapprox(r1.statistic, 0.86912; atol=1e-4)
+
+    r2 = kpss_test(sun; regression=:c, nlags=:auto)
+    @test r2.lags == 7
+    @test isapprox(r2.statistic, 0.53006; atol=1e-4)
+
+    r3 = kpss_test(nile; regression=:ct, nlags=:auto)
+    @test r3.lags == 4
+    @test isapprox(r3.statistic, 0.23759; atol=1e-4)
 end
 
 @testset "_ols weighted (GLS via weighted QR)" begin

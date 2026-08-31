@@ -43,6 +43,22 @@ pacf
 ACFResult
 ```
 
+## Spectral analysis
+
+```@docs
+periodogram
+spectral_density
+```
+
+## Transforms
+
+```@docs
+boxcox
+boxcox_inv
+guerrero_lambda
+boxcox_profile_plot
+```
+
 ## Unit root tests
 
 ```@docs
@@ -52,6 +68,10 @@ pp_test
 ADFTest
 KPSSTest
 PPTest
+adf_pvalue_response_surface
+adf_critical_values_response_surface
+pp_rho_pvalue
+kpss_hobijn_autolag
 ```
 
 ## Diagnostics
@@ -61,10 +81,28 @@ ljungbox_test
 qs_test
 jarque_bera_test
 durbin_watson_test
+arch_lm_test
+dk_heteroskedasticity_test
+durbin_watson_pvalue_exact
 LjungBoxTest
 QSTest
 JarqueBeraTest
 DurbinWatsonTest
+ARCHLMTest
+DKHeteroTest
+```
+
+## Residual diagnostic plot
+
+```@docs
+diagnostic_plot
+DiagnosticPlotResult
+```
+
+## Seasonal subseries plot
+
+```@docs
+seasonal_subseries_plot
 ```
 
 ## Univariate models

@@ -1,0 +1,38 @@
+=== Stage 2 (fill-gap) ARCH-LM and DK heteroskedasticity ground truth ===
+
+Both fixtures generated fresh in Python (numpy/scipy/statsmodels), NOT
+by trying to reproduce "the same" R random data via a matching seed --
+Julia's RNG and R's RNG do not produce the same draws under "the same"
+seed (see reference_python_tooling.md memory). Residual arrays saved to
+CSV (resid_arch.csv, resid_wn.csv, resid_hetero.csv, resid_homo.csv) so
+both R/Python-side and Julia-side tests use bit-identical data.
+
+--- ARCH-LM (Engle 1982) ---
+
+np.random.seed(123); n=500; simulated as e_t = sqrt(0.2+0.7*e_{t-1}^2)*z_t
+(genuine ARCH(1) process) for resid_arch.csv, plain randn(500) for
+resid_wn.csv. Reference: OLS of e_t^2 on 4 own lags + intercept
+(statsmodels.api.OLS), stat = (n-lags)*R^2, pval = 1-chi2.cdf(stat,lags)
+(scipy.stats.chi2):
+
+  ARCH-present: stat=93.638812 pval=0.000000e+00 (numerically zero)
+  white noise:  stat=6.254236 pval=1.809493e-01
+
+arch_lm_test(resid_arch, 4) and arch_lm_test(resid_wn, 4) reproduce
+both statistics exactly (pvalue for the ARCH-present case correctly
+saturates to ~0 given the chi-squared tail).
+
+--- Durbin & Koopman heteroskedasticity (variance-ratio) test ---
+
+np.random.seed(456); n=300; resid_hetero = randn(n)*(1+3*t/n) (variance
+genuinely grows over time) for resid_hetero.csv, plain randn(300) for
+resid_homo.csv. Reference: h=n//3=100, stat=sum(resid[-h:]**2)/sum(resid[:h]**2),
+pval=2*min(F.cdf(stat,h,h), 1-F.cdf(stat,h,h)) (scipy.stats.f):
+
+  heteroskedastic: stat=5.630345 pval=4.440892e-16 h=100
+  homoskedastic:   stat=0.893664 pval=5.750878e-01 h=100
+
+dk_heteroskedasticity_test(resid_hetero) and
+dk_heteroskedasticity_test(resid_homo) reproduce both statistics
+exactly (pvalue for the heteroskedastic case correctly saturates to
+double-precision epsilon given the F-tail).

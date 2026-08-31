@@ -1,0 +1,52 @@
+=== Stage 1.5 periodogram/spectral_density ground truth, R base `stats` ===
+R 4.6.0, `stats::spec.pgram` (exact source extracted via
+`writeLines(deparse(stats:::spec.pgram))`).
+
+Case 1 data (x_case1.csv): set.seed(42); n=96;
+  t <- 1:n; x <- 5*sin(2*pi*t/12) + 3*cos(2*pi*t/12) + rnorm(n, sd=0.5)
+
+Case 2 data (x_case2.csv): set.seed(7); n2=97; x2 <- rnorm(n2)
+
+--- periodogram, taper=0.1 (case1 data) ---
+r1 <- spec.pgram(x, taper=0.1, plot=FALSE)
+freq[1:5]: 0.01041667 0.02083333 0.03125 0.04166667 0.05208333
+spec[1:5]: 5.787371 1.375819 2.646642 2.651191 9.823574
+peak freq: 0.08333333
+df: 1.79159  bandwidth: 0.003007033
+
+--- periodogram, taper=0 (this project's own default, per astsa::mvspec convention) ---
+r1b <- spec.pgram(x, taper=0, plot=FALSE)
+spec[1:5]: 3.935855 0.2155094 0.296584 0.04881481 1.001055
+peak freq: 0.08333333
+
+--- spectral_density, spans=c(3,3), taper=0.1 (case1 data) ---
+r2 <- spec.pgram(x, spans=c(3,3), taper=0.1, plot=FALSE)
+spec[1:5]: 4.488187 3.151845 2.974927 4.667025 7.085133
+df: 6.552102  bandwidth: 0.01084201
+
+--- spectral_density, spans=c(7,7), taper=0 (case1 data) ---
+r3 <- spec.pgram(x, spans=c(7,7), taper=0, plot=FALSE)
+spec[1:5]: 1.759758 6.963694 22.99766 44.46989 65.96196
+df: 18.46483  bandwidth: 0.0263866
+
+--- periodogram, n=97, fast=TRUE default (case2 data; exercises nextn padding) ---
+r4 <- spec.pgram(x2, taper=0, plot=FALSE)
+n.used: 100  length(spec): 50
+spec[1:5]: 0.09683977 1.70822 0.7014162 1.422045 0.6433586
+freq[1:5]: 0.01 0.02 0.03 0.04 0.05
+
+--- spectral_density, spans=c(3,3) on case2 data, taper=0, fast=TRUE ---
+r5 <- spec.pgram(x2, spans=c(3,3), taper=0, plot=FALSE)
+spec[1:5]: 0.5374709 0.9350769 1.09186 1.128727 1.708311
+df: 7.094857  bandwidth: 0.01040833
+
+Bug found and fixed during verification:
+`_modified_daniell_kernel`'s vector-argument method divided its input
+by 2 internally, but `spectral_density`'s own call site had *already*
+divided `spans` by 2 (matching R's own external `spans %/% 2` before
+calling `kernel("modified.daniell", ...)`) -- a double-halving bug.
+`spans=[3,3]` degenerated to the trivial kernel `[1.0]`, making the
+"smoothed" density bit-identical to the raw periodogram. Fixed by
+having the vector method treat its input as already-halved. All values
+above (including previously-broken df/bandwidth) now match exactly
+after the fix.

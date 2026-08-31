@@ -56,21 +56,32 @@ against real R and Python. See [Roadmap](#roadmap) below.
   :n`/`:c`/`:ct`/`:ctt`; `:aic`/`:bic`/`:tstat` automatic lag-order search
   or a fixed `maxlag`) -- validated against real `statsmodels` output
   across all 12 `regression`×`autolag` combinations, matching statistic,
-  chosen lag, and sample size simultaneously
+  chosen lag, and sample size simultaneously. `pvalue_method=
+  :response_surface` (default) gives the same finite-sample-accurate
+  MacKinnon (1994/2010) p-value `statsmodels`/R actually use
+  (`adf_pvalue_response_surface`/`adf_critical_values_response_surface`,
+  transcribed directly from the installed `statsmodels` source);
+  `:interpolated` keeps the older linear-interpolation method available
 - `kpss_test` -- KPSS stationarity test, argument names matching
   `statsmodels.tsa.stattools.kpss` (`regression=:c`/`:ct`, consistent
   with `adf_test`'s naming too), with a Bartlett-kernel long-run variance
   estimate; `nlags=:short` (R's default) / `:legacy` (matches Python's
-  `"legacy"` exactly, verified from source) / an explicit `Integer` --
-  `:auto` (Python's actual default, the Hobijn et al. 1998 method) is a
-  documented, explicit gap, not silently approximated
+  `"legacy"` exactly, verified from source) / `:auto` (Python's actual
+  default, the Hobijn, Franses & Ooms 1998 data-dependent method,
+  transcribed from a real reference implementation and verified against
+  real `statsmodels` on this package's own bundled data) / an explicit
+  `Integer`
 - `pp_test` -- Phillips-Perron unit-root test, argument names matching
   `arch.unitroot.PhillipsPerron` (`trend=:n`/`:c`/`:ct`, `test_type=
   :tau`/`:rho`); algorithmically distinct from `adf_test` (no augmenting
   lags in the regression at all -- serial correlation corrected via the
   same Newey-West/Bartlett adjustment `kpss_test` uses) -- verified to
   reproduce real `arch` output across all 6 `trend`×`test_type`
-  combinations before being trusted
+  combinations before being trusted; both `:tau` and `:rho` p-values use
+  the MacKinnon response-surface method (`:rho`'s own separate table,
+  confirmed correct by matching `arch`'s real `PhillipsPerron` output
+  end-to-end, not the similarly-named-but-different table in
+  `statsmodels`' own source)
 - `ljungbox_test` -- Ljung-Box portmanteau test (`boxpierce=true` for the
   Box-Pierce statistic too -- R's `Box.test()` actually defaults to the
   older, weaker Box-Pierce statistic; this deliberately doesn't
@@ -99,8 +110,37 @@ against real R and Python. See [Roadmap](#roadmap) below.
   only method implemented, honestly documented as cruder than R's exact
   method (which needs the eigenvalues of an `X`-derived matrix, not
   computable from residuals alone -- the same reason Python's own
-  version skips a p-value entirely); `method=:exact` throws a clear,
-  named error rather than silently approximating under that name
+  version skips a p-value entirely); `method=:exact` now genuinely
+  implements Farebrother's Applied Statistics Algorithm AS 153 ("Pan's
+  procedure"), the same algorithm `lmtest::dwtest(exact=TRUE)` uses --
+  its real Fortran source (`pan.f`) and the eigenvalue setup it needs
+  (`R/dwtest.R`) were downloaded from CRAN and translated directly,
+  verified end-to-end against real `lmtest::dwtest` output to 6+
+  significant figures, eigenvalues included; `method=nothing` (default)
+  picks `:exact` when the design matrix `X` is given and `n<100`,
+  `:approx` otherwise, matching `DescTools::DurbinWatsonTest`'s own
+  real default-switching convention
+- `arch_lm_test` -- Engle's (1982) Lagrange Multiplier test for ARCH
+  effects in a residual series, verified by direct execution (real OLS
+  + chi-squared tail on both a genuine ARCH-generated fixture and a
+  white-noise one)
+- `dk_heteroskedasticity_test` -- Durbin & Koopman's variance-ratio
+  F-test for heteroskedasticity (compares sum-of-squares in the last
+  third of a residual series against the first third), verified by
+  direct execution on both a genuinely heteroskedastic fixture and a
+  homoskedastic one
+- `periodogram`, `spectral_density` -- raw and modified-Daniell-kernel-
+  smoothed spectral density estimates, matching R's `stats::spec.pgram`
+  algorithm exactly (detrending, split-cosine-bell tapering, `nextn`
+  padding, taper-corrected `df`/`bandwidth`) -- verified against real R
+  output to 6+ significant figures across taper/span/padding
+  combinations; default `taper=0.0` deliberately follows
+  `astsa::mvspec`'s convention rather than R's own `0.1` default
+- `boxcox`, `boxcox_inv`, `guerrero_lambda` -- the Box-Cox power
+  transform and Guerrero's (1993) automatic method for selecting its
+  `lambda`, matching `forecast::BoxCox.lambda(method="guerrero")`'s real
+  source (not just its textbook description) -- verified against real
+  `forecast` package output including the bundled `AirPassengers` series
 - `classical_decompose` -- classical (moving-average) seasonal
   decomposition, matching both R's `stats::decompose()` and Python's
   `statsmodels.tsa.seasonal.seasonal_decompose()` exactly at their shared
@@ -146,6 +186,20 @@ against real R and Python. See [Roadmap](#roadmap) below.
   estimation) is a documented, explicit gap, not yet built. Periods `>=`
   half the series length are dropped with a warning rather than erroring,
   matching both references
+- `RecipesBase.jl` recipes for `ACFResult`/`ClassicalDecomposition`/
+  `STLDecomposition`/`MSTLDecomposition`/`DiagnosticPlotResult`, plus
+  `diagnostic_plot` -- the standard 4-panel residual diagnostic display
+  (standardized residuals, ACF, Q-Q plot, Ljung-Box p-values across a
+  range of lags) confirmed identical in structure across R's `tsdiag()`,
+  `astsa::sarima()`, and Python's `SARIMAXResults.plot_diagnostics()`,
+  with the lag-count formula transcribed from `astsa::sarima`'s real
+  source. Available as both a low-level `diagnostic_plot(resid; ...)`
+  and model-aware overloads deriving lag parameters automatically from a
+  fitted `ArmaModel`/`ArimaModel`/`SarimaModel`. `RecipesBase` is a
+  lightweight soft dependency -- `Plots.jl`/`Makie.jl` themselves are
+  deliberately not required; also `seasonal_subseries_plot` (fpp3's
+  subseries view) and `boxcox_profile_plot` (the classic by-eye Box-Cox
+  selection view)
 - `_optimize`/`OptimResult` -- thin, backend-decoupled wrapper around
   `Optim.jl` (L-BFGS/BFGS/gradient-free Nelder-Mead), the shared
   optimization engine every future MLE-fit model (ARIMA, SARIMAX, ETS,
@@ -542,21 +596,19 @@ machinery (state-space likelihoods, forecast intervals) needs it anyway.
 
 ## Known limitations (tracked, not hidden)
 
-- `adf_test` and `kpss_test` report **approximate** p-values (linear
-  interpolation among asymptotic critical values), not the finite-sample
-  MacKinnon response-surface p-values that R/`statsmodels` use. Adequate
-  for a significant/not-significant call at 1/5/10%; exact p-values are a
-  planned refinement.
 - `pacf`'s `:burg` method (Burg's method) is not implemented -- a
   genuinely different algorithm from the three that are (`:yw`/`:ywm`/
   `:ols`), not just a denominator/sample-size variant.
-- `kpss_test`'s `nlags=:auto` (Python's actual default -- the Hobijn et
-  al. 1998 data-dependent bandwidth method) is not implemented; the
-  default here (`:short`) matches R's default instead, documented
-  explicitly rather than silently approximated under the `:auto` name.
 - `acf`/`pacf` reject `NaN` input outright (mirroring R's `na.fail`
   default); there's no partial/dropped-observation missing-data policy
   yet across the package.
+- None of `ArmaModel`/`ArimaModel`/`SarimaModel` expose fitted residuals
+  directly (found while building `diagnostic_plot`'s model-aware
+  overloads) -- `ArmaModel`/`SarimaModel` don't even retain the original
+  series, and `ArimaModel` keeps `original_y` but has no residual
+  accessor. `diagnostic_plot(resid, m)` still takes `resid` explicitly
+  as a result. A real `residuals()` for these types is genuine follow-up
+  work, out of scope for the visualization-layer stage that found the gap.
 
 ## Documentation policy
 

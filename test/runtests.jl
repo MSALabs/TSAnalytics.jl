@@ -19,6 +19,8 @@ using Statistics: mean
     include("test_differencing.jl")  # after test_datasets.jl: reuses its _load_column helper
     include("test_filters.jl")       # after test_datasets.jl: reuses its _load_column helper
     include("test_decompose.jl")
+    include("test_transforms.jl")    # after test_datasets.jl: reuses its _load_column helper
+    include("test_spectral.jl")
     include("test_loess.jl")
     include("test_stl.jl")
     include("test_mstl.jl")
@@ -45,4 +47,6 @@ using Statistics: mean
     include("test_garchforecast.jl")
     include("test_garchforecast_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally
     include("test_realizedvol.jl")
+    include("test_diagnosticplot.jl")  # after test_arma/test_arima/test_sarima: reuses fit_arma/fit_sarima
+    include("test_recipes.jl")
 end

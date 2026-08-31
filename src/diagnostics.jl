@@ -1,5 +1,8 @@
-export LjungBoxTest, QSTest, JarqueBeraTest, DurbinWatsonTest,
-       ljungbox_test, qs_test, jarque_bera_test, durbin_watson_test
+using LinearAlgebra: eigen, I
+
+export LjungBoxTest, QSTest, JarqueBeraTest, DurbinWatsonTest, ARCHLMTest, DKHeteroTest,
+       ljungbox_test, qs_test, jarque_bera_test, durbin_watson_test,
+       arch_lm_test, dk_heteroskedasticity_test, durbin_watson_pvalue_exact
 
 """_chisq_ccdf(x, df) -- upper tail P(X > x) for X ~ chi-squared(df),
 via the regularized upper incomplete gamma function, computed by a
@@ -71,6 +74,56 @@ function _loggamma(x::Real)
         a += c[i+1] / (x + i)
     end
     return 0.5*log(2*pi) + (x+0.5)*log(t) - t + log(a)
+end
+
+"_beta_inc_reg(a, b, x) -- regularized incomplete beta function I_x(a,b),
+via Lentz's continued-fraction algorithm (Numerical Recipes' `betacf`),
+reusing this file's own `_loggamma`. Avoids a Distributions.jl
+dependency purely for an F-distribution tail probability
+([`dk_heteroskedasticity_test`](@ref))."
+function _beta_inc_reg(a::Real, b::Real, x::Real)
+    x <= 0 && return 0.0
+    x >= 1 && return 1.0
+    lbeta = _loggamma(a) + _loggamma(b) - _loggamma(a + b)
+    bt = exp(-lbeta + a * log(x) + b * log(1 - x))
+    return x < (a + 1) / (a + b + 2) ? bt * _betacf(a, b, x) / a : 1 - bt * _betacf(b, a, 1 - x) / b
+end
+
+function _betacf(a::Real, b::Real, x::Real; maxiter::Int=200, tol::Float64=1e-14)
+    tiny = 1e-300
+    qab, qap, qam = a + b, a + 1, a - 1
+    c = 1.0
+    d = 1 - qab * x / qap
+    abs(d) < tiny && (d = tiny)
+    d = 1 / d
+    h = d
+    for m in 1:maxiter
+        m2 = 2m
+        aa = m * (b - m) * x / ((qam + m2) * (a + m2))
+        d = 1 + aa * d
+        abs(d) < tiny && (d = tiny)
+        c = 1 + aa / c
+        abs(c) < tiny && (c = tiny)
+        d = 1 / d
+        h *= d * c
+        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2))
+        d = 1 + aa * d
+        abs(d) < tiny && (d = tiny)
+        c = 1 + aa / c
+        abs(c) < tiny && (c = tiny)
+        d = 1 / d
+        del = d * c
+        h *= del
+        abs(del - 1) < tol && break
+    end
+    return h
+end
+
+"_f_cdf(x, d1, d2) -- CDF of the F(d1,d2) distribution via the
+regularized incomplete beta function."
+function _f_cdf(x::Real, d1::Real, d2::Real)
+    x <= 0 && return 0.0
+    return _beta_inc_reg(d1 / 2, d2 / 2, d1 * x / (d1 * x + d2))
 end
 
 # ---------------------------------------------------------------------------
@@ -393,6 +446,157 @@ function jarque_bera_test(x)
 end
 
 # ---------------------------------------------------------------------------
+# ARCH-LM (Engle 1982)
+# ---------------------------------------------------------------------------
+
+"""
+    ARCHLMTest <: HypothesisTest
+
+Result of Engle's (1982) Lagrange Multiplier test for ARCH
+(autoregressive conditional heteroskedasticity) in a residual series.
+"""
+struct ARCHLMTest <: HypothesisTest
+    statistic::Float64
+    pvalue::Float64
+    lags::Int
+    n::Int
+end
+
+function Base.show(io::IO, t::ARCHLMTest)
+    println(io, "ARCH-LM test (Engle 1982)")
+    println(io, "  lags          : ", t.lags)
+    println(io, "  n             : ", t.n)
+    println(io, "  LM statistic  : ", round(t.statistic, digits=4))
+    print(io,   "  p-value       : ", round(t.pvalue, digits=4))
+end
+
+"""
+    arch_lm_test(resid, lags::Integer=4) -> ARCHLMTest
+
+Engle's (1982) Lagrange Multiplier test for ARCH (conditional
+heteroskedasticity) in `resid`: regresses squared residuals `e_t^2` on
+an intercept and their own `lags` lagged values,
+
+    LM = (n - lags) * R^2
+
+asymptotically chi-squared with `lags` degrees of freedom under the
+null of no ARCH effects (`R^2 == 0`). Matches Tsay's textbook
+presentation and R's `FinTS::ArchTest` formula -- verified by direct
+execution (real OLS + chi-squared tail, `test/verification/diagnostics/`),
+not just transcribed from the paper.
+
+`resid` accepts anything [`tsvalues`](@ref) does; typically applied to
+ARIMA-model residuals to check whether a GARCH-type model is warranted.
+
+# Examples
+```jldoctest
+julia> using TSAnalytics, Random
+
+julia> Random.seed!(123); e = randn(500); resid = zeros(500); resid[1] = e[1];
+
+julia> for t in 2:500; resid[t] = sqrt(0.2 + 0.7*resid[t-1]^2) * e[t]; end
+
+julia> arch_lm_test(resid).pvalue < 0.01   # genuine ARCH effects: rejects the no-ARCH null
+true
+
+julia> arch_lm_test(randn(MersenneTwister(1), 500)).pvalue > 0.05   # white noise: fails to reject
+true
+```
+"""
+function arch_lm_test(resid, lags::Integer=4)
+    lags >= 1 || throw(ArgumentError("lags must be >= 1"))
+    e2 = collect(Float64, tsvalues(resid)) .^ 2
+    n = length(e2)
+    n > lags + 1 || throw(ArgumentError("arch_lm_test: series too short for the requested number of lags"))
+
+    yv = e2[(lags+1):end]
+    nobs = length(yv)
+    cols = [ones(nobs)]
+    for i in 1:lags
+        push!(cols, e2[(lags-i+1):(n-i)])
+    end
+    X = reduce(hcat, cols)
+
+    _, resids_reg, _ = _ols(X, yv)
+    ss_res = sum(abs2, resids_reg)
+    ss_tot = sum(abs2, yv .- sum(yv) / nobs)
+    r2 = 1 - ss_res / ss_tot
+
+    stat = nobs * r2
+    pval = _chisq_ccdf(stat, lags)
+
+    return ARCHLMTest(stat, pval, lags, n)
+end
+
+# ---------------------------------------------------------------------------
+# Durbin & Koopman heteroskedasticity (variance-ratio) test
+# ---------------------------------------------------------------------------
+
+"""
+    DKHeteroTest <: HypothesisTest
+
+Result of Durbin & Koopman's variance-ratio F-test for
+heteroskedasticity in a residual series.
+"""
+struct DKHeteroTest <: HypothesisTest
+    statistic::Float64
+    pvalue::Float64
+    h::Int
+    n::Int
+end
+
+function Base.show(io::IO, t::DKHeteroTest)
+    println(io, "Durbin & Koopman heteroskedasticity test")
+    println(io, "  h (block size): ", t.h)
+    println(io, "  n             : ", t.n)
+    println(io, "  F statistic   : ", round(t.statistic, digits=4))
+    print(io,   "  p-value       : ", round(t.pvalue, digits=4))
+end
+
+"""
+    dk_heteroskedasticity_test(resid) -> DKHeteroTest
+
+Durbin & Koopman's variance-ratio test for heteroskedasticity in
+`resid` (e.g. state-space/ARIMA model residuals): splits `resid` into
+thirds of length `h = n÷3` and compares the sum of squares in the
+*last* third against the *first* third (the middle third is discarded,
+as in Durbin & Koopman's own presentation),
+
+    H = sum(resid[end-h+1:end].^2) / sum(resid[1:h].^2)
+
+which is `F(h, h)`-distributed under the null of constant variance;
+two-sided p-value `2*min(F(H), 1-F(H))`. Verified by direct execution
+(real F-distribution tail probability, `test/verification/diagnostics/`).
+
+`resid` accepts anything [`tsvalues`](@ref) does.
+
+# Examples
+```jldoctest
+julia> using TSAnalytics, Random
+
+julia> Random.seed!(456); n = 300; t = 0:n-1;
+
+julia> resid_hetero = randn(n) .* (1 .+ 3 .* t ./ n);  # variance genuinely grows over time
+
+julia> dk_heteroskedasticity_test(resid_hetero).pvalue < 0.01   # rejects homoskedasticity
+true
+
+julia> dk_heteroskedasticity_test(randn(MersenneTwister(1), n)).pvalue > 0.05   # constant variance: fails to reject
+true
+```
+"""
+function dk_heteroskedasticity_test(resid)
+    e = collect(Float64, tsvalues(resid))
+    n = length(e)
+    h = n ÷ 3
+    h >= 1 || throw(ArgumentError("dk_heteroskedasticity_test: series too short"))
+    stat = sum(abs2, e[(n-h+1):end]) / sum(abs2, e[1:h])
+    Fcdf = _f_cdf(stat, h, h)
+    pval = 2 * min(Fcdf, 1 - Fcdf)
+    return DKHeteroTest(stat, pval, h, n)
+end
+
+# ---------------------------------------------------------------------------
 # Durbin-Watson
 # ---------------------------------------------------------------------------
 
@@ -408,12 +612,188 @@ function _std_normal_cdf(z::Real)
     return z > 0 ? 0.5 * (1 + erfx) : 0.5 * (1 - erfx)
 end
 
+"""_pan_prob(x, a, c, niter) -- Farebrother's (1980, 1984) Applied
+Statistics Algorithm AS 153 (AS R53 correction, "Pan's procedure") --
+literal translation of `lmtest::dwtest`'s actual Fortran source
+(`src/pan.f`, downloaded and read directly from the `lmtest` CRAN
+source package -- not reconstructed from the paper). Computes
+
+    P(a[1]*U[1]^2 + ... + a[M]*U[M]^2 < x*(U[1]^2+...+U[M]^2) + c)
+
+for independent standard normal `U[1..M]`. For the Durbin-Watson use
+case (`c=0` always), `x` is the observed DW statistic and `a` are the
+nonzero eigenvalues of `M_X*A_dw` (see `_dw_annihilator_eigenvalues`).
+`a` need not be pre-sorted -- ascending or descending both work,
+matching the Fortran routine's own direction-detection. Verified
+against the algorithm's own self-documented Farebrother (1984) table
+(9 cases, `test/verification/durbinwatson/`) and, end-to-end with
+`_dw_annihilator_eigenvalues`, against real `lmtest::dwtest(exact=TRUE)`
+output."""
+function _pan_prob(x::Real, a::AbstractVector{<:Real}, c::Real, niter::Integer)
+    M = length(a)
+    M >= 1 || throw(ArgumentError("_pan_prob: need at least one eigenvalue"))
+    Av = Vector{Float64}(undef, M + 1)   # Av[i+1] == Fortran's 0-based A(i)
+    Av[1] = Float64(x)
+    Av[2:end] .= Float64.(a)
+
+    ascending = !(Av[2] > Av[M+1])
+    H, Kdir, I = ascending ? (1, 1, M) : (M, -1, 1)
+
+    nu = 0
+    found = false
+    idx = H
+    while true
+        if Av[idx+1] >= x
+            nu = idx
+            found = true
+            break
+        end
+        idx == I && break
+        idx += Kdir
+    end
+
+    if !found
+        c >= 0 && return 1.0
+        throw(ArgumentError("_pan_prob: c < 0 with all a[i] < x is not implemented (unused by durbin_watson_test)"))
+    end
+    if nu == H && c <= 0
+        return 0.0
+    end
+
+    Kdir == 1 && (nu -= 1)
+    h = M - nu
+    y = c == 0 ? Float64(h - nu) : c * (Av[2] - Av[M+1])
+
+    local d, j1, j2, j3, j4
+    if y >= 0
+        d = 2
+        h = nu
+        Kdir = -Kdir
+        j1, j2, j3, j4 = 0, 2, 3, 1
+    else
+        d = -2
+        nu += 1
+        j1, j2, j3, j4 = M - 2, M - 1, M + 1, M
+    end
+
+    pin = pi / (2 * niter)
+    sum_ = 0.5 * (Kdir + 1)
+    sgn = Kdir / Float64(niter)
+    n2 = 2 * niter - 1
+
+    hmod2 = h - 2 * (h ÷ 2)
+    for _l1 in 1:(hmod2+1)
+        for L2 in j2:d:nu
+            sum1 = Av[j4+1]
+            prod0 = Av[L2+1]
+            u = 0.5 * (sum1 + prod0)
+            v = 0.5 * (sum1 - prod0)
+            sum1 = 0.0
+            for ii in 1:2:n2
+                yy = u - v * cos(ii * pin)
+                num = yy - x
+                prod = exp(-c / num)
+                for kk in 1:j1
+                    prod *= num / (yy - Av[kk+1])
+                end
+                for kk in j3:M
+                    prod *= num / (yy - Av[kk+1])
+                end
+                sum1 += sqrt(abs(prod))
+            end
+            sgn = -sgn
+            sum_ += sgn * sum1
+            j1 += d
+            j3 += d
+            j4 += d
+        end
+        if d == 2
+            j3 -= 1
+        else
+            j1 += 1
+        end
+        j2 = 0
+        nu = 0
+    end
+
+    return sum_
+end
+
+"""_dw_annihilator_eigenvalues(X) -- the n-k eigenvalues (real parts,
+near-zero ones discarded) of `M*A`, where `M = I - X*(X'X)^-1*X'` is the
+OLS annihilator/projection matrix and `A` is the tridiagonal
+`(1,2,2,...,2,1)`/`-1` matrix such that `DW = e'Ae / e'e` for OLS
+residuals -- exactly `lmtest::dwtest`'s own real setup
+(`A <- diag(c(1,rep(2,n-2),1)); A[abs(row(A)-col(A))==1] <- -1;
+MA <- (I - X*Q1*X') %*% A`), read directly from its source
+(`R/dwtest.R`)."""
+function _dw_annihilator_eigenvalues(X::AbstractMatrix{<:Real}; tol::Float64=1e-10)
+    n, k = size(X)
+    A = zeros(n, n)
+    A[1, 1] = 1.0
+    A[n, n] = 1.0
+    for i in 2:n-1
+        A[i, i] = 2.0
+    end
+    for i in 1:n-1
+        A[i, i+1] = -1.0
+        A[i+1, i] = -1.0
+    end
+    XtX_inv = inv(X' * X)
+    Mproj = Matrix{Float64}(I, n, n) - X * XtX_inv * X'
+    MA = Mproj * A
+    ev = real.(eigen(MA).values)
+    ev = ev[abs.(ev).>tol]
+    return sort(ev; rev=true)
+end
+
+"""
+    durbin_watson_pvalue_exact(dw_stat, X; iterations=15, alternative=:greater) -> Float64
+
+Exact p-value for a Durbin-Watson statistic via Farebrother's (1980,
+1984) Applied Statistics Algorithm AS 153 (AS R53 correction, "Pan's
+procedure") -- the actual algorithm and Fortran source R's
+`lmtest::dwtest(exact=TRUE)` uses, read and translated directly from
+`lmtest`'s real CRAN source (`src/pan.f`, `R/dwtest.R`), not
+reconstructed from the citation alone (see `_pan_prob`).
+
+`X` is the regression design matrix -- needed to compute the null
+distribution's eigenvalues; the exact distribution genuinely depends on
+`X`, not just `resid` (unlike the `:approx` normal approximation).
+Verified end-to-end against real `lmtest::dwtest(exact=TRUE)` output on
+two real series (`test/verification/durbinwatson/`), matching to 6+
+significant figures, including the intermediate eigenvalues themselves.
+
+# Examples
+```jldoctest
+julia> using TSAnalytics
+
+julia> X = hcat(ones(20), 1.0:20);
+
+julia> 0.0 <= durbin_watson_pvalue_exact(1.5, X) <= 1.0
+true
+```
+"""
+function durbin_watson_pvalue_exact(dw_stat::Real, X::AbstractMatrix{<:Real};
+                                     iterations::Integer=15, alternative::Symbol=:greater)
+    alternative in (:greater, :less, :two_sided) ||
+        throw(ArgumentError("alternative must be :greater, :less, or :two_sided"))
+    ev = _dw_annihilator_eigenvalues(X)
+    isempty(ev) && throw(ArgumentError("durbin_watson_pvalue_exact: no nonzero eigenvalues found"))
+    pdw = clamp(_pan_prob(dw_stat, ev, 0.0, iterations), 0.0, 1.0)
+    return alternative == :greater ? pdw :
+           alternative == :less    ? 1 - pdw :
+                                      2 * min(pdw, 1 - pdw)
+end
+
 """
     DurbinWatsonTest <: HypothesisTest
 
 Result of a Durbin-Watson test for first-order autocorrelation in
-regression residuals. `method` is `:approx` (the only method currently
-implemented -- see [`durbin_watson_test`](@ref)) or `:exact`.
+regression residuals. `method` is `:approx` (large-sample normal
+approximation) or `:exact` (Farebrother's AS 153 -- see
+[`durbin_watson_pvalue_exact`](@ref)); see [`durbin_watson_test`](@ref)
+for which is used by default.
 """
 struct DurbinWatsonTest <: HypothesisTest
     statistic::Float64
@@ -433,7 +813,7 @@ function Base.show(io::IO, t::DurbinWatsonTest)
 end
 
 """
-    durbin_watson_test(resid, X=nothing; alternative=:greater, method=:approx) -> DurbinWatsonTest
+    durbin_watson_test(resid, X=nothing; alternative=:greater, method=nothing) -> DurbinWatsonTest
 
 Durbin-Watson test for first-order autocorrelation in regression
 residuals `resid`. The statistic itself --
@@ -452,23 +832,25 @@ default (confirmed directly: `args(dwtest)` shows
 a one-sided test specifically for *positive* autocorrelation, the
 classical econometric convention, not a two-sided default.
 
-**`method=:approx` is a genuinely cruder method than R's `lmtest::dwtest`,
-documented explicitly, not silently passed off as equivalent.** R's exact
-method computes the DW statistic's true null distribution -- a weighted
-sum of chi-squared variables whose weights are eigenvalues of a matrix
-built from the regression design `X` (via Pan's or Imhof's algorithm) --
-which is **not** computable from `resid` alone; Python's own version
-doesn't provide a p-value at all for the same reason. `:approx` instead
-treats `z = (DW - 2) / sqrt(4/n)` as approximately standard normal, a
-large-sample approximation that ignores `X` entirely. Cross-checked
-against real R on two series (`test/verification/durbinwatson/`): close
-but not identical to the exact p-value (e.g. `0.1579` here vs R's exact
-`0.1564` on a borderline case; both agree to several significant figures
-on a clearly-significant case, e.g. `4.6e-12` here vs R's exact
-`3.0e-12`). `X` is accepted now (currently unused) so
-`method=:exact` can be added later without a breaking signature change;
-requesting it now throws a clear, named `ArgumentError` rather than
-silently falling back to `:approx` under that name.
+**`method`**: `nothing` (**default**) picks `:exact` when `X` is
+provided and `n < 100`, `:approx` otherwise -- matching
+`DescTools::DurbinWatsonTest`'s own real default-switching convention
+(`exact=NULL` resolves the same way). Pass `:exact` or `:approx`
+explicitly to override.
+- `:exact` -- Farebrother's (1980, 1984) Applied Statistics Algorithm
+  AS 153 ("Pan's procedure"), the same algorithm and Fortran source
+  R's `lmtest::dwtest(exact=TRUE)` uses (read and translated directly
+  from `lmtest`'s real CRAN source, not reconstructed from the
+  citation -- see [`durbin_watson_pvalue_exact`](@ref)). Requires the
+  regression design matrix `X` (the exact null distribution genuinely
+  depends on it, not just `resid`). Verified end-to-end against real
+  `lmtest::dwtest(exact=TRUE)` output, matching to 6+ significant
+  figures (`test/verification/durbinwatson/`).
+- `:approx` -- treats `z = (DW - 2) / sqrt(4/n)` as approximately
+  standard normal, a large-sample approximation that ignores `X`
+  entirely; usable without `X`. Close to but not identical to the exact
+  p-value at finite `n` (e.g. `0.1579` here vs R's exact `0.1564` on a
+  borderline case).
 
 `resid` accepts anything [`tsvalues`](@ref) does.
 
@@ -480,7 +862,9 @@ julia> d = readdlm(joinpath(dirname(pathof(TSAnalytics)), "..", "test", "verific
 
 julia> x, y = d[:, 1], d[:, 2];
 
-julia> _, resid, _ = TSAnalytics._ols(hcat(ones(length(x)), x), y);
+julia> X = hcat(ones(length(x)), x);
+
+julia> _, resid, _ = TSAnalytics._ols(X, y);
 
 julia> t = durbin_watson_test(resid);
 
@@ -490,18 +874,18 @@ julia> round(t.statistic, digits=4)  # matches real statsmodels.stats.stattools.
 julia> t.pvalue < 0.001   # strong evidence of positive autocorrelation
 true
 
-julia> durbin_watson_test(resid; method=:exact)
-ERROR: ArgumentError: method=:exact (Pan's/Imhof's algorithm, matching R's lmtest::dwtest) is not yet implemented -- use :approx
+julia> durbin_watson_test(resid, X; method=:exact).method
+:exact
 ```
 """
 function durbin_watson_test(resid, X::Union{Nothing,AbstractMatrix{<:Real}}=nothing;
-                             alternative::Symbol=:greater, method::Symbol=:approx)
+                             alternative::Symbol=:greater, method::Union{Symbol,Nothing}=nothing)
     alternative in (:greater, :less, :two_sided) ||
         throw(ArgumentError("alternative must be :greater, :less, or :two_sided"))
-    method in (:approx, :exact) || throw(ArgumentError("method must be :approx or :exact"))
-    method == :exact && throw(ArgumentError(
-        "method=:exact (Pan's/Imhof's algorithm, matching R's lmtest::dwtest) " *
-        "is not yet implemented -- use :approx"))
+    meth = method === nothing ? (X !== nothing && (length(tsvalues(resid)) < 100) ? :exact : :approx) : method
+    meth in (:approx, :exact) || throw(ArgumentError("method must be :approx, :exact, or nothing"))
+    meth == :exact && X === nothing &&
+        throw(ArgumentError("durbin_watson_test: method=:exact requires the design matrix X"))
 
     e = tsvalues(resid)
     n = length(e)
@@ -509,10 +893,14 @@ function durbin_watson_test(resid, X::Union{Nothing,AbstractMatrix{<:Real}}=noth
 
     dw = sum(abs2, diff(e, 1)) / sum(abs2, e)
 
-    z = (dw - 2.0) / sqrt(4.0 / n)
-    pval = alternative == :greater ? _std_normal_cdf(z) :
-           alternative == :less    ? 1 - _std_normal_cdf(z) :
-                                      2 * min(_std_normal_cdf(z), 1 - _std_normal_cdf(z))
+    pval = if meth == :exact
+        durbin_watson_pvalue_exact(dw, X; alternative=alternative)
+    else
+        z = (dw - 2.0) / sqrt(4.0 / n)
+        alternative == :greater ? _std_normal_cdf(z) :
+        alternative == :less    ? 1 - _std_normal_cdf(z) :
+                                   2 * min(_std_normal_cdf(z), 1 - _std_normal_cdf(z))
+    end
 
-    return DurbinWatsonTest(dw, pval, alternative, method, n)
+    return DurbinWatsonTest(dw, pval, alternative, meth, n)
 end
