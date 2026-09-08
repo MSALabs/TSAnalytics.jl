@@ -413,6 +413,19 @@ ever referenced those constants symbolically, never a hardcoded path.
 (both Julia stdlibs — a lightweight, safe promotion, same precedent as
 `Random`'s own earlier promotion for GARCH's multi-start feature).
 
+**⚠️ known gap, pre-existing, not introduced by this work**: CI's
+`test (1, *)` and `test (nightly, *)` jobs fail on all three platforms
+(ubuntu/macOS/windows) while `test (1.9, *)` passes on all three — this
+exact pattern already existed on the CI run immediately prior to this
+catalogue's own commit (`34a77e3`, checked directly via the GitHub API,
+not assumed), so it isn't something this session's dataset-catalogue
+code caused. Only Julia 1.9 is installed on this dev machine, so it
+can't be reproduced or root-caused locally yet; the GitHub Actions job
+log text itself also wasn't reachable (the REST API's log-download
+endpoint requires authenticated access even for public repos, and this
+session has no `gh` CLI or token available). Left unresolved pending
+either a newer local Julia install or authenticated CI log access.
+
 | Depends on | Reference |
 |---|---|
 | 1.1 only | `SeasonalAdjustment.jl`'s own real `src/datasets.jl` (Julia, API shape verified directly) · `astsa`/`tsibbledata` (R, real companion packages, both GPL-3) |
