@@ -135,7 +135,11 @@ against real R and Python. See [Roadmap](#roadmap) below.
   padding, taper-corrected `df`/`bandwidth`) -- verified against real R
   output to 6+ significant figures across taper/span/padding
   combinations; default `taper=0.0` deliberately follows
-  `astsa::mvspec`'s convention rather than R's own `0.1` default
+  `astsa::mvspec`'s convention rather than R's own `0.1` default. Both
+  return a `PeriodogramResult` with a log-scale `RecipesBase.jl` recipe
+  (`plot(periodogram(x))`) -- series over 10,000 points are decimated
+  for display via local-maximum retention, verified to always preserve
+  the true spectral peak exactly, unlike a naive strided downsample
 - `boxcox`, `boxcox_inv`, `guerrero_lambda` -- the Box-Cox power
   transform and Guerrero's (1993) automatic method for selecting its
   `lambda`, matching `forecast::BoxCox.lambda(method="guerrero")`'s real
@@ -186,8 +190,9 @@ against real R and Python. See [Roadmap](#roadmap) below.
   estimation) is a documented, explicit gap, not yet built. Periods `>=`
   half the series length are dropped with a warning rather than erroring,
   matching both references
-- `RecipesBase.jl` recipes for `ACFResult`/`ClassicalDecomposition`/
-  `STLDecomposition`/`MSTLDecomposition`/`DiagnosticPlotResult`, plus
+- `RecipesBase.jl` recipes for `ACFResult`/`PeriodogramResult`/
+  `ClassicalDecomposition`/`STLDecomposition`/`MSTLDecomposition`/
+  `DiagnosticPlotResult`, plus
   `diagnostic_plot` -- the standard 4-panel residual diagnostic display
   (standardized residuals, ACF, Q-Q plot, Ljung-Box p-values across a
   range of lags) confirmed identical in structure across R's `tsdiag()`,

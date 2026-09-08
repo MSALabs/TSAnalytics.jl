@@ -1,4 +1,32 @@
-export periodogram, spectral_density
+export periodogram, spectral_density, PeriodogramResult
+
+"""
+    PeriodogramResult
+
+Container for a raw or smoothed spectral density estimate, returned by
+[`periodogram`](@ref) and [`spectral_density`](@ref) -- shared by both,
+the same way [`ACFResult`](@ref) is shared by [`acf`](@ref)/[`pacf`](@ref),
+with `kind` (`:periodogram` or `:spectral_density`) distinguishing which
+produced a given result. Field access (`.freq`, `.spec`, `.df`,
+`.bandwidth`) is unchanged from the plain `NamedTuple` these two
+functions returned before a real `@recipe` was added for them -- a
+dedicated struct is what every other plottable result type in this
+package already uses, and a bare `NamedTuple` can't safely have a
+`@recipe` at all (it would apply to *any* unrelated `NamedTuple` in a
+session with TSAnalytics loaded, not just these two).
+
+# Fields
+- `freq::Vector{Float64}`, `spec::Vector{Float64}`
+- `df::Float64`, `bandwidth::Float64`
+- `kind::Symbol`: `:periodogram` or `:spectral_density`
+"""
+struct PeriodogramResult
+    freq::Vector{Float64}
+    spec::Vector{Float64}
+    df::Float64
+    bandwidth::Float64
+    kind::Symbol
+end
 
 "_nextn(n, factors=(2,3,5)) -> Int -- smallest m >= n whose prime
 factorization uses only the given factors, matching R's own `nextn`
@@ -33,7 +61,7 @@ end
 
 """
     periodogram(x; taper=0.0, detrend=true, demean=false, pad=0, fast=true, xfreq=1.0)
-        -> (freq=Vector{Float64}, spec=Vector{Float64}, df, bandwidth)
+        -> PeriodogramResult
 
 Raw periodogram estimate of the spectral density, matching R base's
 `stats::spec.pgram(x, spans=NULL, ...)` exactly (algorithm read
@@ -126,7 +154,7 @@ function periodogram(x; taper::Real=0.0, detrend::Bool=true, demean::Bool=false,
 
     Nspec = N ÷ 2
     Nspec >= 1 || throw(ArgumentError("periodogram: series too short after padding to produce any spectral estimate"))
-    freq = (1:Nspec) .* (xfreq / N)
+    freq = collect((1:Nspec) .* (xfreq / N))
 
     xfft = fft(xv)
     pgram_full = abs2.(xfft) ./ (N0 * xfreq)
@@ -137,7 +165,7 @@ function periodogram(x; taper::Real=0.0, detrend::Bool=true, demean::Bool=false,
     df = (2 / (u4 / u2^2)) * (N0 / N)
     bandwidth = sqrt(1 / 12) * xfreq / N
 
-    return (freq=freq, spec=spec, df=df, bandwidth=bandwidth)
+    return PeriodogramResult(freq, spec, df, bandwidth, :periodogram)
 end
 
 "_modified_daniell_kernel(m::Integer) -> Vector{Float64} -- symmetric
@@ -215,7 +243,7 @@ end
 """
     spectral_density(x, spans; taper=0.0, detrend=true, demean=false,
                       pad=0, fast=true, xfreq=1.0)
-        -> (freq=Vector{Float64}, spec=Vector{Float64}, df, bandwidth)
+        -> PeriodogramResult
 
 Smoothed periodogram via modified-Daniell kernel smoothing, matching R
 base's `stats::spec.pgram(x, spans=spans, ...)` exactly -- the same
@@ -288,7 +316,7 @@ function spectral_density(x, spans::AbstractVector{<:Integer}; taper::Real=0.0,
 
     Nspec = N ÷ 2
     Nspec >= 1 || throw(ArgumentError("spectral_density: series too short after padding to produce any spectral estimate"))
-    freq = (1:Nspec) .* (xfreq / N)
+    freq = collect((1:Nspec) .* (xfreq / N))
 
     xfft = fft(xv)
     pgram_full = abs2.(xfft) ./ (N0 * xfreq)
@@ -303,5 +331,5 @@ function spectral_density(x, spans::AbstractVector{<:Integer}; taper::Real=0.0,
     df = (_kernel_df(kern) / (u4 / u2^2)) * (N0 / N)
     bandwidth = _kernel_bandwidth(kern) * xfreq / N
 
-    return (freq=freq, spec=spec, df=df, bandwidth=bandwidth)
+    return PeriodogramResult(freq, spec, df, bandwidth, :spectral_density)
 end

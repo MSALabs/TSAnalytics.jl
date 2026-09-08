@@ -77,13 +77,12 @@ plot(stl_decompose(y, 12))
 
 ### Spectral density
 
-[`periodogram`](@ref)/[`spectral_density`](@ref) return a plain
-`NamedTuple`, deliberately with no dedicated recipe (see their own
-docstrings for why) — plot the fields directly:
+[`periodogram`](@ref)/[`spectral_density`](@ref) return a
+[`PeriodogramResult`](@ref), with its own recipe (log-scale y-axis, the
+conventional display given a spectrum's large dynamic range):
 
 ```@example plots
-pg = periodogram(y)
-plot(pg.freq, pg.spec; xlabel="frequency", ylabel="spectrum", legend=false, title="Periodogram")
+plot(periodogram(y))
 ```
 
 ### Residual diagnostics

@@ -3,11 +3,13 @@
 # Plots.jl/Makie.jl itself (matches how Distributions.jl and R/Python's own
 # generic plot()/autoplot() dispatch work): `plot(result)` works for any
 # caller with a plotting backend loaded, without this package taking on a
-# real plotting dependency. `periodogram`/`spectral_density` (Part A) return
-# plain NamedTuples, not dedicated result types, so they deliberately have
-# NO recipe here -- a bare `NamedTuple` recipe would apply far too broadly;
-# plot them directly via `plot(result.freq, result.spec)`, which already
-# works with any backend's ordinary two-array method, no recipe needed.
+# real plotting dependency. `periodogram`/`spectral_density` (Part A)
+# originally returned plain NamedTuples with no recipe (a bare
+# `NamedTuple` recipe would apply far too broadly -- it would hijack
+# plotting for *any* unrelated NamedTuple in a session with TSAnalytics
+# loaded). `PeriodogramResult` (`src/spectral.jl`) replaced that
+# NamedTuple specifically so a real recipe could be added below --
+# see `handoff/periodogram-recipe-handoff.md`.
 # ---------------------------------------------------------------------------
 
 export seasonal_subseries_plot
@@ -26,8 +28,11 @@ wrapping); `cycle[i]` is which cycle (year) `x[i]` belongs to;
 `means[p]` is the mean of all `values[i]` with `position[i] == p`.
 Plot by grouping `values` by `position` into `period` panels/lines, each
 with a horizontal reference line at its own `means[p]` -- deliberately a
-plain NamedTuple, not a dedicated result type/recipe, same reasoning as
-[`periodogram`](@ref)'s own bare-NamedTuple return.
+plain NamedTuple, not a dedicated result type/recipe: unlike
+[`periodogram`](@ref) (a single fixed display, `freq` vs `spec`), this
+one has no one natural rendering (panels? overlaid lines? which axis is
+which?), so a recipe would just be encoding one opinionated choice among
+several equally valid ones.
 
 `x` accepts anything [`tsvalues`](@ref) does.
 
@@ -102,6 +107,74 @@ and a zero reference line -- the standard ACF/PACF display.
     seriestype --> :sticks
     marker --> :circle
     r.lags, r.values
+end
+
+"_decimate_local_max(x, y, maxpoints) -- for plotting only: if
+`length(x) > maxpoints`, partitions into `maxpoints` bins and keeps the
+`(x,y)` pair with the *largest* `y` in each bin, never a naive
+fixed-stride subsample. A narrow spectral peak can fall between
+strided sample indices and be silently hidden by naive downsampling;
+local-max retention always keeps whichever point is the single largest
+in its bin, so the global peak (the largest point overall, hence the
+largest in whichever bin it falls into) is always preserved exactly."
+function _decimate_local_max(x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, maxpoints::Integer)
+    n = length(x)
+    n <= maxpoints && return collect(x), collect(y)
+    binsize = n / maxpoints
+    xout = Vector{eltype(x)}(undef, maxpoints)
+    yout = Vector{eltype(y)}(undef, maxpoints)
+    for b in 1:maxpoints
+        lo = floor(Int, (b - 1) * binsize) + 1
+        hi = max(lo, min(n, floor(Int, b * binsize)))
+        idx = lo - 1 + argmax(view(y, lo:hi))
+        xout[b] = x[idx]
+        yout[b] = y[idx]
+    end
+    return xout, yout
+end
+
+"""
+    @recipe f(r::PeriodogramResult)
+
+The log-scale periodogram plot -- `spec.pgram(plot=TRUE)`'s default
+display in base R, and `astsa::mvspec`'s own standard output (Shumway
+& Stoffer, *Time Series Analysis and Its Applications*, Chapter 4).
+Shows spectral power against frequency on a log10 y-axis, the
+conventional scale for spectral estimates given their typically large
+dynamic range. For `r.kind == :spectral_density`, the title also shows
+`df`/`bandwidth` -- a user comparing against R's own `spec.pgram`
+output needs these visible, not just reachable on the struct.
+
+Series with more than 10,000 plotted points are decimated via
+[`_decimate_local_max`](@ref) before plotting (display speed only --
+[`periodogram`](@ref)/[`spectral_density`](@ref) themselves are
+unaffected); this always preserves the true spectral peak exactly,
+unlike a naive strided downsample.
+
+# Example
+```julia
+julia> x = 5 .* sin.(2π .* (1:96) ./ 12) .+ randn(96) .* 0.5;
+
+julia> r = periodogram(x; taper=0.1);
+
+julia> plot(r)  # peak visible at frequency 1/12, matching the injected periodicity
+```
+
+See also [`periodogram`](@ref), [`spectral_density`](@ref) for the
+underlying computation, verified directly against base R's `spec.pgram`
+(see `handoff/stage-1-fillgap-handoff.md`).
+"""
+@recipe function f(r::PeriodogramResult)
+    freq, spec = length(r.freq) > 10_000 ? _decimate_local_max(r.freq, r.spec, 10_000) : (r.freq, r.spec)
+    seriestype --> :path
+    yscale --> :log10
+    xlabel --> "frequency"
+    ylabel --> "spectrum"
+    legend --> false
+    title --> (r.kind == :spectral_density ?
+               "Smoothed periodogram (df=$(round(r.df, digits=2)), bandwidth=$(round(r.bandwidth, digits=5)))" :
+               "Periodogram")
+    freq, spec
 end
 
 """

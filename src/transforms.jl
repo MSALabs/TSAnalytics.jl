@@ -203,8 +203,10 @@ genuine, expected disagreement between the two criteria, since only
 at all.
 
 Returns a plain `(lambdas, loglik)` NamedTuple, plottable directly via
-`plot(lambdas, loglik)` -- deliberately no dedicated result type/recipe,
-same reasoning as [`periodogram`](@ref)'s own bare-NamedTuple return.
+`plot(lambdas, loglik)` -- deliberately no dedicated result type/recipe;
+unlike [`periodogram`](@ref), there's no natural fixed display beyond
+"y against x", so a recipe would add a type without adding a real
+opinionated rendering choice worth encoding.
 
 # Examples
 ```jldoctest

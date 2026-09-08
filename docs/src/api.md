@@ -48,6 +48,7 @@ ACFResult
 ```@docs
 periodogram
 spectral_density
+PeriodogramResult
 ```
 
 ## Transforms
