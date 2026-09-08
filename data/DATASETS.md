@@ -19,11 +19,14 @@ anyone who opens the repository and asks where the numbers came from."
 `data/inventory.tsv` is the registry `src/dataset_catalogue.jl` actually
 loads: real titles (from the source packages' own `man/*.Rd`
 documentation), row/column counts, column names, licence, and the
-originating book, per dataset. `data/astsa/`/`data/tsibbledata/` hold
-the real CSV data; `data/astsa/LICENSE-GPL3.txt` is the full GPL-3 text
-as shipped by `astsa` itself, and `data/tsibbledata/DESCRIPTION-tsibbledata.txt`
-is that package's own `DESCRIPTION` file (which declares `License:
-GPL-3` without bundling a licence file — standard CRAN practice for a
+originating book, per dataset. All 83 CSVs live directly in `data/`
+(one flat folder, no per-package subfolders — `inventory.tsv`'s own
+`filename` column is what the loader uses to find each one, so there's
+no naming ambiguity even though both source packages' files sit side
+by side); `data/LICENSE-GPL3.txt` is the full GPL-3 text as shipped by
+`astsa` itself, and `data/DESCRIPTION-tsibbledata.txt` is that
+package's own `DESCRIPTION` file (which declares `License: GPL-3`
+without bundling a licence file — standard CRAN practice for a
 CRAN-recognised standard licence).
 
 ## Licensing — the decision that was made, and by whom

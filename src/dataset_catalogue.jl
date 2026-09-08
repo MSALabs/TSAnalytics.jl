@@ -161,7 +161,7 @@ column count plus the first column's name."
 _is_univariate(row::_RegistryRow) = row.n_cols == 2 && row.columns[1] in ("time", "date", "index")
 
 function _dataset_path(row::_RegistryRow)
-    return joinpath(_TEXTBOOK_DIR, row.package, row.filename)
+    return joinpath(_TEXTBOOK_DIR, row.filename)
 end
 
 "_parse_float_or_nan(s) -- R's `NA` (missing values -- `ar1miss`,

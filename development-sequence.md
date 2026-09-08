@@ -401,8 +401,10 @@ files weren't individually read this session).
 
 **Per the user's own explicit follow-up instruction, folder
 reorganization done as part of the same task**: `data/` now holds only
-this export-eligible catalogue (`data/astsa/`, `data/tsibbledata/`,
-`data/inventory.tsv`, `data/DATASETS.md`); the pre-existing internal
+this export-eligible catalogue (83 CSVs in one flat folder, no
+per-package subfolders — flattened per a later explicit user
+instruction — plus `data/inventory.tsv` and `data/DATASETS.md`); the
+pre-existing internal
 validation-fixture series (`nile.csv`, `airpassengers.csv`, etc. —
 genuinely different in kind, "not part of the modeling API" per their
 own existing docstring comment) moved to a new `test_data/` directory.
