@@ -348,6 +348,61 @@ section — see "Downstream: TSFeatures.jl" right after Stage 5.)*
 
 ---
 
+## Documentation restructuring (cross-cutting, not a numbered stage)
+
+**Skeleton ✅ built** (`handoff/docs-restructure-skeleton-handoff.md`) —
+modeled directly on `SeasonalAdjustment.jl`'s own live docs site: Home, a
+5-chapter Getting Started, an 11-page task-oriented Manual, a 20-chapter
++ 2-appendix conceptual Introduction, and an API Reference split by topic
+(9 files) instead of one growing monolithic `api.md` (whose
+`size_threshold=1_000_000` build workaround is now removed, no longer
+needed). `docs/make.jl` rewritten for the new `pages=[...]` tree.
+**Genuinely real content, not stubs, in 5 pages** — this handoff assumed
+`getting_started.md` was still an empty placeholder; it wasn't (an
+earlier session had already added real, verified ADF/KPSS/ACF checks and
+the `RecipesBase.jl` chart gallery to it, per the user's own request), so
+that content was *relocated* into the new structure rather than
+discarded to satisfy a literal "stub everything" reading:
+`getting-started/01-installation.md`, `getting-started/03-was-it-any-good.md`
+(unit-root/ACF/Ljung-Box checks + a pointer to `diagnostic_plot`),
+`getting-started/05-where-next.md` (the former "design notes"),
+`manual/10-plotting.md` (the full `@example`-based recipe gallery), and
+`introduction/B-further-reading.md` (the real 6-book bibliography, the
+handoff's own explicit content exception). `api/state-space.md` also has
+real prose (a short note, since the Kalman-filter engine has no separate
+public API beyond what the ARMA/SARIMA/ARIMAX fitting functions already
+expose) rather than a stub, since "not yet written" would be inaccurate.
+**API split verified lossless**: all 100 `@docs`-referenced names from
+the original monolithic `api.md` accounted for exactly once across the 9
+new files (counted both sides). **A real gap in the handoff's own
+manual/api structure, worked around and flagged here**: neither the
+11-chapter Manual nor the 9-file API Reference has an explicit home for
+`holt_winters`/`ExponentialSmoothingModel` (Stage 5's classical
+exponential smoothing) — placed in `manual/04-fitting-arma-models.md`'s
+matching `api/arma-models.md` file as the closest thematic fit; revisit
+if a dedicated exponential-smoothing chapter is ever added.
+
+**Content — 33 stub pages waiting**, tracked here so the next
+content-writing handoff has a complete checklist rather than needing to
+rediscover what's missing (do these one page, or one small group, at a
+time — not all at once, matching this project's own "one task" discipline):
+
+- Getting Started (2): `02-first-model.md`, `04-beyond-defaults.md`
+- Manual (10): `01-primitives.md`, `02-diagnostics.md`,
+  `03-decomposition.md`, `04-fitting-arma-models.md`,
+  `05-automatic-order-selection.md`, `06-garch-and-volatility.md`,
+  `07-state-space-and-kalman.md`, `08-arimax-and-regression.md`,
+  `09-forecasting-and-accuracy.md`, `11-coming-from-r-python.md`
+- Introduction (21): `01-why-model-time-series.md` through
+  `20-forecasting.md`, plus `A-checklist.md`. **Chapters 10/11
+  (residual/structure testing) should reflect the *complete* current
+  diagnostic suite when written** — including the response-surface
+  p-values, KPSS `:auto`, ARCH-LM, and DK heteroskedasticity items that
+  landed after the original 6-book comparison, not just the original
+  seven diagnostics — per the skeleton handoff's own explicit note.
+
+---
+
 ## Downstream: SeasonalAdjustment.jl (separate package, starts once Stage 8 is stable)
 
 | # | Functionality | Depends on | Reference |

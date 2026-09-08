@@ -624,18 +624,19 @@ Documentation isn't a post-hoc pass — it's enforced structurally:
   the docs build if any exported name is missing one — this is a CI gate,
   not a guideline.
 - **Docstrings include a runnable example** where practical, written as a
-  `jldoctest` block once verified locally (see the caveat on
-  `docs/src/getting_started.md` about examples written without a Julia
-  runtime available — verify, then convert). `make.jl` sets
-  `doctest=true`, so a docstring's example output silently going stale is
-  a CI failure, not a documentation debt that quietly accumulates.
-- **Narrative docs** (`docs/src/getting_started.md` and future tutorial
-  pages) reuse the same benchmark series already used in the test suite
-  (Nile, AirPassengers, sunspots) rather than inventing separate examples
-  — one less thing to keep in sync.
-- **API reference** (`docs/src/api.md`) is organized by category, not
-  alphabetically or by file — it should read as a guide to the package's
-  shape, not a dump of its namespace.
+  `jldoctest` block, verified locally before being committed as fact.
+  `make.jl` sets `doctest=true`, so a docstring's example output silently
+  going stale is a CI failure, not a documentation debt that quietly
+  accumulates.
+- **Narrative docs** (`docs/src/getting-started/`, `docs/src/manual/`,
+  `docs/src/introduction/` — see the structure below) reuse the same
+  benchmark series already used in the test suite (Nile, AirPassengers,
+  sunspots) rather than inventing separate examples — one less thing to
+  keep in sync.
+- **API reference** (`docs/src/api/`, one file per topic — see
+  `handoff/docs-restructure-skeleton-handoff.md`) is organized by
+  category, not alphabetically or by file — it should read as a guide to
+  the package's shape, not a dump of its namespace.
 - Docs build and deploy via `.github/workflows/Docs.yml` on every push to
   `main`, so the published site never drifts far from what's actually in
   the package.

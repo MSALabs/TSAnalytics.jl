@@ -11,8 +11,8 @@ that go with them -- built incrementally, in the spirit of GLM.jl
 in the repository root for the full staged roadmap and what's currently
 built vs. planned.
 
-- New to the package? Start with [Getting Started](getting_started.md).
-- Looking for a specific function? See the [API Reference](api.md).
+- New to the package? Start with [Getting Started](getting-started/01-installation.md).
+- Looking for a specific function? See the [API Reference](api/primitives.md).
 
 ## Design principles
 
