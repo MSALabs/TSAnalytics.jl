@@ -16,7 +16,7 @@ Absolute path to `nile.csv`: annual flow of the Nile at Aswan
 (10^8 m^3), 1871-1970. The canonical local-level-model / unit-root-test
 example (Durbin & Koopman (2012), ch. 2).
 """
-const NILE = joinpath(dirname(@__DIR__), "data", "nile.csv")
+const NILE = joinpath(dirname(@__DIR__), "test_data", "nile.csv")
 
 """
     TSAnalytics.AIR_PASSENGERS
@@ -25,7 +25,7 @@ Absolute path to `airpassengers.csv`: monthly US airline passenger
 totals, 1949-1960. The canonical multiplicative-seasonality / SARIMA
 example (Box & Jenkins, 1976).
 """
-const AIR_PASSENGERS = joinpath(dirname(@__DIR__), "data", "airpassengers.csv")
+const AIR_PASSENGERS = joinpath(dirname(@__DIR__), "test_data", "airpassengers.csv")
 
 """
     TSAnalytics.SUNSPOTS_YEAR
@@ -33,7 +33,7 @@ const AIR_PASSENGERS = joinpath(dirname(@__DIR__), "data", "airpassengers.csv")
 Absolute path to `sunspot_year.csv`: yearly sunspot numbers, 1700-1988.
 Classic nonlinear/AR benchmark series (H. Tong, 1996).
 """
-const SUNSPOTS_YEAR = joinpath(dirname(@__DIR__), "data", "sunspot_year.csv")
+const SUNSPOTS_YEAR = joinpath(dirname(@__DIR__), "test_data", "sunspot_year.csv")
 
 """
     TSAnalytics.US_CHANGE
@@ -43,7 +43,7 @@ consumption, income, production, savings, and unemployment, 1960-2016.
 Multivariate/VAR and regression-with-ARIMA-errors benchmark (Hyndman &
 Athanasopoulos, *Forecasting: Principles and Practice*).
 """
-const US_CHANGE = joinpath(dirname(@__DIR__), "data", "uschange.csv")
+const US_CHANGE = joinpath(dirname(@__DIR__), "test_data", "uschange.csv")
 
 """
     TSAnalytics.VEHICLE_FATALITIES
@@ -52,7 +52,7 @@ Absolute path to `vehicle_fatalities.csv`: annual road traffic
 fatalities in Norway and Finland, 1970-2003. Structural time series /
 local linear trend example (Commandeur & Koopman, 2007, ch. 3).
 """
-const VEHICLE_FATALITIES = joinpath(dirname(@__DIR__), "data", "vehicle_fatalities.csv")
+const VEHICLE_FATALITIES = joinpath(dirname(@__DIR__), "test_data", "vehicle_fatalities.csv")
 
 """
     TSAnalytics.INTERNET
@@ -61,7 +61,7 @@ Absolute path to `internet.csv`: number of users logged onto an
 internet server, per minute, 100 observations. Short, non-seasonal
 ARMA example (Durbin & Koopman, 2012, ch. 9).
 """
-const INTERNET = joinpath(dirname(@__DIR__), "data", "internet.csv")
+const INTERNET = joinpath(dirname(@__DIR__), "test_data", "internet.csv")
 
 """
     TSAnalytics.MONTHLY
@@ -75,7 +75,7 @@ output (`numpy.random.seed(42)`, `t=arange(48)`,
 and `handoff/verification/stage-3.1-verification-transcript.txt` for
 full-precision reference output.
 """
-const MONTHLY = joinpath(dirname(@__DIR__), "data", "monthly.csv")
+const MONTHLY = joinpath(dirname(@__DIR__), "test_data", "monthly.csv")
 
 """
     TSAnalytics.PERIOD7
@@ -86,7 +86,7 @@ Generated for Stage 3.1 (continues the same RNG stream as `monthly.csv`
 -- see that constant's docstring and the Stage 3.1 handoff for the exact
 script).
 """
-const PERIOD7 = joinpath(dirname(@__DIR__), "data", "period7.csv")
+const PERIOD7 = joinpath(dirname(@__DIR__), "test_data", "period7.csv")
 
 """
     TSAnalytics.MONTHLY_OUTLIER
@@ -99,7 +99,7 @@ itself has no points extreme enough to drive any robustness weight below
 `handoff/stage-3.2-stl-handoff.md` section 3(f) and
 `stage-3.2-transcript.txt` for the exact reference numbers this produces.
 """
-const MONTHLY_OUTLIER = joinpath(dirname(@__DIR__), "data", "monthly_outlier.csv")
+const MONTHLY_OUTLIER = joinpath(dirname(@__DIR__), "test_data", "monthly_outlier.csv")
 
 """
     TSAnalytics.MULT_MONTHLY
@@ -110,7 +110,7 @@ combine multiplicatively). Generated for Stage 3.1 (continues the same
 RNG stream as `monthly.csv`/`period7.csv` -- see the Stage 3.1 handoff
 for the exact script).
 """
-const MULT_MONTHLY = joinpath(dirname(@__DIR__), "data", "mult_monthly.csv")
+const MULT_MONTHLY = joinpath(dirname(@__DIR__), "test_data", "mult_monthly.csv")
 
 """
     TSAnalytics.AR2_ARX
@@ -124,7 +124,7 @@ tested against it are independently re-verified against real
 alone. See also [`TSAnalytics.ARX_EXOG_X1`](@ref)/
 [`TSAnalytics.ARX_EXOG_Y2`](@ref) for the paired exogenous-regressor case.
 """
-const AR2_ARX = joinpath(dirname(@__DIR__), "data", "ar2_arx.csv")
+const AR2_ARX = joinpath(dirname(@__DIR__), "test_data", "ar2_arx.csv")
 
 """
     TSAnalytics.ARX_EXOG_X1
@@ -134,7 +134,7 @@ Absolute path to `arx_exog_x1.csv`: n=100 exogenous regressor
 [`TSAnalytics.AR2_ARX`](@ref) for Stage 5.1's `arx(...; exog=...)`
 verification.
 """
-const ARX_EXOG_X1 = joinpath(dirname(@__DIR__), "data", "arx_exog_x1.csv")
+const ARX_EXOG_X1 = joinpath(dirname(@__DIR__), "test_data", "arx_exog_x1.csv")
 
 """
     TSAnalytics.ARX_EXOG_Y2
@@ -144,7 +144,7 @@ the dependent series for Stage 5.1's `arx(...; exog=...)` verification
 (so the exogenous regressor genuinely explains part of the outcome, not
 just being along for the ride).
 """
-const ARX_EXOG_Y2 = joinpath(dirname(@__DIR__), "data", "arx_exog_y2.csv")
+const ARX_EXOG_Y2 = joinpath(dirname(@__DIR__), "test_data", "arx_exog_y2.csv")
 
 """
     TSAnalytics.HOURLY_MSTL
@@ -157,4 +157,4 @@ verification (`numpy.random.seed(0)`, `t=arange(1,501)`,
 a scaled-down version of `statsmodels.tsa.seasonal.MSTL`'s own docstring
 example, kept small enough to verify exactly and run quickly in tests.
 """
-const HOURLY_MSTL = joinpath(dirname(@__DIR__), "data", "hourly_mstl.csv")
+const HOURLY_MSTL = joinpath(dirname(@__DIR__), "test_data", "hourly_mstl.csv")

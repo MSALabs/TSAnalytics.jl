@@ -11,6 +11,7 @@ using FFTW: fft
 using RecipesBase: RecipesBase, @recipe, @series
 
 include("interface.jl")
+include("dataset_catalogue.jl")
 include("statespace/gaussianssm.jl")
 include("statespace/timevaryingssm.jl")
 include("statespace/diffuseinit.jl")

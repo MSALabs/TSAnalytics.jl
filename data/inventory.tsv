@@ -1,0 +1,84 @@
+name	package	title	n_rows	n_cols	columns	licence	book	filename
+BCJ	astsa	Daily Returns of Three Banks	3243	3	boa;citi;jpm	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	BCJ.csv
+ENSO	astsa	El Nino - Southern Oscillation Index	862	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	ENSO.csv
+EQ5	astsa	Seismic Trace of Earthquake number 5	2048	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	EQ5.csv
+EQcount	astsa	Earthquake Counts	107	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	EQcount.csv
+EXP6	astsa	Seismic Trace of Explosion number 6	2048	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	EXP6.csv
+GDP	astsa		305	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	GDP_caps.csv
+GGBsuicide	astsa	Golden Gate Bridge Suicides, 1999-2009	223	2	index;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	GGBsuicide.csv
+GNP	astsa		304	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	GNP.csv
+HCT	astsa	Hematocrit Levels	91	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	HCT.csv
+Hare	astsa	Snowshoe Hare	91	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	Hare.csv
+Lynx	astsa	Canadian Lynx	91	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	Lynx.csv
+MEI	astsa	Multivariate El Nino/Southern Oscillation Index (version 1)	827	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	MEI.csv
+MEI2	astsa	Multivariate El Nino/Southern Oscillation Index (version 2)	557	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	MEI2.csv
+PLT	astsa	Platelet Levels	91	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	PLT.csv
+USpop	astsa	U.S. Population - 1900 to 2010	12	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	USpop.csv
+USpop20	astsa	U.S. Population - 1900 to 2020	13	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	USpop20.csv
+UnempRate	astsa	U.S. Unemployment Rate	827	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	UnempRate.csv
+UnempRate2	astsa	U.S. Unemployment Rate (update)	123	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	UnempRate2.csv
+WBC	astsa	White Blood Cell Levels	91	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	WBC.csv
+ar1miss	astsa	AR with Missing Values	100	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	ar1miss.csv
+arf	astsa	Simulated ARFIMA	1000	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	arf.csv
+beamd	astsa	Infrasonic Signal from a Nuclear Explosion	2048	3	sensor1;sensor2;sensor3	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	beamd.csv
+birth	astsa	U.S. Monthly Live Births	373	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	birth.csv
+blood	astsa	Daily Blood Work with Missing Values	91	3	WBC;PLT;HCT	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	blood.csv
+bnrf1ebv	astsa	Nucleotide sequence - BNRF1 Epstein-Barr	3954	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	bnrf1ebv.csv
+bnrf1hvs	astsa	Nucleotide sequence - BNRF1 of Herpesvirus saimiri	3741	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	bnrf1hvs.csv
+cardox	astsa	Monthly Carbon Dioxide Levels at Mauna Loa	781	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	cardox.csv
+chicken	astsa	Monthly price of a pound of chicken	180	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	chicken.csv
+climhyd	astsa	Lake Shasta inflow data	454	6	Temp;DewPt;CldCvr;WndSpd;Precip;Inflow	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	climhyd.csv
+cmort	astsa	Cardiovascular Mortality from the LA Pollution study	508	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	cmort.csv
+cpg	astsa	Hard Drive Cost per GB	29	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	cpg.csv
+djia	astsa	Dow Jones Industrial Average	2518	6	date;Open;High;Low;Close;Volume	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	djia.csv
+econ5	astsa	Five Quarterly Economic Series	161	5	unemp;gnp;consum;govinv;prinv	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	econ5.csv
+eqexp	astsa	Earthquake and Explosion Seismic Series	2048	17	EQ1;EQ2;EQ3;EQ4;EQ5;EQ6;EQ7;EQ8;EX1;EX2;EX3;EX4;EX5;EX6;EX7;EX8;NZ	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	eqexp.csv
+flu	astsa	Monthly pneumonia and influenza deaths in the U.S., 1968 to 1978.	132	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	flu.csv
+fmri1	astsa	fMRI Data Used in Chapter 1	128	9	time;cort1;cort2;cort3;cort4;thal1;thal2;cere1;cere2	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	fmri1.csv
+gas	astsa	Gas Prices	545	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	gas.csv
+gdp	astsa	Quarterly U.S. GDP	287	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	gdp.csv
+gnp	astsa	Quarterly U.S. GNP	223	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	gnp_lower.csv
+gtemp.month	astsa	Monthly global average surface temperatures by year	12	49	2023;2022;2021;2020;2019;2018;2017;2016;2015;2014;2013;2012;2011;2010;2009;2008;2007;2006;2005;2004;2003;2002;2001;2000;1999;1998;1997;1996;1995;1994;1993;1992;1991;1990;1989;1988;1987;1986;1985;1984;1983;1982;1981;1980;1979;1978;1977;1976;1975	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	gtemp.month.csv
+gtemp_both	astsa	Global mean land and open ocean temperature deviations, 1850-2023	174	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	gtemp_both.csv
+gtemp_land	astsa	Global mean land temperature deviations, 1850-2023	174	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	gtemp_land.csv
+gtemp_ocean	astsa	Global mean ocean temperature deviations, 1850-2023	174	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	gtemp_ocean.csv
+hor	astsa	Hawaiian occupancy rates	136	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	hor.csv
+jj	astsa	Johnson and Johnson Quarterly Earnings Per Share	84	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	jj.csv
+lap	astsa	LA Pollution-Mortality Study	508	11	tmort;rmort;cmort;tempr;rh;co;so2;no2;hycarb;o3;part	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	lap.csv
+lap.xts	astsa	LA Pollution-Mortality Study: Sampled Daily	3652	12	date;Tmort;Rmort;Cmort;Temp;Rhumid;CO;SO2;NO2;HC;Ozone;Part	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	lap.xts.csv
+lead	astsa	Leading Indicator	150	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	lead.csv
+nyse	astsa	Returns of the New York Stock Exchange	2000	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	nyse.csv
+oil	astsa	Crude oil, WTI spot price FOB	545	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	oil.csv
+part	astsa	Particulate levels from the LA pollution study	508	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	part.csv
+polio	astsa	Poliomyelitis cases in US	168	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	polio.csv
+prodn	astsa	Monthly Federal Reserve Board Production Index	372	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	prodn.csv
+qinfl	astsa	Quarterly Inflation	110	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	qinfl.csv
+qintr	astsa	Quarterly Interest Rate	110	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	qintr.csv
+rec	astsa	Recruitment (number of new fish index)	453	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	rec.csv
+sales	astsa	Sales	150	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	sales.csv
+salmon	astsa	Monthly export price of salmon	166	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	salmon.csv
+salt	astsa	Salt Profiles	64	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	salt.csv
+saltemp	astsa	Temperature Profiles	64	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	saltemp.csv
+so2	astsa	SO2 levels from the LA pollution study	508	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	so2.csv
+soi	astsa	Southern Oscillation Index	453	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	soi.csv
+soiltemp	astsa	Spatial Grid of Surface Soil Temperatures	64	36	V1;V2;V3;V4;V5;V6;V7;V8;V9;V10;V11;V12;V13;V14;V15;V16;V17;V18;V19;V20;V21;V22;V23;V24;V25;V26;V27;V28;V29;V30;V31;V32;V33;V34;V35;V36	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	soiltemp.csv
+sp500.gr	astsa	Returns of the S&P 500	2728	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	sp500.gr.csv
+sp500w	astsa	Weekly Growth Rate of the Standard and Poor's 500	509	2	date;Close	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	sp500w.csv
+speech	astsa	Speech Recording	1020	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	speech.csv
+star	astsa	Variable Star	600	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	star.csv
+sunspotz	astsa	Biannual Sunspot Numbers	459	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	sunspotz.csv
+tempr	astsa	Temperatures from the LA pollution study	508	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	tempr.csv
+unemp	astsa	U.S. Unemployment	372	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	unemp.csv
+varve	astsa	Annual Varve Series	634	2	time;value	GPL-3	Shumway & Stoffer, Time Series Analysis and Its Applications (4th ed.)	varve.csv
+PBS	tsibbledata	Monthly Medicare Australia prescription data	67596	9	Month;Concession;Type;ATC1;ATC1_desc;ATC2;ATC2_desc;Scripts;Cost	GPL-3	Hyndman & Athanasopoulos, Forecasting: Principles and Practice (3rd ed.)	PBS.csv
+ansett	tsibbledata	Passenger numbers on Ansett airline flights	7407	4	Week;Airports;Class;Passengers	GPL-3	Hyndman & Athanasopoulos, Forecasting: Principles and Practice (3rd ed.)	ansett.csv
+aus_livestock	tsibbledata	Australian livestock slaughter	29364	4	Month;Animal;State;Count	GPL-3	Hyndman & Athanasopoulos, Forecasting: Principles and Practice (3rd ed.)	aus_livestock.csv
+aus_production	tsibbledata	Quarterly production of selected commodities in Australia.	218	7	Quarter;Beer;Tobacco;Bricks;Cement;Electricity;Gas	GPL-3	Hyndman & Athanasopoulos, Forecasting: Principles and Practice (3rd ed.)	aus_production.csv
+aus_retail	tsibbledata	Australian retail trade turnover	64532	5	State;Industry;Series ID;Month;Turnover	GPL-3	Hyndman & Athanasopoulos, Forecasting: Principles and Practice (3rd ed.)	aus_retail.csv
+gafa_stock	tsibbledata	GAFA stock prices	5032	8	Symbol;Date;Open;High;Low;Close;Adj_Close;Volume	GPL-3	Hyndman & Athanasopoulos, Forecasting: Principles and Practice (3rd ed.)	gafa_stock.csv
+global_economy	tsibbledata	Global economic indicators	15150	9	Country;Code;Year;GDP;Growth;CPI;Imports;Exports;Population	GPL-3	Hyndman & Athanasopoulos, Forecasting: Principles and Practice (3rd ed.)	global_economy.csv
+hh_budget	tsibbledata	Household budget characteristics	88	8	Country;Year;Debt;DI;Expenditure;Savings;Wealth;Unemployment	GPL-3	Hyndman & Athanasopoulos, Forecasting: Principles and Practice (3rd ed.)	hh_budget.csv
+nyc_bikes	tsibbledata	NYC Citi Bike trips	4268	12	bike_id;start_time;stop_time;start_station;start_lat;start_long;end_station;end_lat;end_long;type;birth_year;gender	GPL-3	Hyndman & Athanasopoulos, Forecasting: Principles and Practice (3rd ed.)	nyc_bikes.csv
+olympic_running	tsibbledata	Fastest running times for Olympic races	312	4	Year;Length;Sex;Time	GPL-3	Hyndman & Athanasopoulos, Forecasting: Principles and Practice (3rd ed.)	olympic_running.csv
+pelt	tsibbledata	Pelt trading records	91	3	Year;Hare;Lynx	GPL-3	Hyndman & Athanasopoulos, Forecasting: Principles and Practice (3rd ed.)	pelt.csv
+vic_elec	tsibbledata	Half-hourly electricity demand for Victoria, Australia	52608	5	Time;Demand;Temperature;Date;Holiday	GPL-3	Hyndman & Athanasopoulos, Forecasting: Principles and Practice (3rd ed.)	vic_elec.csv

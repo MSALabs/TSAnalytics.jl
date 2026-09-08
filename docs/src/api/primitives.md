@@ -1,5 +1,14 @@
 # API: Primitives
 
+## Datasets
+
+```@docs
+dataset
+datasets
+dataset_info
+DatasetInfo
+```
+
 ## Container-agnostic interface
 
 ```@docs

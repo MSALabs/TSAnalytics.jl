@@ -31,9 +31,12 @@ sma1  -0.552859  0.0740461    -7.46642  8.24088e-14
 Log-likelihood: 245.61   AIC: -483.22   BIC: -471.69
 ```
 
-This is real, directly-run output (`data/airpassengers.csv`, the classic
-Box-Jenkins airline series, fit on the log scale -- the standard
-treatment for its multiplicative seasonality). Diagnostics and
+This is real, directly-run output (`test_data/airpassengers.csv`, the
+classic Box-Jenkins airline series, fit on the log scale -- the
+standard treatment for its multiplicative seasonality). This package
+also ships 90 real textbook datasets you can explore directly via
+[`dataset`](@ref) -- see [Primitives](manual/01-primitives.md).
+Diagnostics and
 forecasting for models fit this way are covered in the
 [Manual](manual/01-primitives.md) and [Getting Started](getting-started/03-was-it-any-good.md);
 `residuals`/`forecast` are implemented for [`ARXModel`](@ref)/[`GarchModel`](@ref)

@@ -348,6 +348,77 @@ section — see "Downstream: TSFeatures.jl" right after Stage 5.)*
 
 ---
 
+## Textbook dataset catalogue (cross-cutting, not a numbered stage)
+
+**✅ built** (`handoff/ts-datasets/ts-datasets-handoff.md`) — `dataset`/
+`datasets`/`dataset_info`/`DatasetInfo` (`src/dataset_catalogue.jl`),
+API shape verified directly against `SeasonalAdjustment.jl`'s own real
+`src/datasets.jl` (fetched this session): `DatasetInfo`'s 13 fields and
+the function signatures match exactly, with a fourth `kind` added —
+`:external`, for real datasets that are catalogued but deliberately not
+bundled. **90 catalogued datasets**: 83 bundled directly (71 from
+`astsa`, Shumway & Stoffer's real companion package; 12 from
+`tsibbledata`, fpp3's), plus 7 verified `:external` entries (Tsay,
+Cowpertwait — see `data/DATASETS.md` for the full breakdown, including
+why Montgomery has none and Hamilton has no datasets at all).
+
+**A real, deliberate licensing decision, not inferred**: both source
+packages are GPL-3; TSAnalytics.jl itself is MIT. Whether bundling
+GPL-3 *data* into an MIT package triggers copyleft on the surrounding
+code is a genuinely contested question. The user was presented with
+three concrete options (separate GPL-3 companion package; bundle
+directly; fetch-on-demand with no redistribution) and explicitly chose
+to **bundle directly** — this project does not take a position on the
+underlying legal question itself, only reports the decision that was
+made and by whom (`data/DATASETS.md`).
+
+**A real bug found and fixed, not merely worked around**: `astsa` has
+two genuinely distinct object pairs differing only in case (`GDP`
+305 obs vs. `gdp` 287 obs; `GNP` 304 obs vs. `gnp` 223 obs). On this
+project's case-insensitive development filesystem, `GDP.csv`/`gdp.csv`
+silently collided to one file during the original bundle's own
+creation — before any TSAnalytics code was written — losing `GDP`'s
+real data (only `gdp` survived) and `gnp`'s real data (only `GNP`
+survived). Confirmed by direct inspection, then fixed by installing the
+real `astsa` package (R, freshly confirmed reachable and installable —
+same recurring "assumed unreachable, actually isn't" pattern as
+several earlier stages) and regenerating both lost objects with
+collision-safe filenames; verified no *other* name among the 83
+collides the same way (checked systematically, not just for this pair).
+
+**Genuine data heterogeneity handled honestly, not glossed over**:
+several bundled datasets' `time`/`index` columns are a plain sequential
+position, not calendar time at all (a seismic trace's sample index
+starting at `1,2,3,...`; a nucleotide sequence position) — converting
+those to a fabricated calendar `Date` would have been actively
+misleading. `DatasetInfo.span` is `Union{Nothing,Tuple{Date,Date}}`
+(a deliberate divergence from `SeasonalAdjustment.jl`'s own plain
+`Tuple{Date,Date}`) and `frequency` is `0` for exactly these cases,
+rather than a guessed value — matching the same "record the gap, don't
+invent" standard already applied to `units` (honestly `"unknown
+(...)"` for all 90 entries, since the source packages' own `man/*.Rd`
+files weren't individually read this session).
+
+**Per the user's own explicit follow-up instruction, folder
+reorganization done as part of the same task**: `data/` now holds only
+this export-eligible catalogue (`data/astsa/`, `data/tsibbledata/`,
+`data/inventory.tsv`, `data/DATASETS.md`); the pre-existing internal
+validation-fixture series (`nile.csv`, `airpassengers.csv`, etc. —
+genuinely different in kind, "not part of the modeling API" per their
+own existing docstring comment) moved to a new `test_data/` directory.
+`src/datasets.jl`'s `TSAnalytics.NILE`-style path constants were
+updated to point there; no test files needed to change, since they only
+ever referenced those constants symbolically, never a hardcoded path.
+`DelimitedFiles`/`Dates` promoted from test-only to real `[deps]`
+(both Julia stdlibs — a lightweight, safe promotion, same precedent as
+`Random`'s own earlier promotion for GARCH's multi-start feature).
+
+| Depends on | Reference |
+|---|---|
+| 1.1 only | `SeasonalAdjustment.jl`'s own real `src/datasets.jl` (Julia, API shape verified directly) · `astsa`/`tsibbledata` (R, real companion packages, both GPL-3) |
+
+---
+
 ## Documentation restructuring (cross-cutting, not a numbered stage)
 
 **Skeleton ✅ built** (`handoff/docs-restructure-skeleton-handoff.md`) —

@@ -77,8 +77,13 @@ roadmap, dependency graph, and what's built vs. planned.
   Tolerance-based (`atol`/`rtol`), not exact equality — different
   implementations converge to slightly different numbers even when both
   are correct.
-- `data/` holds bundled benchmark series (Nile, AirPassengers, sunspots,
-  etc. — see `data/README.md`) for exactly this purpose.
+- `test_data/` holds internal benchmark/validation-fixture series (Nile,
+  AirPassengers, sunspots, etc., accessed via `TSAnalytics.NILE`-style
+  path constants in `src/datasets.jl` — see `test_data/README.md`) for
+  exactly this purpose. `data/` is a separate, user-facing catalogue of
+  90 real textbook datasets (`dataset("jj")`, `datasets()`, ... — see
+  `src/dataset_catalogue.jl` and `data/DATASETS.md`) — don't conflate
+  the two: `test_data/` is internal-only fixtures, `data/` is public API.
 - Check `handoff/` for a doc matching the stage you're working on before
   implementing from scratch — many stages already have verified reference
   signatures and hand-checked expected test values written up there.
