@@ -93,7 +93,7 @@ Full detail on all of these lives in the repository README.
 - Read [Installation](getting-started/01-installation.md), then
   [Your First Model](getting-started/02-first-model.md).
 - New to time series analysis? Start with
-  [Why Model Time Series At All?](introduction/01-why-model-time-series.md)
+  [Why Model a Time Series?](introduction/01-why-model-a-time-series.md)
   -- the Introduction is written to be readable without Julia in front
   of you.
 - Coming from R or Python? The Manual's
@@ -121,11 +121,11 @@ documentation? Please open an issue at
   regression, forecasting and accuracy, plotting, and coming from
   R/Python) -- come back to whichever page matches the task in front of
   you.
-- **[Introduction to Time Series Analysis](introduction/01-why-model-time-series.md)**
-  is a conceptual, textbook-style treatment -- twenty chapters plus a
-  diagnostic checklist and a further-reading appendix, readable without
-  a Julia session open, for understanding *why* a method works, not
-  just how to call it.
+- **[Introduction to Time Series Analysis](introduction/01-why-model-a-time-series.md)**
+  is a conceptual, textbook-style treatment -- 41 chapters across nine
+  parts, plus a diagnostic checklist and a further-reading appendix,
+  readable without a Julia session open, for understanding *why* a
+  method works, not just how to call it.
 - **[API Reference](api/primitives.md)** is the complete function-level
   documentation, split by topic (primitives, diagnostics, decomposition,
   ARMA models, GARCH, state space, ARIMAX, forecasting, plotting) rather
@@ -146,7 +146,7 @@ Work leaning on a specific method should also cite its primary source
 directly -- Hamilton (1994) for ARMA/state-space theory, Durbin &
 Koopman (2012) for the Kalman filter and diffuse initialization, Tsay
 (2010) for the GARCH family. The
-[Further Reading](introduction/B-further-reading.md) appendix carries
+[Further Reading](introduction/C-further-reading.md) appendix carries
 the complete list.
 
 The repository is to move to the [xKDR](https://xkdr.org) organisation

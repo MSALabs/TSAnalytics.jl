@@ -1,3 +1,3 @@
-# State Space and the Kalman Filter
+# Multiple Seasonality
 
 *This chapter is planned but not yet written.*

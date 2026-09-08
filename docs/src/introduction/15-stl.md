@@ -1,3 +1,3 @@
-# STL and Robust Decomposition
+# STL
 
 *This chapter is planned but not yet written.*

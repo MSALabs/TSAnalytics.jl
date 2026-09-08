@@ -2,7 +2,7 @@
 
 A few design notes worth knowing before you dig further into the
 [Manual](../manual/01-primitives.md) or the conceptual
-[Introduction to Time Series Analysis](../introduction/01-why-model-time-series.md):
+[Introduction to Time Series Analysis](../introduction/01-why-model-a-time-series.md):
 
 - **No container lock-in.** See [`tsvalues`](@ref) — every function in
   this package accepts a `Vector`, `TSFrame`, `TimeArray`, or

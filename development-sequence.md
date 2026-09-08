@@ -468,7 +468,8 @@ exponential smoothing) — placed in `manual/04-fitting-arma-models.md`'s
 matching `api/arma-models.md` file as the closest thematic fit; revisit
 if a dedicated exponential-smoothing chapter is ever added.
 
-**Content — 33 stub pages waiting**, tracked here so the next
+**Content — Getting Started/Manual stub pages still waiting** (unaffected
+by the Introduction restructure below), tracked here so the next
 content-writing handoff has a complete checklist rather than needing to
 rediscover what's missing (do these one page, or one small group, at a
 time — not all at once, matching this project's own "one task" discipline):
@@ -479,13 +480,52 @@ time — not all at once, matching this project's own "one task" discipline):
   `05-automatic-order-selection.md`, `06-garch-and-volatility.md`,
   `07-state-space-and-kalman.md`, `08-arimax-and-regression.md`,
   `09-forecasting-and-accuracy.md`, `11-coming-from-r-python.md`
-- Introduction (21): `01-why-model-time-series.md` through
-  `20-forecasting.md`, plus `A-checklist.md`. **Chapters 10/11
-  (residual/structure testing) should reflect the *complete* current
-  diagnostic suite when written** — including the response-surface
-  p-values, KPSS `:auto`, ARCH-LM, and DK heteroskedasticity items that
-  landed after the original 6-book comparison, not just the original
-  seven diagnostics — per the skeleton handoff's own explicit note.
+- Introduction: see the restructure note directly below — the old
+  21-file checklist here is superseded by the new 41-chapter/3-appendix
+  one. **The eventual diagnostics chapters should reflect the
+  *complete* current diagnostic suite when written** — including the
+  response-surface p-values, KPSS `:auto`, ARCH-LM, and DK
+  heteroskedasticity items that landed after the original 6-book
+  comparison — per the skeleton handoff's own explicit note; this
+  still applies under the new numbering (Part II, chapters 08–12).
+
+**Introduction restructured, 41 chapters + 3 appendices, content still
+all stubs** (`handoff/introduction-restructure-handoff.md`) — the
+20-chapter skeleton above was itself only ever a placeholder shape; this
+supersedes it. Verified directly before starting: all 20 old chapters
+were genuinely 3-line stubs except `B-further-reading.md` (39 real
+lines, `git mv`'d to `C-further-reading.md` rather than
+deleted+recreated, content preserved exactly). **One real discrepancy
+found and flagged to the user rather than silently worked around**: the
+handoff cites `book-table-of-contents.md` as the source for the new
+structure, but that file does not exist anywhere in the repository —
+the user was asked how to proceed and chose to treat the handoff's own
+section 3 (already fully spelled out, 41 chapters/9 parts) as the
+source of truth directly. The user was also asked to confirm the
+handoff's "Option A" framing (the Introduction *is* the ~300-page book,
+one source serving both a free online edition and a paid print one,
+fpp3's own model) before restructuring, since rejecting it would have
+changed the chapter list substantially — confirmed.
+
+New shape: Part I–IX (`01-why-model-a-time-series.md` through
+`41-the-frontier.md`) plus `A-checklist.md`/`B-verification.md`/
+`C-further-reading.md`. Two files carried over unchanged
+(`07-transformations.md`, `10-testing-the-residuals.md`); everything
+else is a fresh 3-line stub at its new number. `docs/src/assets/custom.css`
+added and registered in `make.jl` (previously `assets=String[]`) for
+three new admonition categories — `disagreement`/`india`/`julia` — with
+`B-verification.md` carrying one verified worked example of each (the
+Julia one was caught and corrected during drafting: initial text
+claimed `tsvalues` dispatches per-container-type, which is backwards —
+it's two methods total, and TSFrames/TimeSeries/DataFrames never reach
+it as containers because each library's own accessor already returns a
+plain `Vector` first; the disagreement example was checked directly
+against `src/arima.jl`'s own verified `nobs` docstring rather than
+invented). `make.jl`'s `pages` tree nests all 41 chapters under 9
+collapsible part groups. Stale `introduction/`-path links fixed in
+`index.md` (×3) and `getting-started/05-where-next.md` (×1) — found via
+`grep -rn "introduction/" docs/src`, per the handoff's own verification
+step. No chapter content written — deliberately separate, paced work.
 
 ---
 

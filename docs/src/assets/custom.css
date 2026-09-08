@@ -1,0 +1,62 @@
+/* Three admonition categories used by the "Introduction to Time Series
+ * Analysis" book, in addition to Documenter's own built-in categories
+ * (note/info/tip/warning/danger/compat). Documenter renders
+ * `!!! category "Title"` as `<div class="admonition is-category">`
+ * with an `.admonition-header` and `.admonition-body` inside; an
+ * unrecognized category gets no color unless a stylesheet supplies
+ * one, which is what this file does.
+ *
+ * - is-disagreement: a documented case where two reference
+ *   implementations (R/Python/SAS) disagree.
+ * - is-india: material specific to adjusting Indian series (the
+ *   lunisolar calendar, etc.).
+ * - is-julia: an aside about the Julia implementation itself.
+ *
+ * Colors are deliberately muted -- these appear dozens of times across
+ * the book and must not shout.
+ */
+
+.admonition.is-disagreement {
+    border-color: #ad6800;
+}
+.admonition.is-disagreement > .admonition-header {
+    background-color: #ad6800;
+}
+
+.admonition.is-india {
+    border-color: #2f855a;
+}
+.admonition.is-india > .admonition-header {
+    background-color: #2f855a;
+}
+
+.admonition.is-julia {
+    border-color: #9558b2;
+}
+.admonition.is-julia > .admonition-header {
+    background-color: #9558b2;
+}
+
+/* Dark theme: same hues, slightly desaturated so they don't glare
+ * against the dark background, matching how Documenter's own
+ * built-in categories are muted in dark mode. */
+html.theme--documenter-dark .admonition.is-disagreement {
+    border-color: #c9880f;
+}
+html.theme--documenter-dark .admonition.is-disagreement > .admonition-header {
+    background-color: #8a5300;
+}
+
+html.theme--documenter-dark .admonition.is-india {
+    border-color: #38a169;
+}
+html.theme--documenter-dark .admonition.is-india > .admonition-header {
+    background-color: #276749;
+}
+
+html.theme--documenter-dark .admonition.is-julia {
+    border-color: #b389cc;
+}
+html.theme--documenter-dark .admonition.is-julia > .admonition-header {
+    background-color: #6b3f85;
+}
