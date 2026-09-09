@@ -528,6 +528,54 @@ collapsible part groups. Stale `introduction/`-path links fixed in
 `grep -rn "introduction/" docs/src`, per the handoff's own verification
 step. No chapter content written — deliberately separate, paced work.
 
+**Chapter 15 (STL) written as the reference chapter**
+(`handoff/chapter-writing-guide.md` + `handoff/chapter-15-stl-handoff.md`,
+`docs/src/introduction/15-stl.md`) — the first of the 41 chapters with
+real content, chosen deliberately out of numeric order per the writing
+guide (start with the chapter that has the clearest question, the most
+interesting method, and the strongest `disagreement` box available,
+*then* write chapter 1 once the voice is settled). **A major claim
+re-verified from scratch, not transcribed, given the stakes**: the
+handoff's own headline finding — that R's and Python's STL disagree by
+0.02–0.13 near outliers even with every shared parameter matched, and
+that this is *not* the median-bug story repeatedly (and wrongly) cited
+in earlier sessions — was independently reproduced this session on a
+freshly-generated draw of the handoff's own synthetic series (R
+4.6.0 `stats::stl()`, Python 0.14.1 `statsmodels.tsa.seasonal.STL`),
+matching the handoff's numbers to 4+ significant figures at every
+configuration (defaults, jumps matched, jumps matched + forced
+iterations). `stl_decompose`'s own place in the disagreement — no jump
+parameter at all (matching Python's exact-loess behaviour, agreeing
+with it to ~1e-12), `seasonal_degree` defaulting to `1` (matching
+Python, not R's `0`) — confirmed directly against `src/stl.jl`, not
+assumed from the handoff's description. **A real teaching example found
+independently, better than the handoff's own generic beat-4 sketch**:
+`aus_production`'s `Beer` column has no single dramatic outlier, but a
+genuine, large seasonal-pattern reversal over 54 years (Q4 goes from
+the best quarter in 1956–65, figure ≈ +52, to the worst in 2000–2010,
+figure ≈ -38) — verified directly by splitting the series and comparing
+decade-level `classical_decompose` figures, then confirmed that
+`stl_decompose` with a long `seasonal_window` recovers both decades'
+figures without being told where to split. Used as the chapter's real
+worked example (beats 1–4) instead of a constructed outlier, with the
+handoff's own synthetic outlier series reserved for what it's actually
+suited to: the robustness-weights demonstration and the disagreement
+investigation. **A genuinely surprising, cross-verified finding along
+the way**: on that synthetic series, STL's bisquare robustness weights
+zero out seven points, not just the one constructed outlier — because
+the threshold is six times the *median* absolute residual, which one
+big outlier barely moves, so several ordinary noise draws end up
+excluded too; confirmed to be shared behaviour, not a Julia-specific
+quirk, by reproducing the identical seven zero-weight indices in R on
+the same data. `tsibbledata`'s own quarterly date encoding (days since
+1970-01-01, not a `time`/`date`/`index`-named column) is not
+auto-decoded by `dataset()`'s catalogue — decoded by hand in the
+chapter's own code with a note explaining why, rather than silently
+worked around or left unexplained. No Indian dataset exists in the
+90-dataset catalogue yet (checked systematically, not assumed) — the
+chapter's own `!!! india` box says so honestly rather than inventing
+one, and flags it as separate dataset work.
+
 ---
 
 ## Downstream: SeasonalAdjustment.jl (separate package, starts once Stage 8 is stable)
