@@ -680,6 +680,114 @@ to confirm `Doctest`/`CrossReferences`/`CheckDocument`/`Populate` all
 stay clean across all seven new chapters, with only the same
 pre-existing, unrelated local rendering failure remaining.
 
+**A real CI failure on Part I's own push (`6a3ecda`), diagnosed and
+fixed rather than guessed at (`b653271`)**: Docs CI failed for a
+genuinely new reason — not the known local-only Plots/Qt6/GR blocker,
+since CI runs Ubuntu where GR works, and this was the first time any
+of Part I's ~57 real `@example` chart blocks had executed anywhere
+with Plots actually rendering. Diagnosed by installing Julia 1.12.7
+locally via `juliaup` (matching CI's `version: '1'`; previously only
+1.9.4/1.7.0 were available on this machine) and reproducing the build
+directly rather than working from the GitHub API's log-less failure
+summary. Two real bugs found this way: Chapter 7 called `var(resid)`
+before `using Statistics` was ever imported in that page's `@example`
+context (invisible locally where Plots itself already failed first,
+real everywhere Plots actually works); and `docs/Manifest.toml` was
+pinned to `julia_version = "1.9.4"`, causing real precompilation
+instability under Julia 1.12 (`MbedTLS_jll`/`HTTP` failing to
+precompile). Both fixed; verified end to end locally on Julia 1.12.7
+before pushing — `Doctest` through `RenderDocument`/`HTMLWriter`, all
+59 chart blocks producing real SVG output, zero errors — then
+confirmed green on the actual CI run. **This is the first time any of
+this project's Plots-based documentation was actually rendered and
+confirmed working**, locally or otherwise, rather than only disclosed
+as CI-only-verified; the local Julia 1.12.7 install now makes this
+possible going forward for any future docs work touching `@example`
+chart blocks.
+
+---
+
+**Part II complete — Chapters 8–12 written**
+(`handoff/chapter-8-handoff.md` through `handoff/chapter-12-handoff.md`).
+Autopilot, per the maintainer's standing instruction, after verifying
+all five handoffs' technical claims directly. `GNP23` (cited again in
+chapters 8 and 9) still doesn't exist in the catalogue — same
+non-existent name as Chapter 3's handoff, real series used instead
+(`GNP`, `global_economy`).
+
+**A second and third instance of the same "assumed unverified,
+actually verified" pattern already found with Chapter 7's Guerrero
+box** — both corrected before writing, not after:
+- Chapter 10 frames Durbin-Watson's exact p-value as "R-only,
+  unverified, CRAN unreachable." Checking `src/diagnostics.jl`
+  directly: this package already implements Farebrother's exact
+  algorithm and has it verified against real R `lmtest::dwtest(exact=
+  TRUE)` to 6+ significant figures (`test/verification/durbinwatson/`).
+- Chapter 9 claims this package "returns no p-value for PP's ρ, the
+  same honest-refusal pattern" as KPSS's clipped p-values and
+  Durbin-Watson. Checking `pp_test`'s own docstring: it already
+  computes a real p-value for `:rho` via its own MacKinnon table.
+
+  With Durbin-Watson's p-value also confirmed real, the "three
+  recurring honest refusals" thread both chapters were built to lean
+  on doesn't hold as originally framed — 2 of its 3 examples are
+  wrong. The real, verified pattern is closer to the opposite: this
+  package tends to compute a genuine answer via a real algorithm
+  (MacKinnon response-surface p-values for ADF and PP, Farebrother's
+  exact Durbin-Watson) rather than declining. Both chapters reframed
+  around that, matching the maintainer's own earlier call on the
+  Guerrero box. KPSS remains the one genuine partial case, and even
+  there this package's real behaviour differs from what was
+  described — checking directly, it does not clip to the table edge
+  the way `statsmodels` does (confirmed: `InterpolationWarning`, hard
+  `0.01`/`0.10`); it extrapolates a cruder, genuinely different
+  estimate past the table boundary (confirmed: white noise gives
+  `p≈0.2`, not `0.10`; a strong random walk gives `p≈0.005`, not
+  `0.01`) — described accurately in Chapter 9 rather than assumed to
+  match Python's specific failure mode.
+
+**One example dropped per the handoff's own explicit instruction**:
+Chapter 12's airline split-verdict example needs `SarimaModel`
+residuals, which don't exist as an accessor (confirmed directly,
+matching `diagnostic_plot`'s own already-documented note on the same
+gap). The handoff said verify-or-drop; dropped, using the chapter's
+three other constructed split-verdict cases instead.
+
+**`diagnostic_plot`'s lag-count formula confirmed to match
+`astsa::sarima`'s real source exactly**, line for line
+(`_diagnostic_nlag` in `src/diagnosticplot.jl`) — not assumed from the
+handoff's transcription. Its three call forms and the residual-
+sourcing gap in the model-aware overloads (still requires `resid`
+supplied explicitly, since no model type exposes fitted residuals)
+were both confirmed directly before Chapter 12 relied on either.
+
+**Two more of the same chained-random-state numeric mismatches already
+seen in Part I, caught the same way**: dry-running each chapter's
+actual code, in its own accumulated `@example` context, before
+treating a chapter as finished — not trusting numbers computed in an
+isolated scratch script that didn't replicate the same sequence of
+prior `Random.seed!`/`randn` calls within that page. Caught in
+Chapter 9 (a lag-sensitivity ADF demonstration whose prose initially
+quoted figures from an unrelated exploratory run, direction and all)
+and avoided pre-emptively elsewhere by verifying every chapter's
+numbers from a single continuous script matching each page's real
+block order before writing the surrounding prose, rather than after.
+
+Several charts across these five chapters (the spurious-regression
+rate, the four-quadrant ADF/KPSS table, the QS-catches-what-Ljung-Box-
+misses case, the lag-count verdict flip in Chapter 12) required
+searching across seeds for a draw that cleanly demonstrates the
+intended qualitative pattern, since a single realisation of a Monte
+Carlo experiment does not reliably reproduce a specific illustrative
+outcome — each search and its result documented as it happened, not
+retrofitted.
+
+All five chapters verified end to end on the local Julia 1.12.7 setup
+established while fixing Part I's CI failure: real `Plots` rendering,
+not just non-plotting logic dry-run — `docs/make.jl` completing
+`Doctest` through `RenderDocument`/`HTMLWriter` with zero errors before
+this work was pushed.
+
 ---
 
 ## Downstream: SeasonalAdjustment.jl (separate package, starts once Stage 8 is stable)
