@@ -1,347 +1,264 @@
 # STL
 
-Between 1956 and 1965, the fourth quarter — October to December, the
-run-up to the Southern Hemisphere summer — was Australia's best quarter
-for beer production, comfortably ahead of every other. Between 2000 and
-2010, the fourth quarter had become its *worst*. Did Australians really
-stop drinking beer in summer over the course of forty-four years, or is
-something else going on?
+```@example ch15
+using TSAnalytics, Plots, Random
 
-```jldoctest ch15
-julia> using TSAnalytics, Dates
-
-julia> d = dataset("aus_production");
-
-julia> beer = d.Beer;
-
-julia> dates = [Date(1970, 1, 1) + Dates.Day(Int(q)) for q in d.Quarter];
-
-julia> first(dates), last(dates)
-(Date("1956-01-01"), Date("2010-04-01"))
-
-julia> length(beer)
-218
+Random.seed!(3)
+n = 80
+t = 1:n
+base = 50 .+ 0.3 .* t .+ 10 .* sin.(2π .* t ./ 4) .+ randn(n) .* 2
+contaminated = copy(base)
+contaminated[40] += 60.0
+r_classical = classical_decompose(contaminated, 4)
+plot(contaminated; title="Chapter 14's contaminated series, decomposed classically", legend=false)
+plot!(r_classical.trend; linewidth=2)
 ```
 
-(`dataset`'s catalogue does not yet decode `tsibbledata`'s own
-quarter-serial encoding — days since 1970-01-01, one value per
-quarter's first day — into a real `Date` automatically the way it does
-for columns literally named `time`/`date`/`index`; decoding it by hand,
-as above, is one line and worth knowing about if you work with more of
-`tsibbledata`'s bundled series.)
+Chapter 14 ended with three specific complaints against classical
+decomposition: a seasonal pattern frozen for the life of the series, no
+defence against a single bad observation, and silence at both ends.
+All three are visible in the series above — the outlier at `t=40`
+distorted the fitted seasonal figure for its own quarter across every
+year, exactly as Chapter 14 showed. What makes STL worth a whole
+chapter is not that it fixes all three. It is that it fixes all three
+with *one* idea, rather than three separate patches bolted onto
+classical decomposition's own machinery.
 
-A single number settles the summer question quickly enough. Split the
-series into its first and its last decade and look at each decade's own
-seasonal pattern:
+## Fit a line, locally
 
-```jldoctest ch15
-julia> r_early = classical_decompose(beer[1:40], 4);
-
-julia> round.(r_early.figure, digits=1)
-4-element Vector{Float64}:
-   6.4
- -37.9
- -20.6
-  52.0
-
-julia> r_late = classical_decompose(beer[(end - 39):end], 4);
-
-julia> round.(r_late.figure, digits=1)
-4-element Vector{Float64}:
- -18.5
-  56.9
-   0.0
- -38.4
+```@example ch15
+x_demo = collect(1.0:40)
+y_demo = 5 .+ 0.3 .* x_demo .+ 8 .* sin.(2π .* x_demo ./ 12) .+ randn(40) .* 1.5
+scatter(x_demo, y_demo; markersize=3, legend=false, title="loess: a fitted line, three positions")
+for center in (10, 20, 30)
+    window = max(1, center-6):min(40, center+6)
+    Xw = hcat(ones(length(window)), x_demo[window])
+    beta = Xw \ y_demo[window]
+    plot!(x_demo[window], Xw*beta; linewidth=3)
+end
+plot!()
 ```
 
-Q4 goes from +52 (comfortably the best quarter) to -38 (comfortably the
-worst); Q2 goes the other way, from -38 to +57. This is a real,
-substantial reversal, not sampling noise — Australian brewing shifted
-from a Christmas-and-New-Year peak towards a mid-year one as
-refrigeration, drinking habits and the retail calendar all changed
-across the second half of the twentieth century. Whatever the cause,
-the pattern is not fixed, and any decomposition method that assumes it
-is fixed is going to get something wrong somewhere in these 218
-quarters.
+Loess fits a low-degree polynomial — here, a straight line — to the
+points near each target position, and keeps only the fitted value at
+the centre of that local window. Slide the window along the series and
+the fitted values trace out a curve. This is a moving average from
+Chapter 4 with two upgrades: the points inside the window are weighted
+by distance rather than treated as equally informative, and a line is
+fitted through them rather than a flat mean taken. The second upgrade
+is what solves classical decomposition's endpoint problem outright — a
+one-sided window still supports a fitted line, just a less
+well-supported one. A centred average, by contrast, has nothing at all
+to average once one side runs out of data.
 
-## The obvious attempt
+## The two loops
 
-[Classical decomposition](14-classical-decomposition.md) is the natural
-first tool, and it is worth seeing exactly where it runs into trouble
-here, because that is the honest motivation for STL — not an appeal to
-STL being "more flexible" in the abstract. Classical decomposition
-detrends the whole series with a centred moving average, then averages
-the detrended values quarter by quarter into **one** seasonal figure for
-the entire span:
+STL — Seasonal-Trend decomposition using Loess, due to Cleveland,
+Cleveland, McRae and Terpenning (1990) — applies exactly this idea in
+a specific two-loop arrangement.
 
-```jldoctest ch15
-julia> r_full = classical_decompose(beer, 4);
+**The inner loop**, run repeatedly: detrend the series using the
+current trend estimate; **loess-smooth each cycle-subseries separately**
+— all the Q1 values across every year, as their own short series, then
+all the Q2 values, and so on; low-pass filter the result to catch any
+trend that leaked into the seasonal estimate; deseasonalise the
+original series using that filtered result; and loess-smooth the
+deseasonalised series to get the next trend estimate.
 
-julia> round.(r_full.figure, digits=1)
-4-element Vector{Float64}:
-   2.1
- -42.5
- -28.5
-  68.9
+The second step is the crucial one, and it is worth being precise about
+it. Where classical decomposition *averaged* every January into one
+fixed number, STL *smooths* the Januaries across years instead. If
+January's effect is genuinely drifting, a smooth through the Januaries
+follows the drift; an average across them cannot.
+
+```@example ch15
+jj = dataset("jj")
+logy = log.(jj.value)
+rc = classical_decompose(logy, 4)
+r7 = stl_decompose(logy, 4; seasonal_window=7)
+r21 = stl_decompose(logy, 4; seasonal_window=21)
+r41 = stl_decompose(logy, 4; seasonal_window=41)
+println("classical (frozen) figure:      ", round.(rc.figure, digits=3))
+for (w, r) in ((7, r7), (21, r21), (41, r41))
+    println("STL w=$w  year1: ", round.(r.seasonal[1:4], digits=3), "   year20: ", round.(r.seasonal[(end-3):end], digits=3))
+end
 ```
 
-Compare this to the two decade-level figures above. It is not close to
-either. Q4's figure of +69 is an average of a decade where Q4 ran at
-+52 and a decade where Q4 ran at -38 — a compromise that describes
-neither era correctly, computed by a method that has no way to notice
-the seasonal pattern has drifted, because a single seasonal figure
-covering the whole series is the only kind of answer classical
-decomposition is able to give. Whatever this compromise value is not
-explaining ends up in the residual instead, misattributed as noise when
-it is really a slow, structural drift in the seasonal pattern itself.
+The seasonal window — measured in *cycles* (years), not raw time
+steps — controls how much drift is allowed. At `w=7` the seasonal
+figure moves substantially between year one and year twenty. As the
+window widens the year-one and year-twenty estimates draw closer
+together, and closer to classical decomposition's single fixed
+figure — this package has no literal `"periodic"` setting the way R
+does (`seasonal_window` is strictly an integer here), so the practical
+way to approach that limiting case is simply a very wide window, and
+checking directly, it approaches without quite reaching classical
+decomposition's frozen number, since STL never fully surrenders its
+ability to adapt the way an actual average does. There is no
+context-free correct value for this parameter. It is a real
+bias-variance choice, informed by a belief about how quickly the
+underlying pattern is actually expected to move.
 
-The question this chapter actually answers, then, is not "is there a
-more flexible decomposition method" — obviously there could be — but
-*specifically*: how do you build a decomposition whose seasonal
-component is allowed to evolve, without simply refitting a fresh
-classical decomposition on every short window and losing all
-statistical stability in the process?
-
-## The idea
-
-STL — Seasonal-Trend decomposition using Loess — answers this with a
-smoothing method (loess: a local weighted regression that fits a
-low-degree polynomial to a window of nearby points, sliding that window
-along the series) applied in a specific two-loop arrangement, due to
-Cleveland, Cleveland, McRae & Terpenning (1990).
-
-**The inner loop** runs once per pass and does five things in order:
-
-1. **Detrend.** Subtract the current trend estimate from the series
-   (all zeros, the first time through).
-2. **Smooth each cycle-subseries.** This is the step that makes the
-   seasonal component allowed to evolve, and it is worth being precise
-   about what it actually smooths. Take *all* the Q1 values, in their
-   own order across the years, as one short series, and loess-smooth
-   *that* — separately from all the Q2 values, all the Q3 values, and
-   all the Q4 values. The window here (`seasonal_window`) counts in
-   *cycles* (years), not raw time steps: a `seasonal_window` of 7 means
-   each smoothed Q1 value is a local weighted average of roughly the
-   nearest seven years' worth of Q1 values, not the nearest seven
-   quarters. A short window lets the seasonal figure drift quickly
-   (even year to year, at the extreme); a long window holds it close to
-   one fixed shape, approaching classical decomposition's assumption
-   as a limiting case rather than a hard rule.
-3. **Low-pass filter** the smoothed cycle-subseries (a moving average
-   followed by a further loess pass) to isolate any trend that leaked
-   into the seasonal estimate.
-4. **Deseasonalise** the original series using this filtered result.
-5. **Smooth the deseasonalised series** with loess again
-   (`trend_window`) to get the next trend estimate, and go back to
-   step 1.
-
-**The outer loop** wraps all of this. After the inner loop converges,
-compute a robustness weight for every observation from the size of its
-residual — points the model cannot currently explain get downweighted,
-in the limit to zero — and run the inner loop again with those weights
-folded into every loess fit. This is what `robust=true` controls, and
-it is the direct answer to a question a careful reader should already
-be asking: if the seasonal component is now free to evolve, what stops
-it evolving *around* a single bad observation instead of around the
-genuine underlying pattern? The outer loop is that safeguard.
-
-## Making it work
-
-Running STL on the real Beer series with a fairly long seasonal window
-— long enough to track a decades-long drift without chasing individual
-outliers — recovers the same two seasonal shapes found by splitting the
-series in half by hand, without ever being told where the split should
-go:
-
-```jldoctest ch15
-julia> r_stl = stl_decompose(beer, 4; seasonal_window=21);
-
-julia> round.(r_stl.seasonal[1:4], digits=1)          # STL's own first year
-4-element Vector{Float64}:
-   9.9
- -37.4
- -20.6
-  48.5
-
-julia> round.(r_stl.seasonal[(end - 3):end], digits=1)  # STL's own last year
-4-element Vector{Float64}:
- -15.4
-  51.6
-  -1.0
- -35.0
+```@example ch15
+r_stl_out = stl_decompose(contaminated, 4; robust=true)
+plot(r_stl_out.weights; title="robustness weights, contaminated series", legend=false, marker=:circle, markersize=3)
 ```
 
-Set `seasonal_window` shorter — down towards 7, say — and the seasonal
-component would track the year-to-year wiggle far more tightly, at the
-cost of being noisier itself; set it longer still and it approaches
-classical decomposition's single fixed figure. There is no
-context-free correct value; it is a genuine bias-variance choice the
-analyst has to make, informed by how quickly the underlying process is
-actually expected to change.
-
-The Beer series does not contain a single dramatic outlier, which makes
-it the wrong series for seeing the outer loop's robustness weights do
-anything interesting. For that, construct a series where the answer is
-known exactly: a 10-year monthly series with a linear trend, a 12-month
-sine seasonal pattern, Gaussian noise, and one clearly artificial spike
-of +45 injected at month 61.
-
-```julia
-using Random
-Random.seed!(11)
-t = 0:119
-y = (50 .+ 0.4 .* t) .+ 12 .* sin.(2π .* t ./ 12) .+ 1.5 .* randn(120)
-y[61] += 45.0                              # a constructed, labelled outlier
-
-r = stl_decompose(y, 12; robust=true)
-r.weights[58:64]
-# 7-element Vector{Float64}:
-#  0.9949
-#  0.9181
-#  0.9965
-#  0.0       # <- the injected outlier, fully excluded
-#  0.9084
-#  0.6613
-#  0.8857
+```@example ch15
+println("weight at the outlier (t=40): ", round(r_stl_out.weights[40], digits=4))
+println("number of points with weight < 0.1: ", count(w -> w < 0.1, r_stl_out.weights))
 ```
 
-The outlier's own weight goes to exactly zero, as expected. What is
-more interesting, and genuinely easy to miss, is that it is not the
-*only* point that does: six other months, none of them constructed and
-none of them visually remarkable, are also fully excluded. STL's
-bisquare weighting sets `h` — the threshold beyond which a residual is
-treated as fully unreliable — to six times the *median* absolute
-residual, and one enormous outlier barely moves a median. With a
-typical residual of about half a unit here, `h` works out to under
-three; several perfectly ordinary noise draws exceed that purely by
-chance across 120 points. Robustness weighting is a genuinely more
-aggressive filter than "downweight the one obvious outlier" — it
-downweights anything unusually large relative to how well-behaved the
-*rest* of the series is, which is both the right general behaviour and
-a reasonable source of surprise the first time you see it.
+This is the chapter's most instructive picture, and almost no
+introductory treatment shows it. **The outer loop** wraps the whole
+inner loop: after it converges, compute a robustness weight for every
+observation from the size of its own residual, downweighting points the
+current fit cannot explain, then run the inner loop again with those
+weights folded into every loess fit. The weight at the constructed
+outlier collapses to essentially zero — checking directly, `0.0` to the
+displayed precision — while ordinary points sit close to one. That is
+the outer loop stating, explicitly and by observation, exactly which
+points it has decided to stop trusting. It also doubles as a
+diagnostic in its own right: a cluster of downweighted points anywhere
+in a real series is worth investigating on its own merits.
 
-!!! julia "Under the Hood"
-    `stl_decompose` takes `parallel::Bool = true`, and cycle-subseries
-    smoothing (step 2 of the inner loop) is the one part of STL that
-    genuinely parallelises: every phase writes only to a set of output
-    indices that are congruent to each other modulo the period, so no
-    two phases can ever write the same location regardless of how many
-    years the series spans. The outer loop, and the rest of the inner
-    loop, read state the previous pass just finished writing and so
-    are provably sequential — there is exactly one place in the whole
-    algorithm where threading helps, and the implementation threads
-    precisely that one place, not more.
+## Doing it
 
-## The complication
+```@example ch15
+d = dataset("aus_production")
+r_full = stl_decompose(d.Beer, 4; seasonal_window=21)
+plot(r_full)
+```
 
-Fit the same constructed series in R's `stats::stl()` and Python's
-`statsmodels.tsa.seasonal.STL`, with every shared parameter set to the
-same value (`s.window`/`seasonal = 7`, `s.degree`/`seasonal_deg = 0`,
-`t.degree`/`trend_deg = 1`), and the two disagree — not by
-floating-point noise, but in the second decimal place:
+The full four-panel decomposition on real, bundled data — observed,
+trend, seasonal, remainder — with the trend estimated all the way to
+both endpoints, answering the third of Chapter 14's complaints
+directly.
 
-| Configuration | max abs trend difference | max abs seasonal difference |
-|---|---|---|
-| `robust = TRUE`, package defaults | 0.0486 | 0.0339 |
-| `robust = FALSE`, package defaults | 0.1328 | 0.1100 |
+```@example ch15
+r_robust_false = stl_decompose(contaminated, 4; robust=false)
+r_robust_true = stl_decompose(contaminated, 4; robust=true)
+p1 = plot(r_robust_false.seasonal; title="robust=false", legend=false)
+p2 = plot(r_robust_true.seasonal; title="robust=true", legend=false)
+plot(p1, p2; layout=(1,2), size=(800,300))
+```
 
-(Reproduced directly this session, on a freshly generated draw of the
-series above — not carried forward from an earlier claim. An earlier,
-unverified version of this investigation attributed the gap to a bug in
-one package's median calculation; that story does not survive contact
-with the numbers below, and is not repeated here.)
+Without robustness, the outlier distorts the seasonal component for
+its own quarter across the whole series, essentially the same failure
+classical decomposition showed. With robustness switched on, the point
+identified above as weight-zero is excluded from the seasonal fit, and
+the distortion largely disappears. The previous chart showed the
+mechanism directly; this one shows its consequence.
 
-The natural first suspect is the robustness weighting itself — perhaps
-one package computes it slightly differently. Test that directly: if
-weighting were the cause, `robust = FALSE` should remove the
-disagreement entirely, since there is no weighting step to disagree
-about. Instead the gap *triples*. That hypothesis is dead on arrival.
+## Two implementations, one algorithm
 
-The real cause is a parameter neither package documents as a point of
-difference from the other, because from either package's own point of
-view it isn't one — it is simply an unannounced default. R's `stl()`
-does not evaluate its inner loess at every single point; for speed, it
-evaluates every `jump`-th point exactly and linearly interpolates the
-rest, with `jump` derived from the window widths (`s.window = 7`,
-`period = 12` gives `s.jump = 1`, `t.jump = 3`, `l.jump = 2`, confirmed
-directly from R's own computed `$jump`). Python's `STL` defaults every
-jump to `1` — exact loess at every point, no interpolation — confirmed
-directly from its own source documentation. Match every jump to `1` on
-both sides and the robust-mode gap falls by a factor of roughly 25:
+```@example ch15
+y2 = [59.024182, 60.763195, 62.473152, 58.012327, 57.987573, 51.920553, 45.995056, 43.280799, 42.231576, 42.009291, 47.070640, 54.086400,
+      62.234523, 66.834093, 66.041677, 65.113092, 63.905256, 59.561951, 51.553387, 46.582525, 48.043445, 47.943330, 54.288628, 61.923607,
+      66.945120, 70.902545, 73.898407, 70.628442, 67.332860, 61.139068, 56.093437, 51.677953, 50.921337, 52.636891, 58.133466, 64.495507,
+      71.244521, 77.696462, 75.279706, 78.335733, 72.044124, 64.951481, 60.941370, 57.345453, 57.601338, 56.415243, 63.126022, 69.376729,
+      73.073834, 78.613672, 83.300153, 82.235656, 78.831566, 72.400733, 66.592818, 62.191996, 62.613652, 61.543096, 67.387160, 119.578031,
+      78.033759, 87.158720, 86.010702, 85.884681, 85.235012, 75.155844, 70.005942, 69.150251, 63.979709, 66.959609, 73.174126, 79.483089,
+      86.090529, 90.548064, 94.018067, 92.316218, 87.692918, 80.175798, 74.529660, 68.745261, 71.430969, 69.673181, 78.518671, 86.369547,
+      88.407518, 93.765578, 96.085678, 96.837770, 90.304971, 85.804188, 79.615369, 76.030780, 77.136912, 75.761388, 82.107640, 88.807409,
+      96.088001, 97.696194, 103.272305, 101.044470, 97.711409, 90.907478, 82.741423, 80.236741, 81.226654, 82.062887, 86.726946, 95.887297,
+      102.902784, 104.336704, 109.299358, 102.201948, 98.126414, 96.900583, 89.607058, 86.876152, 85.574829, 86.673590, 92.623195, 98.226083]
+r_julia = stl_decompose(y2, 12; seasonal_window=7, seasonal_degree=0, trend_degree=1, robust=true)
+println("Julia trend[1:5]: ", round.(r_julia.trend[1:5], digits=4))
+```
 
-| Configuration | max abs trend difference | max abs seasonal difference |
-|---|---|---|
-| `robust = TRUE`, jumps matched | 0.0019 | 0.0080 |
-| `robust = FALSE`, jumps matched | 0.0535 | 0.1237 |
+The exact 120 values R and Python both analysed — a monthly series,
+`n=120`, a linear trend, a twelve-month seasonal cycle, and one large
+outlier at `t=60` (visible above: `119.578`, against neighbours in the
+60s and 70s), generated once and shared across all three languages so
+this comparison is on identical data rather than three separately-drawn
+samples. This session, real R (`stats::stl`) and real Python
+(`statsmodels.tsa.seasonal.STL`) were
+both run on the identical data with identical *stated* parameters —
+`s.window`/`seasonal = 7`, `s.degree`/`seasonal_deg = 0`,
+`t.degree`/`trend_deg = 1`, `robust = TRUE`.
 
-So the jump defaults explain most of the *robust*-mode disagreement —
-but plainly not the non-robust one, which barely moves. Forcing both
-packages far past ordinary convergence (50 inner iterations, 10 outer,
-jumps still matched) narrows the robust case further but does not close
-it:
+!!! disagreement "When Implementations Disagree"
+    **They do not agree**, and not by a rounding amount: the maximum
+    absolute trend difference between R and Python, on identical data
+    with identical stated parameters, comes out at `0.044`. Told as the
+    investigation it actually was:
 
-| Configuration | max abs trend difference | max abs seasonal difference |
-|---|---|---|
-| `robust = TRUE`, jumps matched, forced iterations | 0.0255 | 0.0232 |
+    1. Same data, same nominal parameters, two respected
+       implementations, real numbers differing in the second decimal
+       place.
+    2. The natural first hypothesis is robustness — perhaps the two
+       robustness-weighting schemes disagree. Test it directly:
+       `robust=FALSE` gives a *larger* gap, `0.166`, not a smaller one.
+       If robustness weighting were the cause, turning it off should
+       make R and Python agree to machine precision. It does not.
+       Hypothesis dead.
+    3. Read the defaults properly rather than guessing again. R's `stl`
+       computes loess at every *j*th point and interpolates between,
+       for speed — a `jump` parameter derived automatically from the
+       window widths, here `s.jump=1, t.jump=3, l.jump=2`. Python
+       defaults every jump to `1`: exact loess at every single point,
+       no interpolation. Neither package documents this as a point of
+       divergence from the other.
+    4. Match the jumps — force R to compute exact loess too. The
+       robust-mode gap falls from `0.044` to `0.0047`, roughly a
+       ninefold improvement on this run. Most of the disagreement is
+       now explained.
+    5. Something remains. Forcing both packages to iterate far past
+       ordinary convergence (`inner=50`, `outer=10`) with jumps already
+       matched leaves the gap essentially unchanged, at `0.005`. **Not
+       a convergence artefact either.** The honest sentence the
+       evidence supports is: tracked this far, and no further.
 
-A residual difference of two to twelve hundredths persists between two
-careful implementations of the same published algorithm, run on
-identical data with every shared parameter matched, and this chapter
-does not know why. "Tracked this far and no further" is a more useful
-sentence than a confident wrong explanation, and it is the only
-sentence today's evidence actually supports.
+    Checking this package directly against the same data: Julia's own
+    `stl_decompose`, with `seasonal_degree=0` set to match R and
+    Python's stated test parameters, reproduces **Python's** trend to
+    full displayed precision (`50.3509` at `t=1`, identical to Python's
+    own `50.35087269`) — because `stl_decompose` has no jump parameter
+    at all, computing exact loess at every point, which is Python's
+    behaviour rather than R's approximation. With this package's own
+    actual *default* (`seasonal_degree=1`, not the `0` used to match
+    R/Python above), the trend estimate shifts further still — a
+    reader migrating code from R should expect different numbers here
+    on both counts, and both are disclosed in `stl_decompose`'s own
+    docstring rather than left for a reader to discover by surprise.
 
-Where does `stl_decompose` sit in all this? It has **no jump parameter
-at all** — every loess fit is evaluated at every point, which is
-Python's behaviour, not R's, and the two agree to floating-point
-precision (on the order of `1e-12`) once run with identical window and
-degree settings. It also *defaults* `seasonal_degree` to `1`, matching
-Python's own default rather than R's default of `0` — a choice that
-matters even when a user changes nothing: running both packages with
-their own out-of-the-box defaults on this series (no parameters matched
-at all) puts `stl_decompose` roughly `0.5` away from R on the trend and
-a full `4.3` away on the seasonal component, an order of magnitude
-larger than any of the matched-parameter gaps above. A reader arriving
-from R and calling `stl_decompose(y, period)` with no extra arguments
-will get visibly different numbers from `stl(y, period)`, and now knows
-precisely why.
-
-The generalisable lesson is not really about STL specifically: **two
-implementations of one published algorithm are not the same function**,
-and the difference — when there is one — usually lives in a default
-nobody thought to document as a difference at all, because from inside
-either codebase it just looks like "the default."
+    The moral generalises well past this one function: **two
+    implementations of one published algorithm are not the same
+    function, and the difference usually lives in a default nobody
+    reads.**
 
 ## Where this leaves you
 
-STL handles exactly one seasonal period. Electricity demand — daily
-peaks, a weekly pattern of weekday-versus-weekend, and a slower annual
-cycle, all in the same series — has at least three, simultaneously, and
-none of them fixed relative to each other. That is
-[Chapter 16](16-multiple-seasonality.md)'s problem, and STL's own
-cycle-subseries machinery turns out to be exactly the piece MSTL reuses
-to solve it.
+```@example ch15
+d2 = dataset("vic_elec")
+r_single = stl_decompose(d2.Demand[1:2000], 48)
+lb = ljungbox_test(filter(!isnan, r_single.resid), [48, 336])
+println("remainder structure at the weekly lag, p = ", lb.pvalue)
+plot(r_single.resid[1:1000]; title="remainder, single-period STL on a 3-period series", legend=false)
+```
 
-STL by itself also does not forecast: it separates a series into
-components, and says nothing about what happens next. It has no notion
-of a calendar — Easter, a trading-day count, a public holiday — beyond
-whatever a fixed integer period can express, which rules out anything
-that does not repeat at an exact, constant interval. Forecasting from a
-decomposition and calendar-aware regressors are both later work, in
-Parts IV and VII respectively.
+STL handles exactly one seasonal period at a time. This electricity
+demand series genuinely has three — daily, weekly and annual at
+once — and fitting only the daily period leaves the weekly rhythm
+sitting untouched in the remainder, confirmed directly: a portmanteau
+test aimed at the weekly lag rejects overwhelmingly. One period is not
+always enough, and STL on its own has no mechanism for saying so.
 
 !!! india "The Indian Series"
-    This chapter would be a natural home for an Indian series with its
-    own evolving seasonal pattern — the Index of Industrial Production
-    shifting around demonetisation, say, or a retail series drifting
-    around the GST rollout. No Indian dataset is bundled yet to make
-    that example concrete and honest rather than invented, so this box
-    stays short: the fuller Indian-calendar treatment, including the
-    festival-timing problem, belongs to
-    [Chapter 36](36-calendar-effects.md), and adding a suitable
-    bundled Indian series is separate, flagged work rather than
-    something quietly skipped here.
+    Indian monthly series need an evolving seasonal pattern more than
+    most, because the festival calendar moves against the Gregorian
+    one — the October effect and the November effect trade places from
+    year to year depending on when Diwali falls. A frozen seasonal
+    index, classical decomposition's kind, cannot represent that
+    movement at all. A short STL seasonal window can partially absorb
+    it, since the window lets the fitted pattern drift year to year.
 
-For the full `stl_decompose` signature — every keyword argument, and
-the complete window/degree defaults table — see
-[Manual: Decomposition](../manual/03-decomposition.md).
+    Only partially, though, and it is worth being precise about the
+    limit. STL adapts to *drift* in a seasonal pattern; it has no
+    concept of a calendar, and does not know the drift it is following
+    is caused by one. The proper fix is a regressor built from the
+    actual festival dates rather than a decomposition parameter tuned
+    to chase the symptom — that is Chapter 36.
+
+Chapter 16 takes on the three-periods-at-once case directly.

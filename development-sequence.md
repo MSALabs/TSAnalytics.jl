@@ -790,6 +790,104 @@ this work was pushed.
 
 ---
 
+**Part III complete — Chapters 13–16 written**
+(`handoff/chapter-13-handoff.md` through `chapter-16-handoff.md`,
+Chapter 15 fully rewritten per `chapter-15-handoff-v2.md`, which
+supersedes the version written alongside Stage 6's own STL work —
+same verified findings, restructured from 6 charts to 10 to match the
+reading-template depth established across Parts I and II). `GNP23`
+(cited yet again) still doesn't exist — sixth occurrence of the same
+non-existent name across this project's handoffs, real series used
+instead each time.
+
+**A fresh, independent re-verification of Chapter 16's central claim,
+not a re-read of the original discovery**: `statsmodels`' `MSTL`
+truthiness bug (`elif self.lmbda:`, `0` falsy in Python, so `lambda=0`
+silently applies no transform) was re-confirmed this session against
+the actual currently-installed `statsmodels` 0.14.1 source — both by
+reading `mstl.py` directly and by running a freshly-constructed series
+through `lambda=0`/`None`/`1e-8` and observing `0`/`None` agree
+exactly while `1e-8` differs, on data this session generated itself
+rather than reused. This package's own `mstl_decompose` was
+independently re-verified on the *same* freshly-generated series to
+apply the log transform correctly at `lambda=0`, matching `1e-8` and
+differing from `nothing` — confirming the docstring's own existing
+"confirmed by execution" claim still holds rather than assuming it
+does because a docstring says so.
+
+**One real correction to the handoff's own claim, found by checking
+before writing rather than transcribing**: Chapter 16's handoff
+describes an ordering effect ("the results are close but not
+identical") for `mstl_decompose(y, [a,b])` vs `[b,a]`. Checking
+`src/mstl.jl` directly: periods are sorted ascending internally before
+fitting, matching both real references, so the two call orders reach
+the fitting loop as the identical sequence — confirmed bit-identical
+output (`max abs diff = 0.0`), not merely close. Chapter 16 rewritten
+around the real finding (order doesn't matter, and why) rather than
+the assumed one.
+
+**`seasonal_window="periodic"` does not exist** — `stl_decompose`
+types the argument strictly as `Integer`, confirmed by triggering the
+real `TypeError` directly rather than assuming R's convenience string
+carried over. Chapter 15 uses a very large window as the practical
+limiting case instead, and states honestly (confirmed by checking,
+not assumed) that it approaches but does not exactly reach classical
+decomposition's frozen figure, since STL never fully surrenders its
+ability to adapt.
+
+**Two more real bugs caught by dry-running each chapter's actual code
+before treating it as finished, the same discipline that has now
+caught something in every one of Parts I through III**:
+- Chapter 14's Q1-value scatter plotted mismatched-length vectors
+  (`x` at full length, `y` filtered through `skipmissing`) — would
+  have thrown a real `DimensionMismatch` on build. Fixed by filtering
+  both vectors together.
+- Chapter 16's before/after MSTL remainder comparison compared
+  single-period STL fitted to *real* `vic_elec` data against MSTL
+  fitted to a *different*, synthetic constructed series — an
+  incoherent apples-to-oranges comparison that would have run without
+  erroring and produced two real, plausible-looking numbers that
+  simply had nothing to do with each other. Fixed by fitting the
+  single-period comparison on the same synthetic series MSTL was
+  actually run on.
+
+**A third instance of the cross-language RNG-seed mismatch already
+caught twice in Part I**, this time in Chapter 15's own disagreement
+box — its central claim (Julia's `stl_decompose` reproduces Python's
+STL trend to full displayed precision on identical data) is exactly
+the kind of claim that cannot survive regenerating "the same" series
+from a Julia `Random.seed!` call, since Julia's RNG stream differs
+from numpy's/R's even at an identical seed value. Fixed the same way
+as before, but more directly this time: rather than searching for a
+Julia seed that reproduces a similar *pattern*, the actual 120-value
+series R and Python both analysed was embedded as a literal array in
+the chapter's own Julia code, so the three-language digit-for-digit
+comparison is against genuinely identical data rather than three
+separately-drawn samples that merely share a seed number.
+
+**Chapter 15's own R-vs-Python STL comparison was regenerated fully
+fresh this session**, not reused from the Stage 6/original chapter-15
+work, per the v2 handoff's own explicit instruction — a new series
+generated to the same specification (`n=120`, linear trend, seasonal
+amplitude 12, one `+45` outlier at `t=60`, seed 11), run through real
+R 4.6.0 `stats::stl` and real Python 0.14.1
+`statsmodels.tsa.seasonal.STL` across all four configurations
+(defaults × `robust`, jumps matched × `robust`), plus a forced-
+convergence check. The qualitative story matches the original
+investigation closely (robustness makes the disagreement worse, not
+better, killing the median-bug hypothesis; matching jumps explains
+most of the gap; something on the order of `0.005` remains
+unexplained even after forcing convergence) — confirming the earlier
+finding was not a one-off artifact of that specific random draw, on
+genuinely fresh data rather than the same numbers re-quoted.
+
+All four chapters verified end to end on the local Julia 1.12.7 setup:
+real `Plots` rendering, `docs/make.jl` completing `Doctest` through
+`RenderDocument`/`HTMLWriter` with zero errors before this work was
+pushed. No `src/` files touched.
+
+---
+
 ## Downstream: SeasonalAdjustment.jl (separate package, starts once Stage 8 is stable)
 
 | # | Functionality | Depends on | Reference |
