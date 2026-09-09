@@ -1,7 +1,7 @@
 # Transformations
 
 ```@example ch7
-using TSAnalytics, Plots
+using TSAnalytics, Plots, Statistics
 
 jj = dataset("jj")
 plot(jj.date, jj.value; title="Johnson & Johnson quarterly earnings", legend=false)
@@ -171,7 +171,6 @@ plot(p1, p2; layout=(1,2), size=(800,300))
 ```
 
 ```@example ch7
-using Statistics
 println("raw variance: ", round(var(varve.value), digits=1))
 println("log variance: ", round(var(log.(varve.value)), digits=3))
 ```
