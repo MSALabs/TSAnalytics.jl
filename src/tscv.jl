@@ -100,16 +100,18 @@ name and role exactly).
 
 Built on [`expanding_window_split`](@ref)/[`sliding_window_split`](@ref)
 internally, so the two never silently disagree about fold boundaries.
-`fit_forecast_fn` must accept `(train_data, hmax)` and return a vector
-of at least `hmax` point forecasts (only indices in `h` are read).
+`fit_forecast_fn` must accept `(train_data, hmax)` and return either a
+plain vector of at least `hmax` point forecasts, or a [`Forecast`](@ref)
+(its `.point` field is read instead) -- so any of [`naive`](@ref),
+[`seasonal_naive`](@ref), [`drift`](@ref), [`mean_forecast`](@ref), or a
+fitted model's own `forecast`, slot in directly (only indices in `h` are
+read either way).
 
 # Examples
 ```jldoctest
 julia> y = collect(1.0:20.0);
 
-julia> naive_forecast(train, h) = fill(train[end], h);
-
-julia> errs = tscv(y, naive_forecast; h=1, initial=10);
+julia> errs = tscv(y, naive; h=1, initial=10);
 
 julia> size(errs)
 (10, 1)
@@ -135,8 +137,9 @@ function tscv(y, fit_forecast_fn; h::Union{Integer,AbstractVector{<:Integer}}=1,
     for (i, (train_idx, test_idx)) in enumerate(folds)
         train_data = yv[train_idx]
         fc = fit_forecast_fn(train_data, max_h)
+        point = fc isa Forecast ? fc.point : fc
         for (j, hh) in enumerate(horizons)
-            errors[i, j] = yv[test_idx[j]] - fc[hh]
+            errors[i, j] = yv[test_idx[j]] - point[hh]
         end
     end
     return errors

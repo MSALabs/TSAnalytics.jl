@@ -7,6 +7,15 @@ forecast
 Forecast
 ```
 
+## Benchmark methods
+
+```@docs
+mean_forecast
+naive
+seasonal_naive
+drift
+```
+
 ## Accuracy metrics
 
 ```@docs

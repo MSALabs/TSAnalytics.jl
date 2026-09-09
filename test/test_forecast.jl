@@ -179,3 +179,106 @@ end
     @test f.horizon == 5
     @test f.model_name == "AR(2)"
 end
+
+@testset "benchmark point forecasts (fpp3 5.2, exact identities)" begin
+    y = [10.0, 12, 14, 16, 18]
+
+    @test naive(y, 3).point == [18.0, 18.0, 18.0]
+    @test mean_forecast(y, 2).point == [14.0, 14.0]
+
+    # drift: slope = (18-10)/4 = 2 per step
+    @test isapprox(drift(y, 3).point, [20.0, 22.0, 24.0]; atol=1e-10)
+
+    ys = [1.0, 2, 3, 4, 5, 6, 7, 8]  # m = 4
+    @test seasonal_naive(ys, 4, 4).point == [5.0, 6.0, 7.0, 8.0]
+    @test seasonal_naive(ys, 6, 4).point == [5.0, 6.0, 7.0, 8.0, 5.0, 6.0]
+
+    @test naive(y, 3).model_name == "Naive"
+    @test mean_forecast(y, 3).model_name == "Mean"
+    @test drift(y, 3).model_name == "Drift"
+    @test seasonal_naive(ys, 3, 4).model_name == "Seasonal naive"
+end
+
+@testset "benchmark interval shapes (fpp3 Table 5.2)" begin
+    # naive: se grows as sqrt(h)
+    f = naive(randn(100), 9)
+    @test isapprox(f.se[4] / f.se[1], 2.0; atol=1e-10)  # sqrt(4)/sqrt(1)
+    @test isapprox(f.se[9] / f.se[1], 3.0; atol=1e-10)  # sqrt(9)/sqrt(1)
+
+    # seasonal naive: se is a step function in h, not smooth
+    fs = seasonal_naive(randn(100), 8, 4)
+    @test fs.se[1] == fs.se[2] == fs.se[3] == fs.se[4]  # k = 0 throughout
+    @test fs.se[5] == fs.se[8]                          # k = 1 throughout
+    @test fs.se[5] > fs.se[4]                           # jumps between blocks
+    @test isapprox(fs.se[5] / fs.se[1], sqrt(2); atol=1e-10)
+
+    # mean: se is constant across the horizon
+    fm = mean_forecast(randn(50), 6)
+    @test all(==(fm.se[1]), fm.se)
+
+    # drift: se grows faster than naive's sqrt(h) (the h/(T-1) term inside)
+    fd = drift(randn(50) .+ (1:50), 6)
+    @test issorted(fd.se)
+end
+
+@testset "residual sd divisors follow fpp3 eq. 5.1 (K, M per method)" begin
+    # naive divides by T-1, drift by T-2 on identical data -- confirm the
+    # two genuinely differ, not just that both run
+    y = cumsum(randn(30)) .+ 50
+    @test naive(y, 1).se[1] != drift(y, 1).se[1]
+end
+
+@testset "MASE of the naive/seasonal-naive forecast is exactly 1 (ties to mase)" begin
+    y = cumsum(randn(60)) .+ 100
+    train, test = y[1:50], y[51:60]
+
+    f = naive(train, 10)
+    @test mase(test, f.point, train; sp=1) != 1.0  # a real forecast, not trivially 1
+
+    # in-sample one-step-ahead naive against the series itself IS the
+    # benchmark mase's own denominator is built from -- must tie exactly
+    onestep = train[1:(end - 1)]
+    @test isapprox(mase(train[2:end], onestep, train; sp=1), 1.0; atol=1e-12)
+
+    m = 4
+    onestep_seasonal = train[1:(end - m)]
+    @test isapprox(mase(train[(m + 1):end], onestep_seasonal, train; sp=m), 1.0; atol=1e-12)
+end
+
+@testset "benchmark methods slot into tscv directly (Forecast-returning callback)" begin
+    y = cumsum(randn(80)) .+ 50
+    for f in (naive, drift, mean_forecast)
+        errs = tscv(y, f; h=1, initial=20)
+        @test length(errs) > 0
+        @test all(isfinite, errs)
+    end
+    errs_seasonal = tscv(y, (train, h) -> seasonal_naive(train, h, 4); h=1, initial=20)
+    @test length(errs_seasonal) > 0
+end
+
+@testset "benchmark methods: error paths and level coverage" begin
+    y = [10.0, 12, 14, 16, 18]
+
+    @test_throws ArgumentError naive(y, 0)
+    @test_throws ArgumentError mean_forecast(y, -1)
+    @test_throws ArgumentError drift(y, 0)
+    @test_throws ArgumentError seasonal_naive(y, 0, 2)
+    @test_throws ArgumentError seasonal_naive(y, 3, 0)
+
+    @test_throws ArgumentError naive([1.0], 3)               # needs >= 2 obs
+    @test_throws ArgumentError drift([1.0, 2.0], 3)           # needs >= 3 obs
+    @test_throws ArgumentError seasonal_naive([1.0, 2.0], 3, 4)  # needs > m obs
+
+    @test_throws ArgumentError naive(y, 3; level=Float64[])
+    @test_throws ArgumentError naive(y, 3; level=[0.0])
+    @test_throws ArgumentError naive(y, 3; level=[100.0])
+
+    for levels in ([50.0], [80.0, 95.0], [10.0, 50.0, 90.0, 99.0])
+        f = naive(y, 5; level=levels)
+        @test size(f.lower, 2) == length(levels)
+        @test f.levels == levels
+        for h in 1:5, j in eachindex(levels)
+            @test f.lower[h, j] <= f.point[h] <= f.upper[h, j]
+        end
+    end
+end
