@@ -153,6 +153,15 @@ beats 1, 5 and 6 has become a taxonomy and should be sent back.
 **Length**: roughly 6–8 pages. A chapter running past ten either
 contains two chapters or has stopped being selective.
 
+**One deliberate exception: Chapter 1.** It carries thirteen worked
+examples, each with a full reading, because it is the gallery chapter —
+the one place a reader meets the whole range of what a time series can
+be, decides whether to trust the author, and is introduced to series
+referenced by name throughout the rest of the book. That runs to
+roughly 14–16 pages. No other chapter gets this licence; if a second
+chapter seems to need it, that is a sign that chapter is trying to do
+too much, not that the exception should widen.
+
 ---
 
 ## 5. What each book is best at

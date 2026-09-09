@@ -576,6 +576,110 @@ worked around or left unexplained. No Indian dataset exists in the
 chapter's own `!!! india` box says so honestly rather than inventing
 one, and flags it as separate dataset work.
 
+**Part I complete — Chapters 1–7 written** (`handoff/chapter-1-handoff-v2.md`
+through `handoff/chapter-7-handoff.md`, plus `handoff/chapter-writing-guide.md`).
+Autopilot, per the maintainer's own explicit instruction mid-review, after
+verifying all seven handoffs' technical claims directly rather than
+transcribing them. **A referenced source document,
+`all-chapters-handoff.md`, does not exist anywhere in the repository**
+(cited by chapters 3/4/5 as the origin of their original per-chapter box
+assignments) — not blocking, since each handoff supplies its own
+corrected, self-contained material, but recorded here rather than
+silently rediscovered later, matching the earlier missing
+`book-table-of-contents.md` pattern from the Introduction restructure.
+
+**Real corrections found before writing, not assumed from the handoffs**:
+- Chapter 3's `GNP23`/`GDP23` do not exist in the catalogue (real names:
+  `GNP`/`gnp`, or `global_economy`).
+- `tsundiff` is a literal alias of `diffinv` (`tsundiff(x;...) =
+  diffinv(x;...)`), not a separate lower-level primitive as
+  Chapter 3's handoff speculated — confirmed from both docstrings
+  directly.
+- `moving_average`'s default `centre=true` already performs the 2×m
+  even-order centring automatically (Chapter 4's own flagged unknown).
+- `tsvalues`'s real missing-data behaviour (Chapter 2's own flagged
+  unknown) is safer than assumed: `missing` throws immediately;
+  `NaN` passes through and is separately rejected by `acf`/similar
+  the moment a real computation is attempted — no silent-drop failure
+  mode exists anywhere in the chain.
+- `periodogram` itself (not only `spectral_density`) already carries
+  real `df`/`bandwidth` fields — Chapter 6's handoff assumed only the
+  smoothed function had them.
+- `pacf`'s `:yw`/`:ywm` split surfaces a *second*, real R-vs-Python
+  disagreement Chapter 5's handoff didn't know about, alongside the
+  Bartlett-band one it did.
+- **The largest correction**: Chapter 7's central "honest verification
+  gap" (Guerrero unverified, CRAN unreachable) is factually wrong —
+  `guerrero_lambda`'s own docstring already documents independent
+  verification against real R `forecast::BoxCox.lambda` to 5
+  significant figures, including a genuine period=1 subseries-splitting
+  bug found and fixed along the way (`test/verification/transforms/`).
+  Same stale "CRAN unreachable" assumption already corrected multiple
+  times elsewhere in this project's history (Stage 5.2/5.3/5.4,
+  Chapter 7's own STL precedent). Confirmed with the maintainer before
+  writing; Chapter 7 rewritten around the real, stronger story instead.
+- Chapter 2's own flagged design decision (convert the `astsa`-derived
+  datasets' decimal-year time to real `Date`s, or document as a wart)
+  turned out to already be resolved: `dataset_catalogue.jl`'s
+  `_decimal_year_to_date` conversion was already converting these
+  correctly since the catalogue was first built — `dataset("jj")`
+  already returns real `Date`s, confirmed directly. What Chapter 2's
+  handoff was describing was the *raw CSV storage format* on disk, not
+  what `dataset()` actually hands back. No code change was needed;
+  Chapter 2 was written around the real, current, correct behaviour.
+
+**The Chapter 1 airline-corruption story was independently re-verified
+by direct byte-level diff, not trusted from the handoff's own telling**:
+`handoff/verification/airline.spc` diffed programmatically against the
+real canonical `test_data/airpassengers.csv` — confirmed precisely: row
+1 (1949) correct, row 2 a fabricated shifted-duplicate of row 1 (not
+real 1950 data), rows 3–12 the real years 1950–1959 each shifted down
+one row, and real 1960 completely absent from the file. Matches the
+handoff's claim exactly; one detail (a file named `Testairline.spc` as
+the specific means of catching it) could not be independently located
+and is not repeated as a specific claim in the chapter.
+
+**`docs/Project.toml` gained four new docs-only dependencies**
+(`DataFrames`, `TSFrames`, `TimeSeries`, `StatsAPI`) to support
+Chapter 2's real four-container comparison chart and Chapter 3's
+three-way `nobs` demonstration — confirmed installable and working
+directly (`TSFrame(df, :Date)`, `TimeArray(dates, values, [:Value])`,
+all four containers giving `acf` results identical to the ninth decimal).
+
+**Two real Julia-vs-Python RNG mismatches caught and fixed before
+shipping**, both the same underlying mistake: quoting specific decimal
+figures from a Python/R-generated verification series in prose, then
+writing a *separate* Julia code block seeded with "the same seed
+number" and assuming it would reproduce the identical data (it does
+not — Julia's RNG stream differs from numpy's/R's even at an identical
+seed value, a recurring gotcha already flagged in this project's own
+memory). Caught in Chapter 3 (the `nobs`/AICc three-way box) and
+Chapter 5 (the ACF band-disagreement box) by dry-running each chapter's
+actual code before treating it as finished, not by inspection alone;
+fixed by separating "verified this session on shared cross-language
+data" (stated as a fact, quoting the real R/Python/Julia numbers from
+that specific run) from "the same mechanism demonstrated live in Julia"
+(a fresh, self-consistent, actually-executed block, searched for a
+seed that reproduces the same qualitative pattern rather than assumed
+to land on it by chance).
+
+**One further bug caught the same way, in Chapter 7**: the
+back-transformation-bias demonstration initially reused the raw-scale
+trend coefficients (fit on `jj.value`) inside a log-scale forecast
+calculation, producing a nonsense back-transformed value in the
+hundred-thousands. Fixed by fitting a separate log-scale regression
+before the bias-correction arithmetic; re-verified to match the
+originally-computed, correct figures (naive `17.755` vs. bias-corrected
+`17.977`, a 1.25% gap).
+
+All seven chapters' non-plotting computational content was dry-run
+directly (Julia, without `Plots` loaded, since the pre-existing local
+Plots/Qt6/GR blocker still applies) before being treated as finished,
+catching all of the above; the full `docs/make.jl` build was then run
+to confirm `Doctest`/`CrossReferences`/`CheckDocument`/`Populate` all
+stay clean across all seven new chapters, with only the same
+pre-existing, unrelated local rendering failure remaining.
+
 ---
 
 ## Downstream: SeasonalAdjustment.jl (separate package, starts once Stage 8 is stable)

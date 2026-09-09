@@ -1,8 +1,16 @@
 [deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+StatsAPI = "82ae8749-77ed-4fe6-ae5f-f523153014b0"
 TSAnalytics = "b1a2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
+TSFrames = "9f90e835-9451-4aaa-bcb1-743a1b8d2f84"
+TimeSeries = "9e3dc215-6440-5c97-bce1-76c03772f85e"
 
 [compat]
+DataFrames = "1"
 Documenter = "1"
 Plots = "1"
+StatsAPI = "1"
+TSFrames = "0.2"
+TimeSeries = "0.25"
