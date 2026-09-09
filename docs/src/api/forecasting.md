@@ -5,6 +5,7 @@
 ```@docs
 forecast
 Forecast
+psi_weights
 ```
 
 ## Benchmark methods

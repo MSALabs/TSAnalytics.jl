@@ -1,4 +1,4 @@
-export forecast, Forecast, mean_forecast, naive, seasonal_naive, drift
+export forecast, Forecast, mean_forecast, naive, seasonal_naive, drift, psi_weights
 
 """
     Forecast
@@ -326,3 +326,289 @@ function drift(y, h::Integer; level::Vector{<:Real}=[80.0, 95.0])
     se = [sigma * sqrt(hh * (1 + hh / (n - 1))) for hh in 1:h]
     return _benchmark_forecast(point, se, level, "Drift")
 end
+
+"""
+    psi_weights(ar, ma, h::Integer) -> Vector{Float64}
+
+MA(∞) representation (Box-Jenkins impulse response) of an ARMA process
+given in *state-space* coefficient convention -- `ar[i]` multiplies
+`y_{t-i}`, `ma[j]` multiplies `e_{t-j}` (the same convention
+`build_statespace`/`combined_ar_ma` use, i.e. what you
+already have for an `ArmaModel`'s `.ar`/`.ma`, or what `combined_ar_ma`
+returns for a seasonal model). Returns `h` weights, `psi[1] == ψ₀ == 1`
+through `psi[h] == ψ_{h-1}`, via the standard recursion
+`ψⱼ = Σᵢ ar[i]·ψⱼ₋ᵢ + (j<=length(ma) ? ma[j] : 0)`.
+
+Verified directly against R's `ARMAtoMA()` on several AR/MA/ARMA cases,
+including a case with a unit root in `ar` (i.e. `ar` including a
+differencing factor, as [`forecast`](@ref)`(::ArimaModel, ...)` builds
+internally) -- unlike a stationary ARMA's weights, these do not decay,
+which is the exact, verified mechanism behind ARIMA's fanning
+prediction intervals (ψⱼ² accumulates without bound as `j` grows).
+
+# Examples
+```jldoctest
+julia> psi_weights([0.5], Float64[], 4)  # AR(1): ψⱼ = 0.5^j
+4-element Vector{Float64}:
+ 1.0
+ 0.5
+ 0.25
+ 0.125
+```
+"""
+function psi_weights(ar::AbstractVector{<:Real}, ma::AbstractVector{<:Real}, h::Integer)
+    h >= 1 || throw(ArgumentError("psi_weights: h must be >= 1"))
+    psi = zeros(Float64, h)
+    psi[1] = 1.0
+    p, q = length(ar), length(ma)
+    for j in 1:(h-1)
+        s = 0.0
+        for i in 1:min(j, p)
+            s += ar[i] * psi[j-i+1]
+        end
+        j <= q && (s += ma[j])
+        psi[j+1] = s
+    end
+    return psi
+end
+
+"_undifferenced_ar(ar, d) -- the state-space AR coefficients of
+`ar` combined with `d` factors of `(1-B)`, in the same state-space
+convention (`ar[i]` multiplies `y_{t-i}`) -- the AR polynomial that
+[`psi_weights`](@ref) needs to see the unit root(s) differencing
+introduces, so that the resulting weights do not decay (see
+`handoff/stage-6-arima-handoff.md` §5, point 4: this is what
+`forecast::Arima` itself uses `Var[ŷ] = σ̂²·Σψⱼ²` on -- the psi-weights
+of the *undifferenced* model, not the stationary one actually fit)."
+function _undifferenced_ar(ar::AbstractVector{<:Real}, d::Integer)
+    ar_natural = vcat([1.0], -collect(Float64, ar))
+    diff_poly = [1.0]
+    for _ in 1:d
+        diff_poly = polymul(diff_poly, [1.0, -1.0])
+    end
+    combined = polymul(ar_natural, diff_poly)
+    return -combined[2:end]
+end
+
+"_forecast_arma_diffed(w, v, ar, ma, mu, horizon) -- forward AR/MA
+recursion on an already-differenced, demeaned series `w` with its own
+fitted innovations `v` (from `kalman_filter`), extending both `horizon`
+steps into the future (future innovations forecast as `0`, their
+expectation) and returning the `horizon` point forecasts *with the mean
+added back*, still on the differenced scale. Shared by the `ArimaModel`
+and `SarimaModel` methods below -- the only difference between the two
+is how `w`/`ar`/`ma` were built (plain vs. `combined_ar_ma`) and how the
+result gets re-integrated afterwards."
+function _forecast_arma_diffed(w::Vector{Float64}, v::Vector{Float64},
+                                ar::AbstractVector{<:Real}, ma::AbstractVector{<:Real},
+                                mu::Real, horizon::Integer)
+    n = length(w)
+    p, q = length(ar), length(ma)
+    wext = vcat(w, zeros(horizon))
+    eext = vcat(v, zeros(horizon))  # future innovations forecast as their expectation, 0
+    for h in 1:horizon
+        t = n + h
+        s = 0.0
+        for i in 1:p
+            s += ar[i] * wext[t-i]
+        end
+        for j in 1:q
+            s += ma[j] * eext[t-j]
+        end
+        wext[t] = s
+    end
+    return wext[(n+1):end] .+ mu
+end
+
+"""
+    StatsAPI.predict(model::ArimaModel, horizon; level=[80.0, 95.0]) -> Forecast
+
+Extends `StatsAPI.predict`; see [`forecast`](@ref) for the full
+documentation.
+"""
+function StatsAPI.predict(model::ArimaModel, horizon::Integer; level::Vector{<:Real}=[80.0, 95.0])
+    horizon >= 1 || throw(ArgumentError("horizon must be >= 1"))
+    isempty(level) && throw(ArgumentError("level must be non-empty"))
+    all(0 .< level .< 100) || throw(ArgumentError("level entries must be in (0, 100)"))
+
+    arma = model.arma
+    d = model.d
+    y = model.original_y
+    ar, ma = arma.ar, arma.ma
+    mu = arma.mean === nothing ? 0.0 : arma.mean
+
+    yd = d > 0 ? diff(y, 1; differences=d) : copy(y)
+    w = yd .- mu
+    ssm = build_statespace(ar, ma)
+    _, sigma2, v, _, converged = kalman_filter(ssm, w)
+    converged || throw(ArgumentError("predict: the fitted model's Kalman filter did not converge on its own data"))
+
+    point_diff = _forecast_arma_diffed(w, v, ar, ma, mu, horizon)
+    point = if d > 0
+        seed = y[(end-d+1):end]
+        tsundiff(point_diff; differences=d, xi=seed)[(d+1):end]
+    else
+        point_diff
+    end
+
+    ar_full = _undifferenced_ar(ar, d)
+    psi = psi_weights(ar_full, ma, horizon)
+    se = [sqrt(sigma2 * sum(abs2, view(psi, 1:h))) for h in 1:horizon]
+
+    z = [_confidence_z(1 - l/100) for l in level]
+    lower = reduce(hcat, [point .- zi .* se for zi in z])
+    upper = reduce(hcat, [point .+ zi .* se for zi in z])
+    p, q = length(ar), length(ma)
+    model_name = "ARIMA($p,$d,$q)"
+    return Forecast(point, se, Float64.(level), lower, upper, horizon, model_name)
+end
+
+"""
+    forecast(model::ArimaModel, horizon; level=[80.0, 95.0]) -> Forecast
+
+Forecast `horizon` steps ahead from a fitted [`ArimaModel`](@ref), with
+prediction intervals at each level in `level` (percentages -- see
+[`forecast`](@ref)`(::ARXModel, ...)` for the convention). Point
+forecasts are exact (Box-Jenkins §5, no approximation): the underlying
+stationary ARMA is forecast forward on the differenced scale, using the
+model's own fitted innovations up to the end of the sample and their
+expectation (`0`) beyond it, then re-integrated back to the original
+scale via [`tsundiff`](@ref), seeded with `model.original_y`'s own last
+`d` values -- exactly reproducing the original series where the two
+overlap (verified: `tsundiff∘diff` round-trips to machine precision).
+
+**Prediction interval variance is the one place this genuinely differs
+from a stationary model's forecast**: computed from the psi-weights of
+the *undifferenced* ARIMA polynomial -- `ar` combined with `d` factors
+of `(1-B)` via [`psi_weights`](@ref) -- not the stationary ARMA that was
+actually fit, matching `forecast::Arima`'s own documented approach
+(`handoff/stage-6-arima-handoff.md` §5). A stationary model's
+psi-weights decay to zero and the forecast variance converges to a
+constant; here they do not decay (the differencing operator contributes
+a literal unit root to the polynomial `psi_weights` sees), so the
+variance grows without bound -- the honest consequence of a unit root
+already met in Chapter 19, not a modelling artefact.
+
+Verified against real R `predict(arima(...))`/`forecast::forecast.Arima`
+and Python `statsmodels`' `get_forecast()` on the same fitted ARIMA(1,1,0)
+and ARIMA(0,1,1) models: point forecasts and prediction-interval widths
+match both references to several significant figures.
+
+# Examples
+```jldoctest
+julia> using TSAnalytics, Random
+
+julia> Random.seed!(1); y = cumsum(randn(100));
+
+julia> m = fit_arima(y, (1, 1, 0));
+
+julia> f = forecast(m, 5);
+
+julia> f.horizon
+5
+
+julia> f.se[5] > f.se[1]  # variance grows with horizon under a unit root
+true
+```
+"""
+forecast(model::ArimaModel, horizon::Integer; level::Vector{<:Real}=[80.0, 95.0]) =
+    StatsAPI.predict(model, horizon; level=level)
+
+"""
+    StatsAPI.predict(model::SarimaModel, y, horizon; level=[80.0, 95.0]) -> Forecast
+
+Extends `StatsAPI.predict`; see [`forecast`](@ref) for the full
+documentation. `y` is required -- unlike [`ArimaModel`](@ref),
+[`SarimaModel`](@ref) does not store the series it was fit on (see its
+own docstring), so it must be supplied again here, exactly as
+[`diagnostic_plot`](@ref)`(resid, ::SarimaModel)` already requires for
+the same reason.
+"""
+function StatsAPI.predict(model::SarimaModel, y, horizon::Integer; level::Vector{<:Real}=[80.0, 95.0])
+    horizon >= 1 || throw(ArgumentError("horizon must be >= 1"))
+    isempty(level) && throw(ArgumentError("level must be non-empty"))
+    all(0 .< level .< 100) || throw(ArgumentError("level entries must be in (0, 100)"))
+
+    p, d, q = model.order
+    P, D, Q, s = model.seasonal_order
+    yv = Float64.(collect(tsvalues(y)))
+    yD = D > 0 ? diff(yv, s; differences=D) : yv
+    yd = d > 0 ? diff(yD, 1; differences=d) : yD
+    mu = model.mean === nothing ? 0.0 : model.mean
+    w = yd .- mu
+
+    ar, ma = combined_ar_ma(; phi=model.phi, theta=model.theta,
+                             seasonal_phi=model.Phi, seasonal_theta=model.Theta, s=s)
+    ssm = build_statespace(ar, ma)
+    _, sigma2, v, _, converged = kalman_filter(ssm, w)
+    converged || throw(ArgumentError("predict: the fitted model's Kalman filter did not converge on its own data"))
+
+    point_diff = _forecast_arma_diffed(w, v, ar, ma, mu, horizon)
+    point_afterD = if d > 0
+        seed = yD[(end-d+1):end]
+        tsundiff(point_diff; differences=d, xi=seed)[(d+1):end]
+    else
+        point_diff
+    end
+    point = if D > 0
+        seed = yv[(end-s*D+1):end]
+        tsundiff(point_afterD; lag=s, differences=D, xi=seed)[(s*D+1):end]
+    else
+        point_afterD
+    end
+
+    ar_reg_natural = vcat([1.0], -model.phi)
+    ar_seas_natural = seasonal_poly(model.Phi, s; sign=-1.0)
+    diff_reg = [1.0]
+    for _ in 1:d
+        diff_reg = polymul(diff_reg, [1.0, -1.0])
+    end
+    diff_seas = [1.0]
+    for _ in 1:D
+        diff_seas = polymul(diff_seas, seasonal_poly([1.0], s; sign=-1.0))
+    end
+    ar_full_natural = polymul(polymul(ar_reg_natural, ar_seas_natural), polymul(diff_reg, diff_seas))
+    ar_full = -ar_full_natural[2:end]
+    psi = psi_weights(ar_full, ma, horizon)
+    se = [sqrt(sigma2 * sum(abs2, view(psi, 1:h))) for h in 1:horizon]
+
+    z = [_confidence_z(1 - l/100) for l in level]
+    lower = reduce(hcat, [point .- zi .* se for zi in z])
+    upper = reduce(hcat, [point .+ zi .* se for zi in z])
+    P_, Q_ = length(model.Phi), length(model.Theta)
+    model_name = "ARIMA($p,$d,$q)($P_,$D,$Q_)[$s]"
+    return Forecast(point, se, Float64.(level), lower, upper, horizon, model_name)
+end
+
+"""
+    forecast(model::SarimaModel, y, horizon; level=[80.0, 95.0]) -> Forecast
+
+Forecast `horizon` steps ahead from a fitted [`SarimaModel`](@ref); see
+[`forecast`](@ref)`(::ArimaModel, ...)` for the underlying method, which
+this generalizes exactly the way `combined_ar_ma` generalizes
+`build_statespace` to the seasonal case -- both differencing
+orders (`d` at lag 1, `D` at lag `model.seasonal_order[4]`) are
+re-integrated, in the reverse of the order [`fit_sarima`](@ref) applied
+them (`D` first, then `d`, when differencing; `d` undone first, then
+`D`, when re-integrating), and the prediction-interval psi-weights see
+the full seasonal-and-differenced AR polynomial
+(`φ(B)Φ(Bˢ)(1-B)^d(1-Bˢ)^D`), not just the stationary part that was fit.
+
+`y` must be supplied -- see `StatsAPI.predict`'s own docstring for why.
+
+# Examples
+```jldoctest
+julia> using TSAnalytics, DelimitedFiles
+
+julia> y = Float64.(readdlm(TSAnalytics.AIR_PASSENGERS, ','; skipstart=1)[:, 2]);
+
+julia> m = fit_sarima(log.(y), (0, 1, 1), (0, 1, 1, 12));
+
+julia> f = forecast(m, log.(y), 12);
+
+julia> f.horizon
+12
+```
+"""
+forecast(model::SarimaModel, y, horizon::Integer; level::Vector{<:Real}=[80.0, 95.0]) =
+    StatsAPI.predict(model, y, horizon; level=level)

@@ -886,6 +886,139 @@ real `Plots` rendering, `docs/make.jl` completing `Doctest` through
 `RenderDocument`/`HTMLWriter` with zero errors before this work was
 pushed. No `src/` files touched.
 
+**Part IV complete — Chapters 17–23 written**
+(`handoff/chapter-17-handoff.md` through `chapter-23-handoff.md`).
+`GNP23` (cited yet again across these handoffs) still doesn't exist —
+used `rec`/`soi`/`global_economy`/`aus_production`/`vic_elec` instead
+throughout, as in every earlier Part.
+
+**A real package gap found and filled before any of Chapters 19, 20 or
+22 could be written honestly**: `forecast()`/`StatsAPI.predict()` did
+not exist at all for `ArimaModel`/`SarimaModel` (only `ARXModel` had
+it, from Stage 5.2). Rather than route around the gap, built it as real
+package functionality:
+- `psi_weights(ar, ma, h)` — Box-Jenkins MA(∞) impulse-response weights,
+  verified to exactly match R's `ARMAtoMA()` on several AR/MA/ARMA
+  cases, including a case with a literal unit root in `ar` (the
+  undifferenced-polynomial case `forecast(::ArimaModel)` needs).
+- `forecast(::ArimaModel, horizon)` — forward AR/MA recursion on the
+  differenced, demeaned series using the model's own fitted innovations,
+  re-integrated via `tsundiff`; prediction-interval variance from
+  `psi_weights` evaluated on the **undifferenced** AR polynomial (`ar`
+  combined with `d` factors of `(1-B)`), matching `forecast::Arima`'s
+  own documented approach. **Verified against real R
+  `predict(arima(...))` and Python `statsmodels.get_forecast()`** on a
+  freshly generated ARIMA(1,1,0) series: point forecasts and interval
+  widths match both references to several significant figures.
+- `forecast(::SarimaModel, y, horizon)` — the same construction
+  generalized through `combined_ar_ma`, both differencing orders
+  re-integrated in the reverse of the order `fit_sarima` applies them
+  (`D` first when differencing, `d` undone first when re-integrating).
+  **Verified against real R and Python on the actual airline model**
+  (`ARIMA(0,1,1)(0,1,1)[12]` on log `AirPassengers`): point forecasts
+  and standard errors match both references to 5–6 significant figures
+  across a 12-step horizon.
+
+**A serious-looking SARIMA discrepancy investigated at length and found
+to be a false alarm, not a bug** — worth recording in detail since it
+consumed real investigation time and the conclusion matters for trusting
+`fit_sarima` going forward. Fitting `ARIMA(0,1,1)(0,1,1)[12]` to log
+`AirPassengers` using data pulled from what turned out to be a stale or
+mistaken source appeared to show Julia's `fit_sarima` reporting
+`loglik=244.70` against R/Python's own claimed `loglik≈223.63` for
+supposedly the same model. Two-way cross-evaluation (Julia's own
+Kalman filter run at R's exact coefficients, and R run at Julia's exact
+coefficients) confirmed the ~21-unit gap was consistent regardless of
+which coefficients were plugged in — ruling out "different local
+optimum" and pointing at a genuine scale/constant discrepancy. Scoped
+by testing simpler sub-cases from `test/verification/sarima/bulk/`
+(`d>0` alone with both MA types: matches; `D>0` alone with regular MA
+and seasonal AR: matches; `d>0` **and** `D>0` together with AR terms
+only, no MA at all: matches) — none reproduced a discrepancy, isolating
+the "bug" to something specific about the exact `(0,1,1)(0,1,1)` MA-only
+structure combined with real `AirPassengers` data specifically. **A
+fresh synthetic `(0,1,1)(0,1,1)₄` series, generated and cross-fit this
+session, matched R and Python to full displayed precision** (`loglik
+≈ -277.01` in all three) — ruling out a general bug in the MA-only
+seasonal structure too. Finally, re-loading `AirPassengers` directly
+from this package's own `test_data/airpassengers.csv` (confirmed
+bit-identical to R's built-in `AirPassengers`, `max abs diff = 0`) and
+re-fitting **all three of R, Python (`statsmodels`, both its `ARIMA`
+and `SARIMAX` classes), and Julia** gave the same answer everywhere:
+`loglik ≈ 244.696`, `ma1 ≈ -0.4018`, `sma1 ≈ -0.5569` — R's own fresh
+`arima()` run on its own built-in series gave `244.6995`, contradicting
+whatever produced the earlier `223.63` figure. The earlier numbers were
+never reproduced from any input this session could identify; the
+package itself is correct, re-confirmed independently across three
+languages on the canonical dataset. `forecast(::SarimaModel, ...)` was
+re-verified against this now-confirmed-correct fit afterward (see
+above) rather than trusted on the strength of the earlier, unresolved
+run.
+
+**The airline-model "split verdict" claim (Chapter 12's own handoff and
+Chapter 20's both flagged it for re-verification) does not reproduce
+either, on the confirmed-correct fit** — re-run directly this session:
+every Ljung-Box p-value from lag 3 through lag 36 stays above `0.42`,
+nowhere close to the claimed lag-3/4 failure. Dropped from Chapter 20
+per its own handoff's explicit "verify or drop" instruction; the clean
+diagnostic panel is reported honestly instead.
+
+**The order-recovery Monte Carlo for Chapter 21 was run fresh this
+session** (50 replications per cell, not the handoff's own recorded
+40, and not reused from any earlier attempt) — true AR(2)
+(`φ₁=0.6, φ₂=-0.3`), search `p,q ∈ {0,1,2,3}`, AIC vs AICc:
+
+```
+n =  100:   AIC  8.0%   AICc 12.0%
+n =  250:   AIC 26.0%   AICc 26.0%
+n = 1000:   AIC 56.0%   AICc 56.0%
+```
+
+Lower across the board than both the handoff's own recorded figures and
+an earlier in-session attempt at the same experiment — consistent with
+the handoff's explicit instruction to report a fresh run's own numbers
+rather than transcribe either. At `n=100` the dominant wrong pick is a
+plain `(0,1)` (over half of all misses), not a close AR neighbor —
+reported as found rather than forced into a "mostly close neighbours"
+narrative the data didn't actually support at that sample size.
+
+**The 4-way ARMA standard-error comparison for Chapter 18 was run
+fresh** on a freshly Julia-generated ARMA(1,1) series (seed fixed and
+reproducible from the chapter's own code): R and this package's
+`se_type=:hessian` agree almost exactly (`SE(ma1)=0.0899` both); Python
+`statsmodels`' own `opg` default and this package's `se_type=:opg`
+agree closely with each other (`≈0.100`); the implied t-statistic for
+the MA coefficient ranges `2.05` to `2.36` depending only on which
+covariance estimator's default happened to be used. The second,
+previously-unverified "transformed-Hessian bug" claim was **not**
+re-asserted — this package's `se_type=:hessian` is confirmed, by
+reading `src/arma.jl` directly, to already compute the Hessian in the
+natural (untransformed) parametrization by design, exactly the
+implementation choice `handoff/stage-6-arima-handoff.md` §4.5
+recommends, stated as a design fact rather than as a caught bug nobody
+could actually reproduce.
+
+**One genuine environment-dependent hazard found and worked around**:
+verifying Julia code by direct execution used the default `julia`
+(1.9.4, this machine's own package environment, `Manifest.toml`), while
+what the CI/`Docs.yml` build actually runs is `docs/Project.toml`'s own
+environment on Julia 1.12.7 (`juliaup`'s `+1.12.7`) — and the two
+environments resolve genuinely different `Optim.jl`/`NLSolversBase`
+versions. On at least one series this produced different `fit_arma`
+convergence behaviour between the two environments for the identical
+input (traced to a seed/ordering mistake in that specific case, not a
+real cross-version numerical difference, but confirmed by direct
+comparison that the two environments *can* diverge). All numeric claims
+in these seven chapters were re-verified in the `docs`/1.12.7
+environment specifically, matching what actually renders, rather than
+trusted from the faster default-environment session used for early
+exploration.
+
+All seven chapters verified end to end on the local Julia 1.12.7 setup:
+real `Plots` rendering, `docs/make.jl` completing `Doctest` through
+`RenderDocument`/`HTMLWriter` before this work was pushed. No other
+`src/` files touched beyond `src/forecast.jl`.
+
 ---
 
 ## Downstream: SeasonalAdjustment.jl (separate package, starts once Stage 8 is stable)
