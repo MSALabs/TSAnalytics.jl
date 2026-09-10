@@ -1019,6 +1019,88 @@ real `Plots` rendering, `docs/make.jl` completing `Doctest` through
 `RenderDocument`/`HTMLWriter` before this work was pushed. No other
 `src/` files touched beyond `src/forecast.jl`.
 
+**Part V complete — Chapters 24–28 written**
+(`handoff/chapter-24-handoff.md` through `chapter-28-handoff.md`). No
+`src/` changes needed this time — `fit_garch`/`GarchModel`,
+`forecast_volatility`/`VolatilityForecast`, and the realized-measures
+functions (`realized_variance`, `bipower_variation`, `jump_test`,
+`realized_semivariance`, `realized_measures`) were all already built
+(Stage 7 / Stage 7's forecast and realized-vol extensions) and matched
+every claim in all five handoffs on direct inspection.
+
+**Both `[U]` claims in Chapter 25's disagreement box confirmed
+directly from source**: `fit_garch(y, p, q)` really is `p` = ARCH
+order, `q` = GARCH order, matching Python `arch`'s own `GARCH(p=,
+o=, q=)` signature and R's `garchOrder = c(p, q)`; `cov_type` really
+does default to `:robust` (Bollerslev–Wooldridge sandwich), not
+`:classic`. Re-verified with fresh numbers rather than the handoff's
+own recorded ones: fitting a fresh simulated GARCH(1,1) series
+(`n = 1500`) gave a `3.9%` difference between the two standard errors
+on `ω` — smaller than the handoff's recorded `~6%`, still a real,
+non-trivial difference, reported as actually found.
+
+**Chapter 26's `ω`-sign claim was re-verified and found to cut the
+other way on real data than on the handoff's own simulated check** —
+worth recording since it changes how the chapter states the point.
+The handoff found EGARCH's fitted `ω` came out *positive* on a fresh
+simulated series and flagged that the recorded claim ("`ω` can be
+negative") needed restating as a structural fact rather than an
+empirical one. Fitting EGARCH(1,1,1) to the real NYSE returns series
+used throughout Part V gives `ω = -0.536` — genuinely negative. Both
+findings are correct simultaneously and the chapter states it that
+way: EGARCH's log-variance parametrisation places no positivity
+constraint on `ω` at all (the structural fact, always true), and
+whether a *given* fit's `ω` comes out positive or negative is a fact
+about that specific data (found both ways this session, on two
+different series).
+
+**The `nyse` dataset (Shumway & Stoffer's canonical returns series,
+`n = 2000`) was used as the primary series across all five chapters**
+for continuity, the same way `aus_production`'s Cement series anchored
+most of Part IV. Confirmed directly: it is already returns, not
+prices (no separate price level is bundled) — the "price" panel in
+Chapter 24 is reconstructed by cumulative product, which recovers the
+exact relative path since a return series determines `price[t] /
+price[t-1]` exactly, just not the absolute starting level. The series
+includes 19 October 1987 ("Black Monday"), an `18`-standard-deviation
+single-day move, confirmed directly by inspecting the sorted return
+vector — responsible for a large share of the series' `63.5` excess
+kurtosis, stated plainly in Chapter 24 rather than left as an
+unexplained large number.
+
+**One honest finding that came out messier than the handoff
+anticipated, reported as found rather than smoothed over (Chapter
+24)**: the handoff expected ARCH-LM to cleanly separate genuine
+volatility clustering from a one-off variance level-shift and from
+variance growing with the series level. Run fresh on real/simulated
+examples of all three, **ARCH-LM rejected decisively on all three
+cases** — a level shift and steady growth both produce
+squared-residual autocorrelation just as real clustering does. What
+actually distinguished the three was the Durbin–Koopman variance-ratio
+test's **F-statistic magnitude**, not its bare significance
+(`1.31` for genuine clustering against `22.7`/`9.2` for the shift and
+the trend) — reported exactly this way rather than forced into the
+handoff's cleaner expected story.
+
+**Chapter 28 has no cross-language reference implementation to verify
+against** (confirmed: Python `arch` 5.1.0 has no `realized` submodule;
+R's `highfrequency` unreachable this session) and states that
+explicitly as a weaker verification standard than the rest of the
+book — correctness instead comes from simulation with known
+properties: a constructed jump day and a rescaled steady day with
+matching realized variance but very different bipower variation, and
+a fresh 1,000-day-per-arm calibration of the Barndorff-Nielsen &
+Shephard jump test (`3.8%` false-positive rate against a nominal `5%`,
+`100%` detection on real injected jumps — close to, not copied from,
+the handoff's own recorded `4.2%`/`100%`). All intraday price paths in
+this chapter are simulated, since no intraday series is bundled, and
+are labelled as such throughout.
+
+All five chapters verified end to end on the local Julia 1.12.7 setup:
+real `Plots` rendering, `docs/make.jl` completing `Doctest` through
+`RenderDocument`/`HTMLWriter` with zero errors before this work was
+pushed. No `src/` files touched.
+
 ---
 
 ## Downstream: SeasonalAdjustment.jl (separate package, starts once Stage 8 is stable)
