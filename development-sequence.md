@@ -1103,6 +1103,134 @@ pushed. No `src/` files touched.
 
 ---
 
+**Part VI complete — Chapters 29–33 written** (`handoff/chapter-29-handoff.md`
+through `chapter-33-handoff.md`), **Part VII complete — Chapters 34–37
+written** (`handoff/chapter-34-handoff.md` through `chapter-37-handoff.md`).
+
+**`src/statespace/` had nothing exported at all before this work** —
+`GaussianSSM`, `build_statespace`, `kalman_filter`, `kalman_smoother`,
+`stationary_cov`, `combined_ar_ma`, `TimeVaryingSSM`, `to_time_varying`,
+`kalman_filter_diffuse` were all implemented but unreachable from
+outside the package. Exported now (user confirmed via `AskUserQuestion`
+before doing so), since Chapters 29–33 need to call them directly.
+
+**A genuinely new capability was built for Chapter 31**: `TimeVaryingSSM`
+had no general smoother at all — only `GaussianSSM`'s own ARMA-specific
+one (`Z = e1`, `H = 0` hardcoded). Built `kalman_smoother(::TimeVaryingSSM,
+y, a0, P0)`, the full Durbin & Koopman fixed-interval smoother plus
+disturbance smoothing (`eta`/`eta_var`/`eps`/`eps_var`), verified to
+machine precision two ways: exact reduction to `GaussianSSM`'s own
+smoother via `to_time_varying`, and direct agreement with real
+`statsmodels` output (six separate arrays, `atol=1e-7`) on a system
+with an interior missing observation. `kalman_filter(::TimeVaryingSSM,
+...)` and `kalman_filter_diffuse` were both missing NaN/missing-
+observation handling entirely (user confirmed via `AskUserQuestion`
+this should be built properly, not stubbed); both now skip missing
+periods correctly (predict-only, no update, `n_obs` tracked separately
+from `n` for the `log(2π)` term, `nobs_diffuse` not incremented on a
+missing step) — matches real `statsmodels`' `np.nansum(res.llf_obs)`
+exactly. `test/test_timevaryingssm.jl` grew five new `@testset` blocks
+(~130 lines); full suite **7277/7277 passing**, zero regressions.
+
+**Chapter 32's own handoff expected an exact likelihood match** under
+its reduction test (`Q_beta → 0` should reproduce the fixed-coefficient
+fit's own likelihood exactly); this is false, and found to be false by
+direct execution rather than assumed correct from the handoff. Point
+estimates agree closely (`beta` diff `0.0007`, `ar` diff `0.0016`) but
+the likelihoods differ by a real, structural `~2.3–2.5` — the diffuse
+state carries a diffuse phase the fixed-parameter model never has, so
+the two likelihoods are computed over subtly different effective
+samples. Chapter 32 reports the finding honestly and forward-references
+Chapter 35, which explains it in full as its own centrepiece
+`disagreement` box: the two fits are different *models*, not two ways
+of computing the same thing, and cannot be compared by AIC/BIC/
+likelihood at all — only out-of-sample.
+
+**Chapter 32's handoff also flagged an "unverified T/R/Q/H individually
+time-varying" gap as still open.** Found, via `test_timevaryingssm.jl`'s
+own existing test names, that this gap had already been closed in
+earlier, unrelated work this session — corrected the chapter to report
+this positively rather than repeat a stale caveat.
+
+**Chapter 34's joint regression-with-ARIMA-errors fit on `cmort`/`tempr`
+produces a sign reversal against OLS** (`beta = +0.2424` against OLS's
+`-0.4866`) — independently triple-verified, Julia/R/Python agreeing
+exactly (`ar1 = 0.8345`, `beta = 0.2424`, `loglik = -1640.98` on all
+three), robust across AR(1)/MA(1)/ARMA(1,1) error specifications.
+Reported as a genuine finding, not smoothed toward the OLS sign.
+`fit_arimax`/`fit_sarimax` default (`model=:mle`) matches R's actual
+`stats::arima` source and Python `SARIMAX`'s actual defaults
+(`mle_regression=True, use_exact_diffuse=False,
+time_varying_regression=False`) rather than the de Jong (1991)
+diffuse-regression citation a reader might expect — both checked
+directly against source, not assumed from documentation.
+
+**Two real capability gaps found and reported plainly rather than
+worked around silently**: neither `fit_arimax`'s own regression-with-
+ARIMA-errors model class (`ArimaxModel`/`SarimaxModel`) nor
+`fit_autoreg_garch`'s combined model has a `forecast`/`predict` method
+— confirmed by direct `MethodError`, not inferred from exports. Chapters
+36 and 37 both needed an out-of-sample forecast and neither had one
+available; both hand-roll a one-step-ahead forecast from the fitted
+parameters directly in the chapter's own code, with the gap named
+explicitly rather than silently patched over. Also confirmed: this
+package has no dedicated distributed-lag regressor utility (Chapter 34)
+and no calendar/holiday-calendar type of its own at all (Chapter 36) —
+the latter means `BusinessDays.jl`'s own hardcoded Saturday–Sunday
+weekend (`isweekend(dt::Dates.Date)`, no calendar argument — confirmed
+directly against that package's real source on GitHub) simply does not
+apply here, since a calendar regressor in this book is built as a plain
+numeric vector from `Dates.jl`, with no calendar-type hierarchy
+underneath it.
+
+**Chapter 36's Diwali material was independently re-verified this
+session rather than transcribed from the handoff.** The handoff's own
+"verified material" (an October seasonal factor moving `0.915164 →
+0.753974`, specific X-13ARIMA-SEATS error messages) comes from the
+external X-13 binary tool, which this package does not wrap and has no
+RegARIMA equivalent for — so those specific numbers were not
+reproduced. Instead built an analogous, honestly-computed demonstration
+from this package's own primitives (`fit_arimax` with a Diwali-month
+indicator regressor, `classical_decompose` for the seasonal factor):
+recovers a `13.25` surge against a true `15.0`, moves the October
+multiplicative factor `1.0018 → 0.9611`, same direction as the
+handoff's own external-tool result. Real Diwali dates (2005–2025) and
+a live cross-source discrepancy check (Guru Nanak Jayanti 2026: sources
+split `5 November` vs `24 November`, a 19-day gap — the handoff's own
+claimed `>2`-week 2026 Diwali discrepancy did not reproduce; current
+sources agree closely on `8 November`) came from a live web search run
+this session, not the handoff's own recorded findings.
+
+**Chapter 37's central 1.038-log-likelihood-unit figure did not
+reproduce on this chapter's own dataset** (`cmort`/`tempr`, chosen to
+keep the reduction test exact against Chapter 34's own verified fit) —
+recomputed independently and found to be `0.2517` on this series, with
+the opposite sign from the handoff's own description (the correct
+treatment scored *higher* than the shortcut here, not lower; a `phi`-
+sweep shows the gap's sign is not fixed in general — it depends on how
+far the series' own first residual lands from zero). **Confirmed
+directly, per the handoff's own instruction**: `fit_autoreg_garch`
+already implements the correct stationary first-observation treatment
+throughout (`_ar_garch_loglik`'s presample block, verified to agree
+with Chapter 34's own fit to `2.3e-13`) — no bug found, the shortcut in
+the chapter is a hand-built hazard for demonstration, not a defect in
+the package. Also found and reported honestly rather than forced to
+match the handoff's "both diagnostics pass" expectation: on the real
+combined AR(1)+GARCH(1,1) fit, ARCH-LM improves by more than an order
+of magnitude (`p = 0.0002 → 0.033`) but Ljung-Box still rejects
+(`p < 0.0001`) — a single AR(1) term is not a complete mean-equation
+specification for this real series, and no GARCH variance equation can
+repair that; reported as a genuine partial result rather than switched
+to a cleaner-looking series.
+
+All nine chapters verified end to end on the local Julia 1.12.7 setup:
+real `Plots` rendering, every `@example`-tagged code block extracted
+and re-run standalone before being considered done. Full `Pkg.test()`
+on the main `Project.toml` environment: **7277/7277 passing**, zero
+regressions from the `src/statespace/` changes.
+
+---
+
 ## Downstream: SeasonalAdjustment.jl (separate package, starts once Stage 8 is stable)
 
 | # | Functionality | Depends on | Reference |

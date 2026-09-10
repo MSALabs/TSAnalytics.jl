@@ -1,3 +1,5 @@
+export kalman_filter_diffuse
+
 # ---------------------------------------------------------------------------
 # kalman_filter_diffuse: exact diffuse initialization (Stage 8.2), layered
 # directly on top of Stage 8.1's TimeVaryingSSM recursion -- Durbin & Koopman
@@ -112,6 +114,13 @@ for this correction's own record).
 
 `converged=false` (`loglik=-Inf`, `v`/`F` empty) on a degenerate `F_t`
 at any step, matching `TimeVaryingSSM`'s own sentinel convention.
+
+**Missing observations** (`y[t] === NaN`) are handled the same way as
+`kalman_filter(::TimeVaryingSSM, ...)`: skipped entirely (predict-only,
+`Pinf`/`P` still propagate through `T_t`/`R_t Q_t R_t'`, `v[t]`/`F[t]`
+are `NaN`), contribute nothing to `loglik`, and do not count toward
+`nobs_diffuse` -- a missing observation carries no information one way
+or the other about whether the diffuse phase has resolved.
 """
 function kalman_filter_diffuse(ssm::TimeVaryingSSM, y::AbstractVector{<:Real};
                                 diffuse_idx::AbstractVector{<:Integer},
@@ -139,6 +148,7 @@ function kalman_filter_diffuse(ssm::TimeVaryingSSM, y::AbstractVector{<:Real};
     F = Vector{VT}(undef, n)
     acc = zero(VT)
     nobs_diffuse = 0
+    n_obs = 0
     Ir = Matrix{VT}(I, r, r)
 
     for t in 1:n
@@ -147,6 +157,16 @@ function kalman_filter_diffuse(ssm::TimeVaryingSSM, y::AbstractVector{<:Real};
         Rt = _tv_at(ssm.R, t)
         Qt = _tv_at(ssm.Q, t)
         Ht = _tv_at(ssm.H, t)[1, 1]
+
+        if isnan(y[t])
+            v[t] = VT(NaN)
+            F[t] = VT(NaN)
+            a = Tt * a
+            P = Tt * P * Tt' + Rt * Qt * Rt'
+            diffuse_active && (Pinf = Tt * Pinf * Tt'; diffuse_active = sum(abs2, Pinf) > _TOLERANCE_DIFFUSE)
+            continue
+        end
+        n_obs += 1
 
         vt = y[t] - dot(z, a)
         v[t] = vt
@@ -195,6 +215,6 @@ function kalman_filter_diffuse(ssm::TimeVaryingSSM, y::AbstractVector{<:Real};
         end
     end
 
-    loglik = -0.5 * (n * log(2π) + acc)
+    loglik = -0.5 * (n_obs * log(2π) + acc)
     return (loglik, v, F, nobs_diffuse, true)
 end

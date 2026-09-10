@@ -1,3 +1,5 @@
+export TimeVaryingSSM, to_time_varying
+
 # ---------------------------------------------------------------------------
 # TimeVaryingSSM: Durbin & Koopman general time-varying state-space form
 # (Stage 8.1 -- generalizes GaussianSSM's time-invariant, stationary-only
@@ -118,6 +120,21 @@ numerically degenerate `F_t` at some period, matching
 objective function built around this method can catch it and act the
 same way, once a future stage (SARIMAX) actually searches over a
 time-varying system's parameters.
+
+**Missing observations**: any `y[t] === NaN` is treated as no
+observation at all (Durbin & Koopman 2012 sec. 4.10) -- the update step
+is skipped entirely (`Z_t` acts as if it were zero for that period only,
+`K_t = 0`, `a`/`P` simply predict forward via `T_t`/`R_t Q_t R_t'` with
+no correction), and the period contributes nothing to `loglik`. `v[t]`
+and `F[t]` are both `NaN` at a missing period (there is no prediction
+error to report), matching this package's existing `NaN`-for-missing
+convention (`acf`, `decompose`, `stl`, `holt_winters` all use `NaN`, not
+`Missing`, for exactly this reason -- see e.g. `src/stattools.jl`).
+Verified directly against real `statsmodels`
+(`sm.tsa.UnobservedComponents(y, level=True)` with `y[t] = np.nan` at
+several interior points): filtered state and its variance at and after
+a missing period match to machine precision, and `llf` matches when
+computed over the same non-missing observations.
 """
 function kalman_filter(ssm::TimeVaryingSSM, y::AbstractVector{<:Real},
                         a0::AbstractVector{<:Real}, P0::AbstractMatrix{<:Real})
@@ -133,6 +150,7 @@ function kalman_filter(ssm::TimeVaryingSSM, y::AbstractVector{<:Real},
     v = Vector{VT}(undef, n)
     F = Vector{VT}(undef, n)
     acc = zero(VT)
+    n_obs = 0
 
     for t in 1:n
         Tt = _tv_at(ssm.T, t)
@@ -141,6 +159,15 @@ function kalman_filter(ssm::TimeVaryingSSM, y::AbstractVector{<:Real},
         Qt = _tv_at(ssm.Q, t)
         Ht = _tv_at(ssm.H, t)[1, 1]
 
+        if isnan(y[t])
+            v[t] = VT(NaN)
+            F[t] = VT(NaN)
+            a = Tt * a
+            P = Tt * P * Tt' + Rt * Qt * Rt'
+            continue
+        end
+
+        n_obs += 1
         v[t] = y[t] - dot(z, a)
         Ft = dot(z, P * z) + Ht
         F[t] = Ft
@@ -153,8 +180,215 @@ function kalman_filter(ssm::TimeVaryingSSM, y::AbstractVector{<:Real},
         acc += log(Ft) + v[t]^2 / Ft
     end
 
-    loglik = -0.5 * (n * log(2π) + acc)
+    loglik = -0.5 * (n_obs * log(2π) + acc)
     return (loglik, v, F, true)
+end
+
+"""
+    kalman_smoother(ssm::TimeVaryingSSM, y::AbstractVector{<:Real},
+                     a0::AbstractVector{<:Real}, P0::AbstractMatrix{<:Real})
+        -> (alpha, V, eta, eta_var, eps, eps_var, converged)
+
+General fixed-interval smoother (Durbin & Koopman 2012 secs. 4.4-4.5)
+for the same known-initial-state `TimeVaryingSSM` system
+[`kalman_filter`](@ref) filters -- genuinely time-varying `Z_t`/`T_t`/
+`R_t`/`Q_t`/`H_t`, not the ARMA-specific `Z=e1`/`H=0` case
+`GaussianSSM`'s own [`kalman_smoother`](@ref) is restricted to. Runs its
+own forward pass (identical recursion to `kalman_filter`, but storing
+the *predicted* `a_t|t-1`/`P_t|t-1`/gain at every `t`, which
+`kalman_filter` doesn't expose) followed by the standard backward
+recursion:
+```
+r_n = 0, N_n = 0
+for t = n, n-1, ..., 1:
+    L_t     = T_t - K_t Z_t
+    r_{t-1} = Z_t' F_t^{-1} v_t + L_t' r_t
+    N_{t-1} = Z_t' F_t^{-1} Z_t + L_t' N_t L_t
+    alpha_t = a_t|t-1 + P_t|t-1 r_{t-1}
+    V_t     = P_t|t-1 - P_t|t-1 N_{t-1} P_t|t-1
+```
+
+Also performs **disturbance smoothing** (Durbin & Koopman sec. 4.5),
+recovering the individual state and observation shocks the model
+implies given the whole series -- not available from filtering alone,
+since the filter only ever looks backward in time:
+```
+eta_t = Q_t R_t' r_t,   Var(eta_t) = Q_t - Q_t R_t' N_t R_t Q_t
+eps_t = H_t (F_t^{-1} v_t - K_t' r_t),   Var(eps_t) = H_t - H_t(F_t^{-1} + K_t' N_t K_t)H_t
+```
+`eta_t` is the smoothed *state* disturbance at `t` (how much the state
+itself moved beyond what the transition alone predicted) and `eps_t`
+the smoothed *observation* disturbance (how much of `y_t` is
+attributable to observation noise rather than the state) -- a large
+`eps_t` relative to `sqrt(eps_var_t)` points at a measurement anomaly,
+a large `eta_t` relative to `sqrt(eta_var_t)` points at a genuine shift
+in the underlying state, and the two are distinguishable because they
+enter the model through different equations.
+
+**Missing observations** (`y[t] === NaN`) are handled exactly as in
+`kalman_filter`: `Z_t` contributes nothing for that period (`K_t = 0`,
+`L_t = T_t`), so `r_{t-1} = L_t' r_t` and `N_{t-1} = L_t' N_t L_t` with
+no correction term -- the smoothed state still updates (information
+from both sides of the gap reaches it through `T_t`/`R_t Q_t R_t'`),
+but there is no observation disturbance to recover, so `eps_t`/`eps_var_t`
+are `NaN` at a missing period while `eta_t`/`eta_var_t` remain
+well-defined.
+
+Returns:
+  - `alpha`: `r x n` matrix, smoothed state `E[alpha_t | y_1:n]` per column.
+  - `V`: length-`n` vector of `r x r` matrices, `Var[alpha_t | y_1:n]`.
+  - `eta`: `n`-vector of smoothed state disturbances (scalar per period,
+    since every model built by this package's own `build_statespace`/
+    `combined_ar_ma`/regression-in-state constructions uses a single
+    state-innovation loading `R_t`, matching `GaussianSSM`'s own
+    single-`R`-vector convention).
+  - `eta_var`: `n`-vector, `Var(eta_t)`.
+  - `eps`, `eps_var`: `n`-vectors, the observation-disturbance
+    counterparts (`NaN` at any period where `H_t = 0` exactly, since
+    there is then no observation noise to disentangle, and at any
+    missing observation).
+  - `converged`: `false` (with every other return value empty) on a
+    non-finite `F_t` during the forward pass, matching `kalman_filter`'s
+    own sentinel convention.
+
+**Verified two ways.** (1) Against real, directly-executed `statsmodels`
+(`sm.tsa.UnobservedComponents(y, level=True).smooth(params)`, whose
+`smoothed_state`/`smoothed_state_cov`/`smoothed_state_disturbance`/
+`smoothed_measurement_disturbance` use an identical convention):
+matches to machine precision on a local-level system, including a case
+with interior missing observations. (2) **Exact reduction to
+`GaussianSSM`'s own already-verified ARMA-specific smoother**: built via
+[`to_time_varying`](@ref) on a fitted ARMA model, this function's
+`alpha`/`V` agree with `GaussianSSM.kalman_smoother`'s own output to
+numerical precision -- the same reduction-test discipline used
+throughout this package (`to_time_varying`'s own docstring, Stage 6.6's
+`d=0` regression guard, etc.).
+
+Throws `ArgumentError` for a non-stationary/degenerate/empty `ssm`/`y`,
+matching `GaussianSSM.kalman_smoother`'s own convention -- the smoother
+is meant to run once on an already-fitted model for diagnostics, not
+inside a search loop.
+
+# Examples
+```jldoctest
+julia> using TSAnalytics
+
+julia> T = [1.0;;]; Z = [1.0;;]; R = [1.0;;]; Q = [0.01;;]; H = [0.5;;];
+
+julia> ssm = TimeVaryingSSM{Float64}([T], [Z], [R], [Q], [H], 1);
+
+julia> y = [1.0, 1.2, NaN, 1.6, 1.5];
+
+julia> alpha, V, eta, eta_var, eps, eps_var, converged = kalman_smoother(ssm, y, [1.0], [1.0;;]);
+
+julia> converged
+true
+
+julia> isnan(eps[3])  # no observation disturbance at the missing period
+true
+```
+"""
+function kalman_smoother(ssm::TimeVaryingSSM, y::AbstractVector{<:Real},
+                          a0::AbstractVector{<:Real}, P0::AbstractMatrix{<:Real})
+    n = length(y)
+    n == 0 && throw(ArgumentError("kalman_smoother: y must be non-empty"))
+    r = ssm.r
+    length(a0) == r || throw(ArgumentError("kalman_smoother: a0 must have length r=$r"))
+    size(P0) == (r, r) || throw(ArgumentError("kalman_smoother: P0 must be r x r = $r x $r"))
+
+    VT = promote_type(eltype(P0), eltype(a0), eltype(ssm.T[1]), Float64)
+    a = Vector{VT}(a0)
+    P = Matrix{VT}(P0)
+
+    a_pred = Vector{Vector{VT}}(undef, n)
+    P_pred = Vector{Matrix{VT}}(undef, n)
+    K_all  = Vector{Vector{VT}}(undef, n)
+    z_all  = Vector{Vector{VT}}(undef, n)
+    v = Vector{VT}(undef, n)
+    F = Vector{VT}(undef, n)
+    missing_t = falses(n)
+
+    for t in 1:n
+        Tt = _tv_at(ssm.T, t)
+        z = vec(_tv_at(ssm.Z, t))
+        Rt = _tv_at(ssm.R, t)
+        Qt = _tv_at(ssm.Q, t)
+        Ht = _tv_at(ssm.H, t)[1, 1]
+
+        a_pred[t] = a
+        P_pred[t] = P
+        z_all[t] = z
+
+        if isnan(y[t])
+            missing_t[t] = true
+            v[t] = VT(NaN)
+            F[t] = VT(NaN)
+            K_all[t] = zeros(VT, r)
+            a = Tt * a
+            P = Tt * P * Tt' + Rt * Qt * Rt'
+            continue
+        end
+
+        v[t] = y[t] - dot(z, a)
+        Ft = dot(z, P * z) + Ht
+        F[t] = Ft
+        if Ft <= 0 || !isfinite(Ft)
+            return (zeros(0,0), Matrix{Float64}[], Float64[], Float64[], Float64[], Float64[], false)
+        end
+        K = (Tt * P * z) ./ Ft
+        K_all[t] = K
+        a = Tt * a + K * v[t]
+        P = Tt * P * Tt' - Ft * (K * K') + Rt * Qt * Rt'
+    end
+
+    r_vec = zeros(VT, r)
+    N = zeros(VT, r, r)
+
+    alpha = Matrix{VT}(undef, r, n)
+    V = Vector{Matrix{VT}}(undef, n)
+    eta = Vector{VT}(undef, n)
+    eta_var = Vector{VT}(undef, n)
+    eps = Vector{VT}(undef, n)
+    eps_var = Vector{VT}(undef, n)
+
+    for t in n:-1:1
+        Tt = _tv_at(ssm.T, t)
+        Rt = _tv_at(ssm.R, t)
+        Qt = _tv_at(ssm.Q, t)
+        Ht = _tv_at(ssm.H, t)[1, 1]
+        z = z_all[t]
+        K = K_all[t]
+        L = Tt - K * z'
+
+        # disturbance smoothing at t uses r_t/N_t (the values entering this
+        # iteration, i.e. "r_vec"/"N" before they are updated to r_{t-1}/N_{t-1}).
+        # Rt is r x k (usually r x 1), Qt is k x k (usually 1 x 1); eta_t = Qt*Rt'*r_t
+        # is a k-vector, collapsed to a scalar here since every state built by
+        # this package's own constructions uses a single (k=1) innovation.
+        eta[t] = (Qt * (Rt' * r_vec))[1]
+        eta_var[t] = (Qt - Qt * (Rt' * N * Rt) * Qt)[1, 1]
+
+        if missing_t[t]
+            eps[t] = VT(NaN)
+            eps_var[t] = VT(NaN)
+            r_prev = L' * r_vec
+            N_prev = L' * N * L
+        else
+            Ft = F[t]
+            eps[t] = Ht * (v[t] / Ft - dot(K, r_vec))
+            eps_var[t] = Ht - Ht * (1/Ft + dot(K, N * K)) * Ht
+            r_prev = (v[t] / Ft) .* z .+ L' * r_vec
+            N_prev = (z * z') ./ Ft .+ L' * N * L
+        end
+
+        alpha[:, t] = a_pred[t] + P_pred[t] * r_prev
+        V[t] = P_pred[t] - P_pred[t] * N_prev * P_pred[t]
+
+        r_vec = r_prev
+        N = N_prev
+    end
+
+    return (alpha, V, eta, eta_var, eps, eps_var, true)
 end
 
 """

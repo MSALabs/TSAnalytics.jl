@@ -1,3 +1,5 @@
+export GaussianSSM, build_statespace, kalman_filter, kalman_smoother, stationary_cov, combined_ar_ma
+
 # ---------------------------------------------------------------------------
 # Polynomial algebra for the multiplicative seasonal model
 # (needed to build the combined AR/MA coefficients SARIMA requires;
