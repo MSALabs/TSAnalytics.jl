@@ -492,7 +492,8 @@ function _fit_arimax_core(y, order::Tuple{Int,Int,Int}, seasonal_order::Tuple{In
                            start_params::Union{Nothing,Vector{Float64}})
     model in (:mle, :tvss) || throw(ArgumentError("model must be :mle or :tvss"))
     method in (:ml, :css_ml) || throw(ArgumentError("method must be :ml or :css_ml"))
-    se_type in (:hessian, :opg) || throw(ArgumentError("se_type must be :hessian or :opg"))
+    se_type in (:hessian, :opg, :robust) ||
+        throw(ArgumentError("se_type must be :hessian, :opg, or :robust"))
     model == :mle && Q_beta !== nothing &&
         throw(ArgumentError("Q_beta is only valid for model=:tvss"))
     n_restarts >= 1 || throw(ArgumentError("n_restarts must be >= 1"))
@@ -584,9 +585,11 @@ function _fit_arimax_core(y, order::Tuple{Int,Int,Int}, seasonal_order::Tuple{In
         loglik, sigma2, = kalman_filter(ssm, resid_hat)
 
         params_hat = vcat(beta_hat, phi_hat, theta_hat, Phi_hat, Theta_hat)
-        se = se_type == :hessian ?
-             _hessian_se(raw -> _arimax_natural_objective(raw, yd, Xd, p, q, P, Q, s, k), params_hat) :
-             _opg_se(raw -> _arimax_loglik_contributions(raw, yd, Xd, p, q, P, Q, s, k), params_hat)
+        natobj = raw -> _arimax_natural_objective(raw, yd, Xd, p, q, P, Q, s, k)
+        llcontrib = raw -> _arimax_loglik_contributions(raw, yd, Xd, p, q, P, Q, s, k)
+        se = se_type == :hessian ? _hessian_se(natobj, params_hat) :
+             se_type == :opg     ? _opg_se(llcontrib, params_hat) :
+                                   _robust_se(natobj, llcontrib, params_hat)
 
         kfull = nparam + 1  # +1 for sigma2
         aic = -2 * loglik + 2 * kfull
@@ -694,11 +697,11 @@ function _fit_arimax_core(y, order::Tuple{Int,Int,Int}, seasonal_order::Tuple{In
 
         natural_hat = vcat(phi_hat, theta_hat, Phi_hat, Theta_hat, sigma2_hat,
                             Q_beta === nothing ? Qbeta_hat : Float64[])
-        se_full = se_type == :hessian ?
-                  _hessian_se(nat -> _arimax_tvss_natural_objective(nat, yd, Xd, p, q, P, Q, s, k, Q_beta),
-                              natural_hat) :
-                  _opg_se(nat -> _arimax_tvss_loglik_contributions(nat, yd, Xd, p, q, P, Q, s, k, Q_beta, nobs_diffuse),
-                          natural_hat)
+        natobj_tv = nat -> _arimax_tvss_natural_objective(nat, yd, Xd, p, q, P, Q, s, k, Q_beta)
+        llcontrib_tv = nat -> _arimax_tvss_loglik_contributions(nat, yd, Xd, p, q, P, Q, s, k, Q_beta, nobs_diffuse)
+        se_full = se_type == :hessian ? _hessian_se(natobj_tv, natural_hat) :
+                  se_type == :opg     ? _opg_se(llcontrib_tv, natural_hat) :
+                                        _robust_se(natobj_tv, llcontrib_tv, natural_hat)
 
         kfull = nparam
         aic = -2 * loglik + 2 * kfull

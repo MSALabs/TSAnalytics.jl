@@ -202,7 +202,8 @@ function fit_sarima(y, order::Tuple{Int,Int,Int}, seasonal_order::Tuple{Int,Int,
                      optimizer_method::Symbol=:lbfgs,
                      start_params::Union{Nothing,Vector{Float64}}=nothing)
     method in (:ml, :css_ml) || throw(ArgumentError("method must be :ml or :css_ml"))
-    se_type in (:hessian, :opg) || throw(ArgumentError("se_type must be :hessian or :opg"))
+    se_type in (:hessian, :opg, :robust) ||
+        throw(ArgumentError("se_type must be :hessian, :opg, or :robust"))
     p, d, q = order
     P, D, Q, s = seasonal_order
     p >= 0 && d >= 0 && q >= 0 || throw(ArgumentError("order must be non-negative: got $order"))
@@ -270,9 +271,11 @@ function fit_sarima(y, order::Tuple{Int,Int,Int}, seasonal_order::Tuple{Int,Int,
 
     params_hat = include_mean_effective ? vcat(phi_hat, theta_hat, Phi_hat, Theta_hat, mu_hat) :
                                             vcat(phi_hat, theta_hat, Phi_hat, Theta_hat)
-    se = se_type == :hessian ?
-         _hessian_se(params -> _sarima_natural_objective(params, yd, p, q, P, Q, s, include_mean_effective), params_hat) :
-         _opg_se(params -> _sarima_loglik_contributions(params, yd, p, q, P, Q, s, include_mean_effective), params_hat)
+    natobj = params -> _sarima_natural_objective(params, yd, p, q, P, Q, s, include_mean_effective)
+    llcontrib = params -> _sarima_loglik_contributions(params, yd, p, q, P, Q, s, include_mean_effective)
+    se = se_type == :hessian ? _hessian_se(natobj, params_hat) :
+         se_type == :opg     ? _opg_se(llcontrib, params_hat) :
+                               _robust_se(natobj, llcontrib, params_hat)
 
     k = nparam + 1  # +1 for sigma2, matching R's actual AIC/BIC exactly (Stage 6.5's finding)
     aic = -2 * loglik + 2 * k

@@ -174,3 +174,58 @@ end
         params -> TSAnalytics._arma_natural_objective(params, y, 1, 1, false), params_hat)
     @test isapprox(m_hess.se, se_direct; atol=1e-10)
 end
+
+@testset "se_type=:robust — QMLE sandwich across the ARMA family" begin
+    y = vec(readdlm(joinpath(@__DIR__, "verification", "robustse", "hetero_ar2.csv"), ',', skipstart=1))
+
+    @testset "accepted everywhere se_type is, and produces a distinct third answer" begin
+        m_h = fit_arma(y, (2, 0); se_type=:hessian)
+        m_o = fit_arma(y, (2, 0); se_type=:opg)
+        m_r = fit_arma(y, (2, 0); se_type=:robust)
+        # same fit, three covariance conventions
+        @test isapprox(m_h.ar, m_r.ar; atol=1e-10)
+        @test m_r.se_type == :robust
+        @test all(isfinite, m_r.se)
+        @test all(m_r.se .> 0)
+        # genuinely a third estimator, not an alias for either half it is built from
+        @test !isapprox(m_r.se, m_h.se; atol=1e-8)
+        @test !isapprox(m_r.se, m_o.se; atol=1e-8)
+        # on this heteroskedastic series the sandwich is the widest of the three
+        @test all(m_r.se .> m_h.se)
+    end
+
+    @testset "collapses toward the Hessian answer under correct specification" begin
+        # Gaussian, homoskedastic, correctly specified: the information-matrix
+        # equality holds, so H ~ J'J and the sandwich ~ H^-1. Not exact in
+        # finite samples -- asserted as closeness, not equality.
+        Random.seed!(404)
+        n = 4000
+        yg = zeros(n)
+        for t in 2:n
+            yg[t] = 0.5 * yg[t-1] + randn()
+        end
+        m_h = fit_arma(yg, (1, 0); se_type=:hessian)
+        m_r = fit_arma(yg, (1, 0); se_type=:robust)
+        @test isapprox(m_r.se[1], m_h.se[1]; rtol=0.15)
+    end
+
+    @testset "reaches fit_arima / fit_sarima / fit_arimax / fit_autoreg_garch" begin
+        X = reshape(collect(1.0:length(y)) ./ length(y), :, 1)
+        m1 = fit_arima(y, (1, 0, 0); se_type=:robust)
+        @test all(isfinite, m1.arma.se) && m1.arma.se_type == :robust
+        m2 = fit_sarima(y, (1, 0, 0), (0, 0, 0, 12); se_type=:robust)
+        @test all(isfinite, m2.se) && m2.se_type == :robust
+        m3 = fit_arimax(y, (1, 0, 0), X; se_type=:robust)
+        @test all(isfinite, m3.se)
+        m4 = fit_autoreg_garch(y, 1, X; se_type=:robust)
+        @test length(m4.se) == length(m4.beta) + length(m4.phi)
+    end
+
+    @testset "invalid se_type rejected with the three-option message" begin
+        for f in (() -> fit_arma(y, (1, 0); se_type=:bogus),
+                  () -> fit_arima(y, (1, 0, 0); se_type=:bogus),
+                  () -> fit_sarima(y, (1, 0, 0), (0, 0, 0, 12); se_type=:bogus))
+            @test_throws ArgumentError f()
+        end
+    end
+end

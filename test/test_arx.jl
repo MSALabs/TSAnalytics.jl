@@ -187,3 +187,31 @@ end
     x1_nan = copy(x1); x1_nan[3] = NaN
     @test_throws ArgumentError arx(y, 2; exog=x1_nan)
 end
+
+@testset "arx se_type=:robust — exact real R sandwich::vcovHC(HC0) validation" begin
+    # Fixture + ground truth: test/verification/robustse/README.txt
+    y = vec(readdlm(joinpath(@__DIR__, "verification", "robustse", "hetero_ar2.csv"), ',', skipstart=1))
+
+    m_h = arx(y, 2; trend=:c, se_type=:hessian)
+    m_r = arx(y, 2; trend=:c, se_type=:robust)
+
+    # coefficients are unaffected by the covariance choice
+    @test isapprox(m_h.coef, m_r.coef; atol=1e-12)
+    @test isapprox(m_h.coef, [0.10738514, 0.38856381, -0.12684148]; atol=1e-7)
+
+    se_robust = sqrt.(diag(m_r.vcov))
+    # R: sqrt(diag(vcovHC(lm(y ~ l1 + l2), type="HC0")))
+    @test isapprox(se_robust, [0.10502832, 0.17410491, 0.16766742]; atol=1e-7)
+
+    # on a deliberately heteroskedastic series the robust SEs are much LARGER
+    # here -- but see _robust_se's own docstring: that direction is not general
+    se_class = sqrt.(diag(m_h.vcov))
+    @test all(se_robust[2:3] .> 2 .* se_class[2:3])
+
+    # the classical path is untouched by this change
+    m_default = arx(y, 2; trend=:c)
+    @test isapprox(m_default.vcov, m_h.vcov; atol=1e-14)
+
+    @test_throws ArgumentError arx(y, 2; se_type=:opg)      # not defined for a linear model
+    @test_throws ArgumentError arx(y, 2; se_type=:bogus)
+end

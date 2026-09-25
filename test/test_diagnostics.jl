@@ -371,3 +371,53 @@ end
 
     @test_throws ArgumentError dk_heteroskedasticity_test([1.0, 2.0])
 end
+
+@testset "sign_bias_test (Engle & Ng 1993) — exact real rugarch validation" begin
+    # Fixture + ground truth: test/verification/signbias/README.txt
+    d = readdlm(joinpath(@__DIR__, "verification", "signbias", "rugarch_garch11_z.csv"),
+                ',', skipstart=1)
+    z = Float64.(d[:, 1]); r = Float64.(d[:, 2])
+    t = sign_bias_test(z, r)
+
+    # every figure matches rugarch::signbias to all 8 printed digits
+    @test isapprox(t.sign_bias,          0.76039831; atol=1e-7)
+    @test isapprox(t.sign_bias_pvalue,   0.4471594;  atol=1e-6)
+    @test isapprox(t.negative_sign_bias, 0.03979805; atol=1e-7)
+    @test isapprox(t.negative_sign_bias_pvalue, 0.9682605; atol=1e-6)
+    @test isapprox(t.positive_sign_bias, 0.23210355; atol=1e-7)
+    @test isapprox(t.positive_sign_bias_pvalue, 0.8164954; atol=1e-6)
+    @test isapprox(t.joint_effect,        2.08252126; atol=1e-7)
+    @test isapprox(t.joint_effect_pvalue, 0.5554569;  atol=1e-6)
+
+    @test t.n == length(z)
+    @test statistic(t) == t.joint_effect
+    @test pvalue(t) == t.joint_effect_pvalue
+    @test occursin("Sign Bias", sprint(show, t))
+    # no interpretive verdict line, matching every other test's show method here
+    @test !occursin("reject", lowercase(sprint(show, t)))
+
+    @testset "detects genuine asymmetry it is built to find" begin
+        # leverage effect: negative shocks raise next period's variance
+        Random.seed!(88)
+        n = 3000
+        e = zeros(n); s2 = ones(n)
+        for i in 2:n
+            s2[i] = 0.05 + 0.05*e[i-1]^2 + 0.85*s2[i-1] + 0.15*(e[i-1] < 0)*e[i-1]^2
+            e[i] = sqrt(s2[i])*randn()
+        end
+        zz = e ./ sqrt.(s2)
+        # fit a deliberately SYMMETRIC variance model, so the asymmetry is left in
+        m = fit_garch(e, 1, 1)
+        z_sym = m.resid ./ sqrt.(m.sigma2)
+        t_asym = sign_bias_test(z_sym, m.resid)
+        @test t_asym.joint_effect_pvalue < 0.05
+    end
+
+    @testset "error paths" begin
+        @test_throws ArgumentError sign_bias_test(randn(50), randn(49))
+        @test_throws ArgumentError sign_bias_test(randn(5), randn(5))
+        bad = randn(50); bad[3] = NaN
+        @test_throws ArgumentError sign_bias_test(bad, randn(50))
+        @test_throws ArgumentError sign_bias_test(randn(50), bad)
+    end
+end

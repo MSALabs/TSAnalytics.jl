@@ -227,7 +227,8 @@ function fit_autoreg_garch(y, m::Integer, exog;
                             parallel::Bool=true,
                             start_params::Union{Nothing,Vector{Float64}}=nothing)
     m >= 1 || throw(ArgumentError("m (AR-error order) must be >= 1"))
-    se_type in (:hessian, :opg) || throw(ArgumentError("se_type must be :hessian or :opg"))
+    se_type in (:hessian, :opg, :robust) ||
+        throw(ArgumentError("se_type must be :hessian, :opg, or :robust"))
     n_restarts >= 1 || throw(ArgumentError("n_restarts must be >= 1"))
 
     if garch_order === nothing
@@ -335,19 +336,21 @@ function fit_autoreg_garch(y, m::Integer, exog;
     end
 
     params_hat = vcat(beta_hat, phi_hat, omega_hat, alpha_hat, ggbeta_hat)
-    se = se_type == :hessian ?
-         _hessian_se(nat -> begin
-                         T = eltype(nat)
-                         beta, phi, omega, alpha, ggbeta = unpack(nat, false)
-                         loglik_n, = _ar_garch_loglik(beta, phi, omega, alpha, ggbeta, yv, Xmat, m)
-                         isfinite(loglik_n) ? -loglik_n : T(1e10)
-                     end, params_hat) :
-         _opg_se(nat -> begin
-                     T = eltype(nat)
-                     beta, phi, omega, alpha, ggbeta = unpack(nat, false)
-                     _, contribs, = _ar_garch_loglik(beta, phi, omega, alpha, ggbeta, yv, Xmat, m)
-                     isempty(contribs) ? fill(T(-1e10) / (n0 - m + 1), n0 - m + 1) : contribs
-                 end, params_hat)
+    natobj = nat -> begin
+        T = eltype(nat)
+        beta, phi, omega, alpha, ggbeta = unpack(nat, false)
+        loglik_n, = _ar_garch_loglik(beta, phi, omega, alpha, ggbeta, yv, Xmat, m)
+        isfinite(loglik_n) ? -loglik_n : T(1e10)
+    end
+    llcontrib = nat -> begin
+        T = eltype(nat)
+        beta, phi, omega, alpha, ggbeta = unpack(nat, false)
+        _, contribs, = _ar_garch_loglik(beta, phi, omega, alpha, ggbeta, yv, Xmat, m)
+        isempty(contribs) ? fill(T(-1e10) / (n0 - m + 1), n0 - m + 1) : contribs
+    end
+    se = se_type == :hessian ? _hessian_se(natobj, params_hat) :
+         se_type == :opg     ? _opg_se(llcontrib, params_hat) :
+                               _robust_se(natobj, llcontrib, params_hat)
 
     aic = -2 * loglik + 2 * nparam
     bic = -2 * loglik + nparam * log(n0)

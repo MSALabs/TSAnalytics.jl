@@ -12,10 +12,12 @@ maximum likelihood via the `GaussianSSM` Kalman filter engine.
   actual `include.mean=TRUE` behavior), not by pre-demeaning the series
   with the sample mean and fitting ARMA on the residual.
 - `se`: standard errors, in `[ar; ma; mean]` order (matching `coef`'s
-  own ordering) -- see [`fit_arma`](@ref) for the Hessian-vs-OPG choice.
+  own ordering) -- see [`fit_arma`](@ref) for the Hessian/OPG/robust choice.
 - `order`: `(p, q)`.
 - `method`: `:ml` or `:css_ml` -- which starting-value strategy was used.
-- `se_type`: `:hessian` or `:opg` -- which standard-error convention.
+- `se_type`: `:hessian`, `:opg`, or `:robust` -- which standard-error
+  convention. `:robust` is the Huber-White/QMLE sandwich built from the
+  other two (see `_robust_se`); it is *not* uniformly wider than either.
 - `converged`: whether the optimizer reported convergence.
 """
 struct ArmaModel <: UnivariateModel
@@ -148,6 +150,46 @@ function _opg_se(loglik_contributions, params_hat::Vector{Float64})
 end
 
 """
+    _robust_se(natural_objective, loglik_contributions, params_hat) -> Vector{Float64}
+
+Huber-White/QMLE "sandwich" standard errors: `sqrt(diag(H⁻¹ (J'J) H⁻¹))`,
+assembled from the *same* two quantities [`_hessian_se`](@ref) and
+[`_opg_se`](@ref) already compute -- `H` the Hessian of the negative
+log-likelihood (the "bread") and `J'J` the outer product of the
+per-observation score contributions (the "meat"). No new numerics: the
+two existing estimators are the two halves of this one.
+
+Valid under quasi-maximum-likelihood, i.e. when the conditional mean and
+dynamics are correctly specified but the innovation distribution is not
+necessarily Gaussian. Where the information-matrix equality holds
+(correct specification, Gaussian errors) `H ≈ J'J` and the sandwich
+collapses to `_hessian_se`'s own answer -- asserted directly in the test
+suite rather than assumed.
+
+**Not uniformly larger than the classical alternatives.** Verified
+against real `rugarch` output (`handoff/robust-se-and-diagnostics-handoff.md`):
+on its own reference GARCH fit the robust/classical ratio runs
+`0.827`/`1.169`/`1.073` across the three parameters -- smaller for one of
+them. Any test asserting `robust >= classical` would be wrong.
+
+Returns `NaN` entries under the same singularity conditions as the other
+two, rather than papering over a degenerate optimum with a pseudo-inverse.
+"""
+function _robust_se(natural_objective, loglik_contributions, params_hat::Vector{Float64})
+    H = ForwardDiff.hessian(natural_objective, params_hat)
+    J = ForwardDiff.jacobian(loglik_contributions, params_hat)
+    vc = try
+        Hinv = inv(H)
+        Hinv * (J' * J) * Hinv
+    catch e
+        e isa Union{LinearAlgebra.SingularException,LinearAlgebra.LAPACKException} ||
+            rethrow()
+        return fill(NaN, length(params_hat))
+    end
+    return sqrt.(max.(diag(vc), 0.0))
+end
+
+"""
     _css_objective(raw, yc, unpack) -> scalar
 
 Generic conditional-sum-of-squares objective: `unpack(raw)` maps the
@@ -253,7 +295,23 @@ deliberately narrower than R's/Python's full model.
   Hessian-based vs. `0.081` OPG-based, for the same fitted ARMA(1,1)
   coefficient) -- both are asymptotically valid estimators of the same
   quantity, not a bug in either; pick the one matching whichever
-  reference you're validating against. `NaN` entries in `se` (rather
+  reference you're validating against.
+
+  `se_type=:robust`: the Huber-White/QMLE "sandwich",
+  `sqrt(diag(H⁻¹ (J'J) H⁻¹))` -- assembled from the exact same two
+  quantities the other two options use, so it costs one extra matrix
+  product rather than any new numerics. Valid under quasi-maximum
+  likelihood: correct mean/dynamics, not-necessarily-Gaussian
+  innovations. **Neither R's `stats::arima` nor Python's `statsmodels`
+  offers this for an ARIMA model at all** -- `sandwich::vcovHC` cannot
+  even consume an `arima` object (it has no `terms` component), so
+  there is no cross-language reference to validate against directly;
+  it is instead verified by exact reduction, since for a pure linear
+  model the same sandwich *is* White's HC0, matched to `1e-7` against
+  real `sandwich::vcovHC(type="HC0")` via [`arx`](@ref). **It is not
+  uniformly wider than the classical alternatives** -- on real
+  `rugarch` output the robust/classical ratio runs `0.827`/`1.169`/
+  `1.073` across three parameters. `NaN` entries in `se` (rather
   than a crash) mean the Hessian/outer-product matrix was numerically
   singular at the fitted point -- this genuinely happens at an
   invertibility-boundary local optimum (e.g. `_optimize` converging to
@@ -292,7 +350,8 @@ function fit_arma(y, order::Tuple{Int,Int};
                    optimizer_method::Symbol=:lbfgs,
                    start_params::Union{Nothing,Vector{Float64}}=nothing)
     method in (:ml, :css_ml) || throw(ArgumentError("method must be :ml or :css_ml"))
-    se_type in (:hessian, :opg) || throw(ArgumentError("se_type must be :hessian or :opg"))
+    se_type in (:hessian, :opg, :robust) ||
+        throw(ArgumentError("se_type must be :hessian, :opg, or :robust"))
     p, q = order
     p >= 0 && q >= 0 || throw(ArgumentError("order must be non-negative: got ($p, $q)"))
 
@@ -340,9 +399,11 @@ function fit_arma(y, order::Tuple{Int,Int};
     loglik, sigma2, = kalman_filter(ssm, yc_hat)
 
     params_hat = include_mean ? vcat(phi_hat, theta_hat, mu_hat) : vcat(phi_hat, theta_hat)
-    se = se_type == :hessian ?
-         _hessian_se(params -> _arma_natural_objective(params, yv, p, q, include_mean), params_hat) :
-         _opg_se(params -> _arma_loglik_contributions(params, yv, p, q, include_mean), params_hat)
+    natobj = params -> _arma_natural_objective(params, yv, p, q, include_mean)
+    llcontrib = params -> _arma_loglik_contributions(params, yv, p, q, include_mean)
+    se = se_type == :hessian ? _hessian_se(natobj, params_hat) :
+         se_type == :opg     ? _opg_se(llcontrib, params_hat) :
+                               _robust_se(natobj, llcontrib, params_hat)
 
     k = nparam + 1  # +1 for sigma2, matching R's actual AIC/BIC exactly
     aic = -2 * loglik + 2 * k

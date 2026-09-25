@@ -92,6 +92,20 @@ across `trend` values, an `exog` regressor, a lag *subset* (not just
     (`sigma2 * inv(X'X)`, `sigma2` on the `n`-denominator convention)
     rather than trusting `_ols`'s own `se` field.
 
+- `se_type`: `:hessian` (default) for the classical `sigma2 * inv(X'X)`
+  above, or `:robust` for heteroskedasticity-consistent errors,
+  `inv(X'X) X' diag(e²) X inv(X'X)`. The robust form **is exactly R's
+  `sandwich::vcovHC(type="HC0")`** -- matched to `1e-7` against real R
+  output on a deliberately heteroskedastic AR(2)
+  (`test/verification/robustse/`), which makes this the one place in
+  the package where the sandwich has a direct cross-language reference.
+  R's *classical* `vcov` will still differ from `:hessian`'s by the
+  documented `sqrt(n/(n-k))` factor above; the HC0 figures carry no
+  such convention difference. There is deliberately no `:opg` option
+  here -- for a linear model with a concentrated variance it is not a
+  separately meaningful estimator, and `arx` says so rather than
+  accepting the symbol and quietly returning something else.
+
 `y` and `exog` both accept anything [`tsvalues`](@ref) does.
 
 # Examples
@@ -111,9 +125,13 @@ true
 """
 function arx(y, lags::Union{Integer,AbstractVector{<:Integer}};
              trend::Symbol=:c, seasonal::Bool=false, period::Union{Nothing,Integer}=nothing,
+             se_type::Symbol=:hessian,
              exog=nothing, hold_back::Union{Nothing,Integer}=nothing,
              method::Symbol=:qr)
     trend in (:n, :c, :t, :ct) || throw(ArgumentError("trend must be :n, :c, :t, or :ct"))
+    se_type in (:hessian, :robust) ||
+        throw(ArgumentError("se_type must be :hessian or :robust (arx is a linear model; " *
+                             "there is no separate :opg estimator for it)"))
     seasonal && period === nothing && throw(ArgumentError("seasonal=true requires period"))
     seasonal && period !== nothing && period < 2 && throw(ArgumentError("period must be >= 2"))
 
@@ -189,7 +207,9 @@ function arx(y, lags::Union{Integer,AbstractVector{<:Integer}};
 
     k = length(beta)
     sigma2 = sum(abs2, resid) / nobs  # MLE (n-denominator) convention -- see docstring note
-    vc = Matrix(sigma2 .* inv(Symmetric(X' * X)))
+    XtXinv = Matrix(inv(Symmetric(X' * X)))
+    vc = se_type == :hessian ? sigma2 .* XtXinv :
+                               XtXinv * (X' * (resid .^ 2 .* X)) * XtXinv
     loglik = -0.5 * nobs * (log(2π) + log(sigma2) + 1)
     aic_val = -2*loglik + 2*(k+1)
     bic_val = -2*loglik + (k+1)*log(nobs)

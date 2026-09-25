@@ -1,8 +1,10 @@
 using LinearAlgebra: eigen, I
 
 export LjungBoxTest, QSTest, JarqueBeraTest, DurbinWatsonTest, ARCHLMTest, DKHeteroTest,
+       SignBiasTest,
        ljungbox_test, qs_test, jarque_bera_test, durbin_watson_test,
-       arch_lm_test, dk_heteroskedasticity_test, durbin_watson_pvalue_exact
+       arch_lm_test, dk_heteroskedasticity_test, durbin_watson_pvalue_exact,
+       sign_bias_test
 
 """_chisq_ccdf(x, df) -- upper tail P(X > x) for X ~ chi-squared(df),
 via the regularized upper incomplete gamma function, computed by a
@@ -903,4 +905,145 @@ function durbin_watson_test(resid, X::Union{Nothing,AbstractMatrix{<:Real}}=noth
     end
 
     return DurbinWatsonTest(dw, pval, alternative, meth, n)
+end
+
+# ---------------------------------------------------------------------------
+# Sign Bias test (Engle & Ng 1993)
+# ---------------------------------------------------------------------------
+
+"_t_ccdf_twosided(t, df) -- two-sided Student-t tail `P(|T| > |t|)`, as
+`I_{df/(df+t^2)}(df/2, 1/2)` via this file's own [`_beta_inc_reg`](@ref).
+Needed because `rugarch`'s own sign-bias p-values come from `lm`'s
+`summary()`, which uses the exact t distribution rather than the normal
+approximation used elsewhere in this package -- at `n ~ 1200` the two
+agree to about `1e-4`, which is not enough to validate against real
+`rugarch` output to the precision this project works at."
+_t_ccdf_twosided(t::Real, df::Real) = _beta_inc_reg(df / 2, 0.5, df / (df + t^2))
+
+"""
+    SignBiasTest <: HypothesisTest
+
+Result of the Engle & Ng (1993) sign-bias tests for *asymmetry* left
+unmodelled in a fitted conditional-variance model -- whether the sign
+or size of a past shock predicts today's squared standardized residual
+in a way a symmetric GARCH cannot capture.
+
+Four statistics, matching `rugarch::signbias`'s own reported set:
+`sign_bias`, `negative_sign_bias`, `positive_sign_bias` (each an
+absolute t-statistic from one joint regression) and `joint_effect`
+(a Wald chi-square on all three together, 3 d.o.f.).
+"""
+struct SignBiasTest <: HypothesisTest
+    sign_bias::Float64
+    sign_bias_pvalue::Float64
+    negative_sign_bias::Float64
+    negative_sign_bias_pvalue::Float64
+    positive_sign_bias::Float64
+    positive_sign_bias_pvalue::Float64
+    joint_effect::Float64
+    joint_effect_pvalue::Float64
+    n::Int
+end
+
+statistic(t::SignBiasTest) = t.joint_effect
+pvalue(t::SignBiasTest) = t.joint_effect_pvalue
+
+function Base.show(io::IO, t::SignBiasTest)
+    println(io, "Sign Bias test (Engle & Ng 1993)")
+    println(io, "  n                  : ", t.n)
+    println(io, "  Sign Bias          : t = ", round(t.sign_bias, digits=4),
+            "   p = ", round(t.sign_bias_pvalue, digits=4))
+    println(io, "  Negative Sign Bias : t = ", round(t.negative_sign_bias, digits=4),
+            "   p = ", round(t.negative_sign_bias_pvalue, digits=4))
+    println(io, "  Positive Sign Bias : t = ", round(t.positive_sign_bias, digits=4),
+            "   p = ", round(t.positive_sign_bias_pvalue, digits=4))
+    print(io,   "  Joint Effect       : X² = ", round(t.joint_effect, digits=4),
+            "   p = ", round(t.joint_effect_pvalue, digits=4), "  (3 d.o.f.)")
+end
+
+"""
+    sign_bias_test(z, resid) -> SignBiasTest
+
+Engle & Ng's (1993) sign-bias tests, for asymmetry a symmetric
+conditional-variance model has failed to capture. `z` is the
+standardized residual series (`e_t / sigma_t`), `resid` the
+unstandardized residuals; both must be the same length.
+
+Runs **one** regression, not three:
+
+```
+z²_t  ~  c + S⁻_{t-1} + S⁻_{t-1}·e_{t-1} + S⁺_{t-1}·e_{t-1}
+```
+
+where `S⁻_t = 1(e_t < 0)` and `S⁺_t = 1 - S⁻_t`. The three reported
+t-statistics are the (absolute) t-values on the three non-constant
+terms, and `joint_effect` is a Wald chi-square that all three are
+simultaneously zero.
+
+**Read directly from `rugarch::signbias`'s own R source**, not
+reconstructed from the textbook description -- the textbook presents
+these as three *separate* regressions, while `rugarch` (and this
+implementation, to match it) fits one joint regression and reads three
+coefficients off it. The two give genuinely different numbers, and the
+reference implementation's convention is the one validated against.
+p-values use the exact t distribution, matching `lm`'s `summary()`.
+
+# Examples
+```jldoctest
+julia> using TSAnalytics, Random
+
+julia> Random.seed!(3); e = randn(500); z = e ./ 1.0;
+
+julia> t = sign_bias_test(z, e);
+
+julia> t.joint_effect >= 0
+true
+```
+"""
+function sign_bias_test(z, resid)
+    zv = Float64.(collect(tsvalues(z)))
+    ev = Float64.(collect(tsvalues(resid)))
+    n = length(zv)
+    n == length(ev) ||
+        throw(ArgumentError("sign_bias_test: z and resid must have the same length " *
+                             "(got $(length(zv)) and $(length(ev)))"))
+    n >= 10 || throw(ArgumentError("sign_bias_test: need at least 10 observations, got $n"))
+    any(!isfinite, zv) && throw(ArgumentError("sign_bias_test: z contains non-finite values"))
+    any(!isfinite, ev) && throw(ArgumentError("sign_bias_test: resid contains non-finite values"))
+
+    zminus = [ev[t] < 0 ? 1.0 : 0.0 for t in 1:(n - 1)]
+    zplus = 1.0 .- zminus
+    X = hcat(ones(n - 1), zminus, zminus .* ev[1:(n - 1)], zplus .* ev[1:(n - 1)])
+    y = zv[2:n] .^ 2
+
+    XtX = X' * X
+    XtXinv = try
+        inv(Symmetric(XtX))
+    catch e
+        e isa Union{LinearAlgebra.SingularException,LinearAlgebra.LAPACKException} || rethrow()
+        return SignBiasTest(NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN, n)
+    end
+    beta = XtXinv * (X' * y)
+    r = y .- X * beta
+    dof = (n - 1) - 4
+    s2 = sum(abs2, r) / dof
+    vc = s2 .* XtXinv
+    se = sqrt.(max.(diag(vc), 0.0))
+
+    tvals = abs.(beta[2:4] ./ se[2:4])
+    pvals = _t_ccdf_twosided.(tvals, dof)
+
+    # Wald chi-square that beta[2:4] are jointly zero
+    Vsub = vc[2:4, 2:4]
+    joint = try
+        b = beta[2:4]
+        dot(b, inv(Symmetric(Vsub)) * b)
+    catch e
+        e isa Union{LinearAlgebra.SingularException,LinearAlgebra.LAPACKException} || rethrow()
+        NaN
+    end
+    joint_p = isnan(joint) ? NaN : _chisq_ccdf(joint, 3)
+
+    return SignBiasTest(tvals[1], pvals[1], tvals[2], pvals[2], tvals[3], pvals[3],
+                         joint, joint_p, n)
 end
