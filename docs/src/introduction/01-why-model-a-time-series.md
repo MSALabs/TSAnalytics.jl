@@ -72,15 +72,42 @@ It simply stays close to 1 and creeps down, slowly, with no rhythm in
 it anywhere. Two series, two shapes that share almost nothing, and by
 the end of Part I you will know exactly why.
 
+Electricity demand in Maharashtra is forecastable for the same reason
+Victorian demand is — a strong daily and weekly rhythm, driven by when
+people are awake, working, and running appliances — with one
+complication Australian data does not have. Diwali falls in October
+some years and November in others, and industrial and retail demand
+move with it. A model that assumes October is always October will be
+wrong in a way that more data cannot fix, only disguise. This is not a
+hypothetical — it is directly checkable in this package's own bundled
+data.
+
+```@example ch1
+iip = dataset("iip_india")
+using Dates
+diwali_month = Dict(2012=>11,2013=>11,2014=>10,2015=>11,2016=>10,2017=>10,2018=>11,
+                     2019=>10,2020=>11,2021=>11,2022=>10,2023=>11,2024=>11,2025=>10)
+for yr in sort(collect(keys(diwali_month)))
+    io = findfirst(t -> year(t)==yr && month(t)==10, iip.date)
+    in_ = findfirst(t -> year(t)==yr && month(t)==11, iip.date)
+    println(yr, ": Diwali in ", diwali_month[yr]==10 ? "Oct" : "Nov",
+            "  -- Oct=", iip.value[io], "  Nov=", iip.value[in_],
+            "  Oct/Nov=", round(iip.value[io]/iip.value[in_], digits=3))
+end
+```
+
 !!! india "The Indian Series"
-    Electricity demand in Maharashtra is forecastable for the same
-    reason Victorian demand is — a strong daily and weekly rhythm,
-    driven by when people are awake, working, and running appliances —
-    with one complication Australian data does not have. Diwali falls
-    in October some years and November in others, and industrial and
-    retail demand move with it. A model that assumes October is always
-    October will be wrong in a way that more data cannot fix, only
-    disguise. Chapter 36 returns to this properly.
+    Fourteen years of India's real monthly Index of Industrial
+    Production, checked against the real Diwali calendar: in every
+    single year Diwali fell in November, October's index reading came
+    out *higher* than November's (ratio `> 1`, up to `1.055`). In every
+    year it fell in October, November came out higher instead (ratio
+    `< 1`, down to `0.94`). Fourteen years, fourteen for fourteen, with
+    no exceptions — the production surge moves with the festival
+    exactly as claimed, not as an assertion but as something anyone can
+    re-run against this package's own bundled `iip_india` series.
+    Chapter 36 returns to this properly, building the regressor that
+    lets a model represent it.
 
 ## The obvious attempt, and why it fails
 

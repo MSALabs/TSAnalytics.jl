@@ -1,9 +1,10 @@
 # Bundled textbook datasets — provenance and licensing
 
-90 catalogued datasets, accessible via [`dataset`](@ref)/[`datasets`](@ref)/
-[`dataset_info`](@ref) (see `src/dataset_catalogue.jl`). 83 are bundled
-directly (71 from `astsa`, 12 from `tsibbledata`); 7 more are catalogued
-but deliberately not bundled (`kind == :external` — see below).
+91 catalogued datasets, accessible via [`dataset`](@ref)/[`datasets`](@ref)/
+[`dataset_info`](@ref) (see `src/dataset_catalogue.jl`). 84 are bundled
+directly (71 from `astsa`, 12 from `tsibbledata`, 1 real Indian official
+series — see below); 7 more are catalogued but deliberately not bundled
+(`kind == :external` — see below).
 
 This duplicates [`DatasetInfo`](@ref)'s own content in human-readable
 form, matching `SeasonalAdjustment.jl`'s own convention exactly, "for
@@ -15,6 +16,24 @@ anyone who opens the repository and asks where the numbers came from."
 |---|---|---|---|
 | `astsa` v2.5.1 | 71 | Shumway & Stoffer, *Time Series Analysis and Its Applications* (4th ed.) | GPL-3 |
 | `tsibbledata` | 12 | Hyndman & Athanasopoulos, *Forecasting: Principles and Practice* (3rd ed.) | GPL-3 |
+| `MoSPI` (`iip_india`) | 1 | Ministry of Statistics and Programme Implementation, Government of India | Government of India Open Data |
+
+### `iip_india` — the one non-textbook series in this catalogue
+
+`data/iip_india.csv`: India's monthly Index of Industrial Production
+(General Index, base 2011-12 = 100), April 2011 to March 2026, 180
+observations. Supplied directly by the project maintainer rather than
+downloaded from the MoSPI portal during this session — the provenance
+recorded in [`dataset_info`](@ref)`("iip_india")` says so explicitly.
+Its shape is consistent with the real, well-known series (the
+2020-04 collapse to `54.0`, roughly a `-54%` month-on-month fall from
+February's `134.2`, matches the widely-reported ~`-57%` year-on-year
+IIP contraction at the start of the COVID lockdown; the March spike
+every single year is the well-known fiscal-year-end production push).
+This is the series the book's `india` boxes lean on wherever a claim
+is genuinely about Indian industrial production specifically, in place
+of the purely descriptive/hypothetical framing those boxes used before
+it was available.
 
 `data/inventory.tsv` is the registry `src/dataset_catalogue.jl` actually
 loads: real titles (from the source packages' own `man/*.Rd`

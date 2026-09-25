@@ -29,7 +29,11 @@ a glance. One worked example of each, to exercise the styling:
     effect regressor built from a fixed Gregorian-date rule (the way
     Easter or Christmas can be handled) will not capture it; official
     Indian seasonal adjustment work has to compute the actual date per
-    year rather than approximate it.
+    year rather than approximate it. Chapter 1 checks the consequence
+    directly against this package's own bundled `iip_india` series:
+    fourteen real years, fourteen for fourteen, the month with the
+    higher industrial-production reading swaps exactly in step with
+    which month that year's Diwali actually fell in.
 
 !!! julia "Under the Hood"
     [`tsvalues`](@ref) is only two methods: identity on

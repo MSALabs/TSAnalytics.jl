@@ -232,16 +232,28 @@ values two lines up are a different, legitimate quantity — genuine
 multi-step, out-of-sample forecast errors, which need not equal `1`
 for any method, including naive itself, evaluated that way.)
 
+```@example ch22
+iip = dataset("iip_india")
+println("iip_india (General Index) minimum value: ", minimum(iip.value), " -- never near zero")
+```
+
 !!! india "The Indian Series"
     MAPE is the default reported accuracy metric across most Indian
     corporate and government forecasting practice, and a great deal of
     Indian data is exactly what MAPE handles worst — series with
     genuine zeros, and series with values small enough that a small
-    absolute error becomes an enormous percentage. District-level
-    agricultural output and sub-category industrial production both do
-    this routinely: a reported MAPE of `400%` on such a series usually
-    means one month had a value near zero, not that the forecast was
-    catastrophically bad. MASE has neither problem — it needs no true
+    absolute error becomes an enormous percentage. Worth being precise
+    about which series that actually applies to, now that a real one is
+    bundled: `iip_india`'s own General Index never comes close, its
+    real minimum (checked above) is `54.0`, even through the 2020
+    lockdown collapse — MAPE behaves perfectly reasonably on the
+    headline index itself. The genuine zero-and-near-zero problem
+    belongs one level down, on the sub-components the headline index is
+    built from: district-level agricultural output and individual
+    industry sub-categories do this routinely, and a reported MAPE of
+    `400%` on one of those usually means one month had a value near
+    zero, not that the forecast was catastrophically bad. MASE has
+    neither problem, at any level of aggregation — it needs no true
     value in the denominator at all — and it is barely used in
     practice.
 

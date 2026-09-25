@@ -55,18 +55,40 @@ by construction, and the picture is the formula. This is the first
 time in the book that a chart and a parameter have turned out to be
 the same thing.
 
+```@example ch17
+iip = dataset("iip_india")
+lg = log.(iip.value)
+yoy_growth = lg[13:end] .- lg[1:end-12]  # year-on-year, the RBI's own reporting convention
+m_yoy = fit_arma(yoy_growth, (1,0))
+println("real iip_india year-on-year growth, AR(1): phi=", round(m_yoy.ar[1], digits=3))
+```
+
 !!! india "The Indian Series"
-    Indian monthly inflation and industrial-growth series typically
-    show AR coefficients in the 0.7 to 0.95 range — persistent enough
-    that a shock takes many months to fade, sitting close to the
-    right-hand panel above rather than the left. That is precisely the
-    region Chapter 9's power curve identified as hardest to test for a
-    unit root: a highly persistent stationary process and a genuine
-    random walk produce sample paths that look alike over any sample
-    size actually available, and the ADF test's power there was shown
-    to be weak for exactly that reason. Persistence and testability
-    are inversely related, and Indian macro data sits on the awkward
-    side of that trade.
+    Indian monthly inflation and industrial-growth series are often
+    described as showing AR coefficients as high as `0.7` to `0.95` —
+    persistent enough that a shock takes many months to fade. Checked
+    directly above, on the real `iip_india` series's own year-on-year
+    growth rate (the RBI's own reporting convention, not month-on-month,
+    which is dominated by within-year seasonal swings rather than
+    genuine persistence): the fitted AR(1) coefficient comes out at
+    `0.56` — real, positive, and closer to the middle panel above than
+    either edge, but short of the `0.7`-plus range sometimes quoted.
+    Two things are both true at once: industrial *growth* is only
+    moderately persistent on this real check, while inflation series
+    specifically (not bundled here to verify directly) are the ones
+    more consistently reported in that higher range. Worth not
+    collapsing the two into a single number the way a casual restating
+    of both in one sentence invites.
+
+    Whichever the exact figure, the qualitative point holds: this sits
+    in precisely the region Chapter 9's power curve identified as
+    hardest to test for a unit root — a persistent stationary process
+    and a genuine random walk produce sample paths that look alike over
+    any sample size actually available, and the ADF test's power there
+    was shown to be weak for exactly that reason. Persistence and
+    testability are inversely related, and Indian macro data sits
+    closer to the awkward side of that trade than a low-persistence
+    series would.
 
 ## A series that forgets
 

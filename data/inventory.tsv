@@ -82,3 +82,4 @@ nyc_bikes	tsibbledata	NYC Citi Bike trips	4268	12	bike_id;start_time;stop_time;s
 olympic_running	tsibbledata	Fastest running times for Olympic races	312	4	Year;Length;Sex;Time	GPL-3	Hyndman & Athanasopoulos, Forecasting: Principles and Practice (3rd ed.)	olympic_running.csv
 pelt	tsibbledata	Pelt trading records	91	3	Year;Hare;Lynx	GPL-3	Hyndman & Athanasopoulos, Forecasting: Principles and Practice (3rd ed.)	pelt.csv
 vic_elec	tsibbledata	Half-hourly electricity demand for Victoria, Australia	52608	5	Time;Demand;Temperature;Date;Holiday	GPL-3	Hyndman & Athanasopoulos, Forecasting: Principles and Practice (3rd ed.)	vic_elec.csv
+iip_india	MoSPI	Index of Industrial Production (IIP), General Index, India	180	2	date;value	Government of India Open Data (provenance as supplied by the user; not independently re-verified against the original MoSPI portal this session)	Ministry of Statistics and Programme Implementation (MoSPI), Government of India	iip_india.csv

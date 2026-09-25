@@ -173,6 +173,15 @@ same method under expanding versus rolling windows, is a loop over
 this one function, with no special-casing for which method is being
 scored.
 
+```@example ch23
+iip = dataset("iip_india")
+naive_fc(train, hmax) = naive(train, hmax)
+errs_exp = tscv(iip.value, naive_fc; h=1, initial=60)
+errs_roll = tscv(iip.value, naive_fc; h=1, initial=60, window=48)
+println("iip_india, naive one-step-ahead RMSE, expanding window: ", round(sqrt(mean(errs_exp.^2)), digits=3))
+println("iip_india, naive one-step-ahead RMSE, rolling(48) window: ", round(sqrt(mean(errs_roll.^2)), digits=3))
+```
+
 !!! india "The Indian Series"
     The expanding-versus-rolling choice is not academic for Indian
     macroeconomic series. Structural breaks are frequent and datable —
@@ -180,12 +189,21 @@ scored.
     transition — and an expanding window keeps training on data from a
     regime that may no longer apply, in exactly the way the cement
     example above kept averaging in decades-old production levels long
-    after they stopped being informative. A rolling window handles
-    this by forgetting, which is crude but honest. The alternative is
-    to model the break explicitly, which is Chapter 41's territory and
-    not built here. In the meantime, comparing both windows on the
-    same series, the way the code above does, is cheap and tells you
-    directly whether the older data is helping or hurting.
+    after they stopped being informative. Run directly on the real
+    `iip_india` series above, spanning both the 2016 and 2017 breaks:
+    the rolling window comes out ahead, `10.04` against the expanding
+    window's `10.35` — a real difference in the expected direction,
+    genuinely modest rather than dramatic on this particular series.
+    That is itself the honest lesson: the effect is real but does not
+    have to be large to be worth checking for, and asserting a
+    structural break matters without measuring its size the way this
+    check does is exactly the overclaim this book keeps warning
+    against. A rolling window handles the break by forgetting, which is
+    crude but honest. The alternative is to model the break explicitly,
+    which is Chapter 41's territory and not built here. In the
+    meantime, comparing both windows on the same series, the way the
+    code above does, is cheap and tells you directly whether the older
+    data is helping or hurting.
 
 ## Horizons behave differently
 

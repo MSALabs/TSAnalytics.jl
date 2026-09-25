@@ -276,10 +276,18 @@ date for a value that was never one. Knowing which situation a given
 series is in is exactly the kind of thing `tsindex` exists to make
 explicit rather than assumed.
 
+```@example ch2
+iip = dataset("iip_india")
+iip.date[1], iip.date[12], iip.date[13]
+```
+
 !!! india "The Indian Series"
     India's financial year runs from April to March, not January to
-    December. A quarterly series published by MoSPI has its first
-    quarter in April — and a package, or an analyst, that assumes
+    December, and this package's own bundled `iip_india` series shows
+    it directly: its very first observation, checked above, is dated
+    `2011-04-01`, not `2011-01-01` — MoSPI's own real first month of
+    its reporting year. A quarterly series published by MoSPI has its
+    first quarter in April — and a package, or an analyst, that assumes
     calendar quarters will label every single observation wrongly, not
     approximately but by an entire quarter. The values themselves are
     perfectly fine; it is the index that is wrong, and nothing in a

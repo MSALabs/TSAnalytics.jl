@@ -206,17 +206,30 @@ nothing to say about correlation in magnitude.
 That gap — real, and invisible to everything in this chapter — is
 Chapter 11's entire subject.
 
+```@example ch10
+iip = dataset("iip_india")
+m = fit_arima(iip.value, (1,1,1))
+ssm = build_statespace(m.arma.ar, m.arma.ma)
+_, sigma2, v, F, converged = kalman_filter(ssm, diff(iip.value))
+resid = v ./ sqrt.(F) .* sqrt(sigma2)
+qs = qs_test(resid, 12)
+println("ARIMA(1,1,1), no seasonal handling at all: QS statistic=", round(qs.statistic,digits=2), "  p=", round(qs.pvalue, sigdigits=3))
+println("residual ACF, lags 10-14: ", round.(acf(resid, 10:14).values, digits=3))
+```
+
 !!! india "The Indian Series"
     Residual seasonality is the diagnostic most likely to matter, and
-    most likely to fail, for Indian monthly data. A model built around
-    a fixed twelve-month cycle still leaves structure behind once the
-    actual cycle moves — Diwali in October one year, November the
-    next — and what shows up in the residual ACF is a smear spread
-    around lag 12 rather than one clean spike, which is easy to
-    mistake for ordinary noise. A test aimed specifically at the
-    seasonal lags, the way QS is, catches this more reliably than a
-    general portmanteau test spreading its attention across every lag
-    equally.
+    most likely to fail, for Indian monthly data. Checked directly
+    above, on this package's own real `iip_india` series: an ARIMA(1,1,1)
+    fitted with no seasonal handling at all leaves exactly the pattern
+    this box describes — not one clean spike at lag 12 but a smear
+    across neighbouring lags (`-0.28` at 11, `0.42` at 12, `-0.15` at
+    13), and QS catches it decisively (`p ≈ 1×10⁻¹⁴`). A model built
+    around a fixed twelve-month cycle still leaves structure behind
+    once the actual cycle moves — Diwali in October one year, November
+    the next — and a test aimed specifically at the seasonal lags, the
+    way QS is, catches this more reliably than a general portmanteau
+    test spreading its attention across every lag equally.
 
 ## Where this leaves you
 

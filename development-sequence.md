@@ -1231,6 +1231,99 @@ regressions from the `src/statespace/` changes.
 
 ---
 
+**`iip_india` bundled, and the book's `india` boxes grounded in it.**
+The project maintainer supplied `data/iip_india.csv` — India's real
+monthly Index of Industrial Production (General Index, base
+2011-12 = 100), April 2011 to March 2026, 180 observations, complete
+with no missing months. Registered in the existing catalogue the same
+way every other bundled series is (a row in `data/inventory.tsv`, plus
+a new `"MoSPI"` key in `_PACKAGE_URL`/`_PACKAGE_CITATION`), so
+`dataset("iip_india")`/`dataset_info`/`datasets()` all work with no
+special-casing. Provenance is recorded honestly: supplied directly
+rather than re-downloaded from the MoSPI portal during this session,
+and the `DatasetInfo` entry says exactly that rather than implying a
+verification that did not happen.
+
+**36 `india` boxes exist across the book; 21 were rewritten to cite
+real, computed numbers from this series, and the other 15 deliberately
+left alone** — they are about genuinely different Indian series
+(equities, the rupee, rainfall, electricity demand, quarterly GDP,
+RBI policy rates) that `iip_india` cannot stand in for, and force-
+fitting it into them would have been worse than leaving honest
+qualitative claims in place.
+
+The standout result, now in Chapter 1 as the book's own opening
+`india` box: across **fourteen real years checked against the real
+Diwali calendar, the higher-production month swaps in step with the
+festival every single time** — Diwali in November, October reads higher
+(ratio up to `1.055`); Diwali in October, November reads higher (down
+to `0.94`). Fourteen for fourteen, no exceptions. What had been an
+assertion since Chapter 1 is now a re-runnable check.
+
+**Several long-standing claims were checked against the real series
+and turned out to need correcting, not merely confirming** — the same
+discipline applied to the handoffs throughout Parts VI and VII:
+
+- **Chapter 17's `0.7`–`0.95` AR-coefficient range does not hold for
+  industrial growth.** The real year-on-year `iip_india` growth rate
+  fits `φ = 0.556` — genuinely persistent, but well short of the
+  quoted range. The box now separates the two series it had quietly
+  merged: industrial growth (checkable, `0.56`) from inflation
+  (not bundled, so not checkable here). Chapter 37's own box, which
+  cited Chapter 17's figure, was updated to match and re-anchored on
+  its own fitted `φ = 0.834`.
+- **Chapter 29/30's "the 2020 lockdown left genuine holes" is wrong
+  for this series.** `iip_india` has every expected month present
+  (checked directly); the lockdown shows up as an extreme *present*
+  value — `54.0` in April 2020, down from `117.2` in February — not an
+  absence. Both boxes now say so and keep the gap-handling material
+  scoped to the Indian series that genuinely do have gaps.
+- **Chapter 12's warning about a "short default lag count" was aimed
+  at the wrong thing.** `_diagnostic_nlag`'s own formula already
+  reaches lag `36` for any monthly series *once `period=12` is
+  supplied*; the real trap is omitting `period` entirely, which
+  silently reverts to `nlag=20`. Confirmed on `iip_india` both ways.
+- **Chapter 20's "residuals will show a smear" is not what actually
+  happens.** A SARIMA(0,1,1)(0,1,1)[12] on the real series comes back
+  with a seasonal MA coefficient pinned at `Θ = -1.0`, exactly on the
+  invertibility boundary, and residual portmanteau checks afterwards
+  look *clean*. The model compensates for what it structurally cannot
+  represent by straining a parameter to its edge — so the boundary
+  estimate is itself the diagnosable failure, a sharper and more
+  useful finding than the smear the box originally predicted.
+- **Chapter 22's MAPE-and-zeros warning needed scoping.** The General
+  Index never approaches zero (real minimum `54.0`, even through the
+  lockdown); the genuine near-zero problem lives one level down, in
+  the sub-components. The box now says which.
+- **Chapter 3's rebasing spike is not visible in this file.** The
+  bundled series already starts on the 2011-12 base, so the historical
+  join simply is not there. The box says so, then demonstrates the
+  mechanism on a clearly-labelled synthetic splice built from the real
+  series (`5.5×` a typical month's move).
+
+Claims that did hold up, now with real numbers attached: the fiscal
+year genuinely starts in April (Chapter 2); the level is
+non-stationary and the growth rate is not (Chapter 8, ADF `p = 0.96`
+against `p = 2.76e-7`); the lag-12 ACF really is weaker than a
+comparable Western series (Chapter 5, `0.36` against `prodn`'s `0.72`
+— the US Federal Reserve's own industrial production index, an
+apples-to-apples pairing that happened to already be bundled); the
+seasonal pattern really did change around GST (Chapter 14, October's
+factor `1.022 → 0.911`); the seasonal shape really does drift year to
+year (Chapter 15, October's STL component swinging `-1.5 → +2.6 →
+-5.6`); a rolling window really does beat an expanding one across the
+2016/2017 breaks (Chapter 23, RMSE `10.04` against `10.35` — real, and
+honestly reported as modest rather than dramatic); a log transform is
+mildly justified (Chapter 7, level-vs-spread correlation `0.12 →
+-0.04`).
+
+Every modified chapter had its full `@example` block sequence
+extracted and re-run standalone, and the complete `docs/make.jl` build
+(doctests, cross-references, `checkdocs=:exports`, HTML rendering)
+completes clean.
+
+---
+
 ## Downstream: SeasonalAdjustment.jl (separate package, starts once Stage 8 is stable)
 
 | # | Functionality | Depends on | Reference |

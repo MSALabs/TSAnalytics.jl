@@ -166,16 +166,32 @@ missing estimates at both ends. Every one of those three complaints is
 fixable, and fixing all three with a single underlying idea, rather
 than three separate patches, is Chapter 15's subject.
 
+```@example ch14
+iip = dataset("iip_india")
+using Dates
+gst_idx = findfirst(t -> t == Date(2017,7,1), iip.date)
+fig_pre = classical_decompose(iip.value[1:gst_idx-1], 12; model=:multiplicative)
+fig_post = classical_decompose(iip.value[gst_idx:end], 12; model=:multiplicative)
+println("pre-GST October factor:  ", round(fig_pre.figure[10], digits=3))
+println("post-GST October factor: ", round(fig_post.figure[10], digits=3))
+println("largest single-month shift: ", round(maximum(abs.(fig_pre.figure .- fig_post.figure)), digits=3))
+```
+
 !!! india "The Indian Series"
     Indian retail and industrial series have seasonal patterns that
     have genuinely changed shape over the past two decades —
     e-commerce has shifted festival buying earlier in the calendar, and
     the 2017 introduction of GST altered the timing of within-year
-    inventory movements. A method that forces one fixed seasonal
-    pattern across the whole period fits the average of two genuinely
-    different regimes and matches neither one well. For a long Indian
-    series, evolving seasonality is not the exceptional case worth a
-    footnote — it is closer to the normal situation.
+    inventory movements. Checked directly above, splitting the real
+    `iip_india` series at the actual GST transition date: October's own
+    seasonal factor moves from `1.022` before GST to `0.911` after —
+    an `11`-percentage-point shift in a single calendar month's typical
+    multiplier, the largest of any month, on real data rather than an
+    assumption. A method that forces one fixed seasonal pattern across
+    the whole period fits the average of two genuinely different
+    regimes and matches neither one well. For a long Indian series,
+    evolving seasonality is not the exceptional case worth a footnote —
+    it is closer to the normal situation.
 
 ## Where this leaves you
 

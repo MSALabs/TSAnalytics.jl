@@ -223,10 +223,15 @@ println("Julia:  ar1≈", round(m_r_style.arma.ar[1],digits=4), "  beta≈", rou
 !!! india "The Indian Series"
     The natural Indian example for this chapter is monthly industrial
     production against a policy rate, or agricultural output against
-    rainfall. Rainfall is the cleaner case — the mechanism is physical
-    rather than behavioural, the data exists, and the relationship is
-    strong enough to survive a short sample the way a behavioural one
-    often is not.
+    rainfall. This package now bundles a real `iip_india` series —
+    the `Y` half of the first pairing genuinely exists — but no matching
+    policy-rate or rainfall series is bundled alongside it (checked
+    directly against `datasets()`), so the full worked regression this
+    box describes still cannot be built end-to-end from this package's
+    own data alone. Rainfall would be the cleaner case if it were
+    available — the mechanism is physical rather than behavioural, and
+    the relationship is strong enough to survive a short sample the way
+    a behavioural one often is not.
 
     It also exposes a real limitation. Rainfall affects agricultural
     output with a lag that depends on the crop cycle — a wet month

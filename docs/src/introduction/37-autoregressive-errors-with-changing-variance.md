@@ -244,19 +244,23 @@ shown was a hazard this chapter constructed by hand to demonstrate,
 not a bug this package's own fitting function contains.
 
 !!! india "The Indian Series"
-    Chapter 17 already established that monthly Indian inflation and
-    industrial-growth series typically carry AR coefficients between
-    `0.7` and `0.95` — genuinely persistent, not the mild `φ ≈ 0.3`
-    where this chapter's own correction is smallest. Read off the
-    sweep above at `φ = 0.9`: the stationary variance is more than
-    five times the ordinary innovation variance, and the omitted term
-    is correspondingly large. A regression-with-AR-errors
-    implementation that takes the conditioning shortcut will be
-    systematically wrong on precisely the persistent series that
-    Indian macroeconomic work is built on — and, per the point just
-    made about the gap's sign, wrong in whichever direction that
-    series' own first residual happens to produce, with no warning
-    that anything is off.
+    Chapter 17's own real check on `iip_india` found year-on-year
+    industrial growth persistence around `φ ≈ 0.56` — genuinely
+    persistent, but short of the `0.7`-plus range sometimes quoted for
+    Indian inflation series specifically, which are not directly
+    checkable here (no CPI series is bundled). This chapter's own
+    fitted AR(1) coefficient on `cmort`/`tempr`, `φ = 0.834`, sits
+    comfortably inside the persistent range either way, and read off
+    the sweep above at `φ = 0.834`: the stationary variance is roughly
+    `3.3` times the ordinary innovation variance (`1/(1-0.834²) ≈
+    3.28`), and the omitted term is correspondingly large — nowhere
+    near the mild `φ ≈ 0.3` case where this chapter's own correction is
+    smallest. A regression-with-AR-errors implementation that takes the
+    conditioning shortcut will be systematically wrong on precisely the
+    persistent series that Indian macroeconomic work regularly
+    produces — and, per the point just made about the gap's sign,
+    wrong in whichever direction that series' own first residual
+    happens to produce, with no warning that anything is off.
 
 ## What it buys
 

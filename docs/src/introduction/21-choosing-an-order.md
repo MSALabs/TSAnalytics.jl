@@ -240,6 +240,13 @@ treatments of automatic order selection skip it entirely.
     as a convention rather than a proof that AICc is the better choice
     generally.
 
+```@example ch21
+iip = dataset("iip_india")
+m_iip = auto_arima(iip.value; seasonal=false)
+println("auto_arima on the real iip_india series (n=180): d=", m_iip.d,
+        "  ar order=", length(m_iip.arma.ar), "  ma order=", length(m_iip.arma.ma))
+```
+
 !!! india "The Indian Series"
     The recovery table is a direct statement about Indian quarterly
     macroeconomic data. At `n = 50` — roughly what the current GDP base
@@ -250,9 +257,19 @@ treatments of automatic order selection skip it entirely.
     the form "Indian GDP follows an ARIMA(1,1,2)" is, at this sample
     size, primarily a statement about a selection procedure's behaviour
     on short samples rather than about the structure of the economy.
-    Using the selected model to forecast is reasonable — Chapter 22
-    shows how to check whether it forecasts adequately. Treating its
-    order as a discovered fact about the underlying process is not.
+    There is no known "true" order for a real series the way there is
+    for the simulations behind the recovery table, so this cannot be
+    checked as a recovery rate — but the real `iip_india` series above,
+    at `n = 180`, sits well past where the table's own rows stop
+    sagging, and `auto_arima` settles on ARIMA(2,1,1) there. Whether
+    that specific order is "correct" is exactly the kind of question
+    this chapter's own table says not to over-trust; what the longer
+    sample buys is a selection procedure operating in the region where
+    it is actually reliable, which a `n ≈ 50` quarterly GDP series
+    structurally cannot offer. Using the selected model to forecast is
+    reasonable — Chapter 22 shows how to check whether it forecasts
+    adequately. Treating its order as a discovered fact about the
+    underlying process is not.
 
 ## With regressors, the differencing test moves
 

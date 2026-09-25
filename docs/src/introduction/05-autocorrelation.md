@@ -209,17 +209,29 @@ single simulated series, and not a bug in either.
     the answer (lags, values, a confidence band) is identical either
     way.
 
+```@example ch5
+iip = dataset("iip_india")
+iip_growth = diff(log.(iip.value))
+prodn = dataset("prodn")
+prodn_growth = diff(log.(prodn.value))
+println("iip_india month-on-month growth, ACF(12): ", round(acf(iip_growth, 12:12).values[1], digits=3))
+println("prodn (US Fed industrial production) growth, ACF(12): ", round(acf(prodn_growth, 12:12).values[1], digits=3))
+```
+
 !!! india "The Indian Series"
     Indian monthly industrial data carries a real annual rhythm, so its
-    ACF does show the expected spike near lag 12 — usually a weaker and
-    less regular one than a comparable Western series shows at the same
-    lag. Part of the reason is that the festival calendar itself moves:
-    the Diwali-linked production surge lands in October some years and
-    November in others, so the "annual" pattern is not repeating at a
-    genuinely fixed lag every time. The ACF only knows about fixed
-    lags, and it blurs anything that is not one — a real limitation of
-    the tool, not a fault in the data, and one reason the calendar
-    regressors of Chapter 36 exist at all.
+    ACF does show the expected spike near lag 12 — genuinely weaker than
+    a comparable Western series shows at the same lag, checked directly
+    above: `0.36` for India's real `iip_india` growth rate against
+    `0.72` for `prodn`, the US Federal Reserve's own industrial
+    production index, computed the same way on both. Part of the reason
+    is that the festival calendar itself moves: the Diwali-linked
+    production surge (Chapter 1's own real check) lands in October some
+    years and November in others, so the "annual" pattern is not
+    repeating at a genuinely fixed lag every time. The ACF only knows
+    about fixed lags, and it blurs anything that is not one — a real
+    limitation of the tool, not a fault in the data, and one reason the
+    calendar regressors of Chapter 36 exist at all.
 
 ## Where this leaves you
 

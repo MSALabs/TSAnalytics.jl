@@ -80,10 +80,12 @@ const _UNKNOWN_UNITS = "unknown (not stated in the source package's own document
 const _PACKAGE_URL = Dict(
     "astsa" => "https://cran.r-project.org/package=astsa",
     "tsibbledata" => "https://cran.r-project.org/package=tsibbledata",
+    "MoSPI" => "https://www.mospi.gov.in/",
 )
 const _PACKAGE_CITATION = Dict(
     "astsa" => "Stoffer, D. (2024). astsa: Applied Statistical Time Series Analysis. R package version 2.5.1.",
     "tsibbledata" => "O'Hara-Wild, M., Hyndman, R., Wang, E., Godahewa, R. tsibbledata: Diverse Datasets for 'tsibble'. R package.",
+    "MoSPI" => "Ministry of Statistics and Programme Implementation (MoSPI), Government of India. Index of Industrial Production (IIP), General Index, monthly, base 2011-12=100 -- supplied directly by the project maintainer, not independently re-downloaded from the MoSPI portal this session.",
 )
 const _PACKAGE_LICENCE = Dict("astsa" => "GPL-3", "tsibbledata" => "GPL-3")
 

@@ -245,14 +245,28 @@ sitting untouched in the remainder, confirmed directly: a portmanteau
 test aimed at the weekly lag rejects overwhelmingly. One period is not
 always enough, and STL on its own has no mechanism for saying so.
 
+```@example ch15
+iip = dataset("iip_india")
+using Dates
+res_iip = stl_decompose(iip.value, 12)
+idx_oct = [findfirst(t -> year(t)==yr && month(t)==10, iip.date) for yr in 2012:2024]
+println("October's own STL seasonal component, 2012-2024:")
+println(round.(res_iip.seasonal[idx_oct], digits=2))
+```
+
 !!! india "The Indian Series"
     Indian monthly series need an evolving seasonal pattern more than
     most, because the festival calendar moves against the Gregorian
     one — the October effect and the November effect trade places from
-    year to year depending on when Diwali falls. A frozen seasonal
-    index, classical decomposition's kind, cannot represent that
-    movement at all. A short STL seasonal window can partially absorb
-    it, since the window lets the fitted pattern drift year to year.
+    year to year depending on when Diwali falls. Checked directly
+    above, on the real `iip_india` series: October's own fitted
+    seasonal component swings from about `-1.5` in the early 2010s, up
+    through a positive `+2.6` around 2019, back down to `-5.6` by 2024
+    — genuinely drifting rather than fixed, confirming the premise
+    directly rather than asserting it. A frozen seasonal index,
+    classical decomposition's kind, cannot represent that movement at
+    all. A short STL seasonal window can partially absorb it, since the
+    window lets the fitted pattern drift year to year.
 
     Only partially, though, and it is worth being precise about the
     limit. STL adapts to *drift* in a seasonal pattern; it has no

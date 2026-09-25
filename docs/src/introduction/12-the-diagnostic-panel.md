@@ -192,17 +192,32 @@ a clean diagnostic panel means *not obviously wrong* — a genuinely
 useful thing to know, and a considerably weaker claim than most readers
 give it credit for.
 
+```@example ch12
+iip = dataset("iip_india")
+m_iip = fit_arima(iip.value, (1,1,1))
+r_iip_default = diagnostic_plot(iip.value; fitdf=0)
+r_iip_monthly = diagnostic_plot(iip.value; fitdf=0, period=12)
+println("iip_india, period unspecified: nlag=", r_iip_default.nlag)
+println("iip_india, period=12 given:    nlag=", r_iip_monthly.nlag)
+```
+
 !!! india "The Indian Series"
     For Indian monthly data the panel's fourth quadrant needs to reach
     at least lag 12, and preferably lag 24, because the seasonal lag is
     exactly where a model of Indian industrial or retail data is most
     likely to fail — the festival calendar moves, and a fixed
-    twelve-month structure cannot fully absorb that movement. A panel
-    drawn with a short default lag count, the way this chapter's own
-    seasonal example showed, can present a clean bill of health on a
-    model with real, visible residual seasonality simply because it
-    never looked far enough to find it. On this kind of data the lag
-    count is not a cosmetic setting.
+    twelve-month structure cannot fully absorb that movement.
+
+    Checked directly on the real `iip_india` series above, the actual
+    risk is narrower than "the lag count needs manual widening": this
+    package's own default, once `period=12` is supplied, already reaches
+    `36` — past both `12` and `24` automatically, confirmed against
+    `_diagnostic_nlag`'s own formula. The genuine trap is leaving
+    `period` unspecified in the first place, the way this chapter's own
+    earlier seasonal example showed: that silently reverts to `nlag=20`
+    — a bill of health that looks clean only because it never reached
+    the seasonal lag at all. On Indian monthly data, passing `period=12`
+    is the one setting that actually matters here.
 
 ## Where this leaves you
 

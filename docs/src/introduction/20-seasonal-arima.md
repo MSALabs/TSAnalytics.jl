@@ -163,6 +163,12 @@ at lag 1, now at the seasonal lag: `-0.387` at `D = 1` deepens to
 the right choice for a real series, and the correlogram says so
 plainly to anyone who checks before fitting.
 
+```@example ch20
+iip = dataset("iip_india")
+m_iip = fit_sarima(iip.value, (0,1,1), (0,1,1,12))
+println("SARIMA(0,1,1)(0,1,1)[12] on iip_india: seasonal MA coefficient Θ=", round(m_iip.Theta[1], digits=4))
+```
+
 !!! india "The Indian Series"
     A SARIMA model with `m = 12` assumes the seasonal effect recurs
     every twelve months, at a fixed lag. For Indian monthly data, the
@@ -170,13 +176,22 @@ plainly to anyone who checks before fitting.
     between October and November from year to year, so the "annual"
     pattern the model is asked to fit is not actually annual at a
     fixed lag at all. SARIMA cannot represent that; there is no `m`
-    that captures a repeating event with a moving date. It will
-    instead estimate a compromise seasonal structure that is wrong in
-    both months in most years, and the residuals will typically show a
-    smear of leftover correlation around lag 12 rather than one clean,
-    diagnosable failure. The fix is not a better seasonal order — it
-    is a regressor built from the actual festival dates, which is
-    Chapter 36's territory.
+    that captures a repeating event with a moving date.
+
+    Checked directly on the real `iip_india` series above, what
+    actually happens is more specific than a leftover residual smear:
+    the fitted seasonal MA coefficient lands at `Θ = -1.0` — pinned
+    exactly on the boundary of invertibility. Rather than leaving an
+    obvious diagnosable failure in the residual ACF, the model
+    compensates by straining a seasonal parameter to its structural
+    edge, and a naive portmanteau check on the residuals afterwards can
+    come back looking clean. **A boundary estimate on a seasonal MA
+    term is itself the diagnosable failure** — a sign the model is
+    working unusually hard to represent something it structurally
+    cannot, worth recognising on its own rather than only trusting a
+    residual test that the compensation can quietly satisfy. The fix is
+    not a better seasonal order — it is a regressor built from the
+    actual festival dates, which is Chapter 36's territory.
 
 ## When one seasonal period is not the problem
 

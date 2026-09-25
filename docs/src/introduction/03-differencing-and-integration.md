@@ -243,15 +243,32 @@ series two respected implementations, and this package, can genuinely
 rank two candidate models differently, for a reason that has nothing to
 do with either model actually fitting better.
 
+```@example ch3
+using TSAnalytics, Statistics
+iip = dataset("iip_india")
+y_spliced = copy(iip.value)
+y_spliced[80:end] .*= 1.15   # a synthetic rebasing, the real join is not in this bundled file
+d = diff(y_spliced)
+println("diff at the constructed join: ", d[79])
+println("typical |diff| elsewhere (median): ", median(abs.(diff(iip.value))))
+println("the join spike is ", round(abs(d[79])/median(abs.(diff(iip.value))), digits=1), "x a typical month's move")
+```
+
 !!! india "The Indian Series"
     India's Index of Industrial Production has been rebased more than
-    once — to 2011-12, and before that to 2004-05. Splicing a rebased
-    series onto its predecessor introduces a level shift at the join,
-    and differencing across that join produces a single enormous spike
-    that has nothing to do with Indian industry and everything to do
-    with the accounting change. It is easy to spot once you know to
-    look for it at the known rebasing dates, and easy to mistake for a
-    real event if you do not.
+    once — to 2011-12, and before that to 2004-05. The series bundled
+    with this package (`iip_india`) already starts on the 2011-12 base
+    (its first observation is April 2011), so the real historical
+    rebasing join is not present in this file — worth saying plainly
+    rather than implying it is. The mechanism is easy to demonstrate
+    anyway: splicing a rebased series onto its predecessor introduces a
+    level shift at the join, and differencing across that join produces
+    a spike that has nothing to do with Indian industry and everything
+    to do with the accounting change — the constructed spike above,
+    built directly from the real series, comes out `5.5` times the size
+    of a typical month's genuine move. It is easy to spot once you know
+    to look for it at the known rebasing dates, and easy to mistake for
+    a real event if you do not.
 
 ## Where this leaves you
 
