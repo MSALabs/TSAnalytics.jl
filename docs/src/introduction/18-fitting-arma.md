@@ -218,10 +218,16 @@ end
 y_se = y_se[50:end]
 m_hess = fit_arma(y_se, (1,1); include_mean=false, se_type=:hessian)
 m_opg  = fit_arma(y_se, (1,1); include_mean=false, se_type=:opg)
+m_rob  = fit_arma(y_se, (1,1); include_mean=false, se_type=:robust)
 println("Julia (hessian): ar=", round(m_hess.ar[1],digits=4), "  ma=", round(m_hess.ma[1],digits=4),
         "  se=(", round(m_hess.se[1],digits=5), ", ", round(m_hess.se[2],digits=5), ")")
 println("Julia (opg):     ar=", round(m_opg.ar[1],digits=4), "  ma=", round(m_opg.ma[1],digits=4),
         "  se=(", round(m_opg.se[1],digits=5), ", ", round(m_opg.se[2],digits=5), ")")
+println("Julia (robust):  ar=", round(m_rob.ar[1],digits=4), "  ma=", round(m_rob.ma[1],digits=4),
+        "  se=(", round(m_rob.se[1],digits=5), ", ", round(m_rob.se[2],digits=5), ")")
+println("implied t on ma1: hessian=", round(m_hess.ma[1]/m_hess.se[2],digits=3),
+        "  opg=", round(m_opg.ma[1]/m_opg.se[2],digits=3),
+        "  robust=", round(m_rob.ma[1]/m_rob.se[2],digits=3))
 ```
 
 Fitted here to a series (**simulated**, `φ = 0.6, θ = 0.2`,
@@ -237,6 +243,7 @@ independently through R's `arima()` and Python's `statsmodels`
 | Python `statsmodels`, `cov_type="opg"` (its default) | 0.07755 | 0.10024 | 2.049 |
 | Julia `se_type=:opg` | 0.07637 | 0.10012 | 2.052 |
 | Python `statsmodels`, `cov_type="robust"` | 0.07131 | 0.08721 | 2.356 |
+| Julia `se_type=:robust` | 0.07053 | 0.08124 | 2.529 |
 
 The point estimates (`ar1 ≈ 0.6324`, `ma1 ≈ 0.2054`) agree across
 every one of these to four decimal places or better — R, Python and
@@ -247,11 +254,23 @@ the observed-information Hessian of the log-likelihood in the
 *natural* `(φ, θ)` parametrization at the fitted point. Julia's
 `:opg` mode lands close to Python's own `opg` default, because both
 use the outer product of the per-observation score contributions
-instead of curvature. Python's `oim` sits between the two, and its
-`robust` sandwich estimator is the tightest of the six here, because
-it is answering a different question — how much the standard error
-should widen to stay valid if the model is not quite correctly
-specified, and on this particular series the answer is "not much".
+instead of curvature. Python's `oim` sits between the two.
+
+The two `robust` rows are the sandwich estimator — `H⁻¹ (J'J) H⁻¹`,
+literally the other two assembled into one — and they are answering a
+different question: how much the standard error should widen to stay
+valid if the *distribution* is not quite right, even when the dynamics
+are. On this series the answer turns out to be "it should narrow", and
+both implementations agree on that direction.
+
+They do not agree on the amount. Julia's `0.08124` against Python's
+`0.08721` on the MA coefficient is a wider gap than separates the two
+`:hessian`-style rows, and it is worth saying plainly rather than
+rounding past: `statsmodels`' `cov_type="robust"` builds its bread from
+the approximate observed-information matrix, where this package uses
+the exact Hessian by automatic differentiation. Same estimator family,
+different ingredients, genuinely different numbers — the same lesson
+this whole section is about, now applying to the correction itself.
 
 !!! disagreement "When Implementations Disagree"
     All three quantities in that table are legitimate estimators of
@@ -269,13 +288,23 @@ specified, and on this particular series the answer is "not much".
     The consequence is concrete rather than academic, even on a series
     where every method agrees the coefficient is significant. For this
     fit's MA coefficient, the implied t-statistic ranges from `2.049`
-    under Python's own default to `2.356` under its robust option,
-    with R and both of this package's own modes falling in between —
-    a genuine spread of the kind that, on a smaller sample or a
-    coefficient sitting closer to zero, is exactly wide enough to flip
-    a conclusion. This package defaults to `:hessian`, matching R; a
-    reader coming from Python and expecting `statsmodels`' own default
-    answer should pass `se_type=:opg` explicitly.
+    under Python's own default to `2.529` under this package's robust
+    option, with R, Python's `oim`, and this package's other two modes
+    falling in between — a genuine spread of the kind that, on a
+    smaller sample or a coefficient sitting closer to zero, is exactly
+    wide enough to flip a conclusion. Seven estimates of one standard
+    error, spanning almost a quarter of a t-unit.
+
+    This package defaults to `:hessian`, matching R; a reader coming
+    from Python and expecting `statsmodels`' own default answer should
+    pass `se_type=:opg` explicitly. **Neither R's `stats::arima` nor
+    `statsmodels` offers a sandwich for an ARIMA model that
+    `sandwich::vcovHC` can reach** — checked directly, it refuses an
+    `arima` object outright for want of a `terms` component — so
+    `se_type=:robust` here has no direct counterpart to be validated
+    against, and is instead verified by exact reduction: for a plain
+    linear model the identical sandwich *is* White's HC0, matched to
+    `1e-7` against real `sandwich::vcovHC` through [`arx`](@ref).
 
 Indian quarterly macroeconomic series often run to only sixty or
 eighty observations. All three covariance estimators above are

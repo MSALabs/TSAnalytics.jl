@@ -161,6 +161,46 @@ the *squares* of what it leaves behind — this is the volatility
 equivalent of Chapter 10's residual check, and the tool transfers
 without modification.
 
+Those two checks — a test on the squares, an ACF of the squares — are
+the start of a standard battery, and assembling it by hand every time
+gets tedious. [`diagnostic_plot`](@ref) knows what a fitted variance
+model needs:
+
+```@example ch25
+d = diagnostic_plot(mg)
+plot(d)
+```
+
+Six panels, chosen for *this* kind of model rather than a fixed list.
+The same function applied to an ARMA fit in Chapter 12 produced four
+different ones — it dispatches on what it was handed, because what is
+worth looking at genuinely differs. Two here have no counterpart in
+the ARMA-side display:
+
+- **Conditional SD against `|returns|`** (top left): whether the
+  fitted volatility actually tracks the size of what happened.
+- **ACF of squared standardised residuals** (bottom left): the panel
+  that says whether the variance model worked, as opposed to the ACF
+  above it, which only says whether the *mean* model did. A GARCH fit
+  can leave the top panel clean and the bottom one full of structure;
+  that combination is the whole reason this chapter exists.
+
+The **news impact curve** (bottom right) is the one to look at next.
+It is symmetric here by construction — GARCH cannot be anything else,
+since `e²` discards the sign of the shock before the model ever sees
+it. Whether real returns agree is Chapter 26's subject.
+
+```@example ch25
+println("panels returned as data, not just drawn:")
+println("  ACF of squared std. residuals, lags 1-5: ", round.(d.acf_sq[1:5], digits=4))
+println("  news impact curve evaluated at ", length(d.news_impact_e), " shock values")
+```
+
+The object carries every plotted number, so the panels are usable
+without a plotting backend loaded at all — the same property Chapter
+12's version has, and the one R's own `tsdiag` does not, since it
+draws and returns `NULL`.
+
 ## Two conventions and one default
 
 ```@example ch25

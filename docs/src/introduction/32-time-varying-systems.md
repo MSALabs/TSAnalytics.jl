@@ -31,6 +31,38 @@ will fit regressions with ARIMA errors and will assume, throughout,
 that the coefficient is one fixed number. Sometimes it genuinely is
 not, and the failure is not subtle when it happens.
 
+Reading it off a residual plot is a judgement call, though, and the
+next chart in a real analysis is rarely this obliging. There is a
+formal test for precisely this question:
+
+```@example ch32
+resid_ols = y1 .- X1*m_ols
+s2_ols = sum(abs2, resid_ols) / n1
+scores = (X1 .* resid_ols) ./ s2_ols
+println(nyblom_test(scores; names=["slope"]))
+```
+
+The Nyblom–Hansen statistic asks whether a fitted parameter stayed
+put. It takes the **per-observation scores** — each observation's own
+contribution to the gradient, the same quantity the OPG standard
+errors are built from — accumulates them through the sample, and asks
+whether the running total wanders further from zero than constant
+parameters could plausibly produce. Under a genuinely fixed
+coefficient those contributions scatter around zero and the
+cumulative sum stays near it. Under a coefficient that shifts, they
+share a sign for a long stretch and the cumulative sum drifts away.
+
+Here the statistic is `2.70`, against a 1% critical value of `0.748`.
+The same computation on a series built with a genuinely constant
+slope gives `0.30` — below even the 10% value. The test sees what the
+residual plot showed, without needing anyone to squint at it.
+
+Unlike most tests in this book it reports critical values rather than
+a p-value, and that is not an omission: the null distribution is
+non-standard and tabulated only at the 10%, 5% and 1% levels. Beyond
+twenty parameters this package returns `nothing` for them rather than
+extrapolating a number the table does not contain.
+
 ```@example ch32
 function rolling_beta(x, y, w)
     n = length(x)

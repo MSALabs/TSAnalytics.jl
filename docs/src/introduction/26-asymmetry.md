@@ -94,6 +94,70 @@ the variance response of an equivalent rise, which is a real and
 economically large difference whatever its exact statistical
 precision.
 
+## Asking the question directly
+
+A `t`-statistic of `1.40` on `γ` asks whether *this particular
+parametrisation* of asymmetry is pinned down. There is a more direct
+question available: does the symmetric model leave any asymmetry
+behind at all?
+
+```@example ch26
+z_sym = mg.resid ./ sqrt.(mg.sigma2)
+t_sym = sign_bias_test(z_sym, mg.resid)
+println(t_sym)
+```
+
+Engle and Ng's sign-bias test, run on the residuals of the
+**symmetric** GARCH fitted at the top of this chapter. It regresses
+each standardized residual's square on what the *previous* shock did —
+whether it was negative, and how large it was in each direction — and
+asks whether any of that predicts today's variance. If the symmetric
+model were adequate, none of it should.
+
+The joint test rejects decisively, `p = 0.0021`. Look at which term
+carries it: the **negative** sign bias, `t = 2.98`, `p = 0.0030`,
+while the plain sign term (`p = 0.91`) and the positive term
+(`p = 0.41`) are nowhere near significant. That is the leverage effect
+stated as precisely as this chapter can state it — it is not that
+shocks of either sign are mismodelled, it is specifically that *large
+negative* ones are.
+
+```@example ch26
+z_gjr = m_gjr.resid ./ sqrt.(m_gjr.sigma2)
+t_gjr = sign_bias_test(z_gjr, m_gjr.resid)
+println("symmetric GARCH, joint effect : X² = ", round(t_sym.joint_effect, digits=3),
+        "   p = ", round(t_sym.joint_effect_pvalue, digits=4))
+println("GJR-GARCH,       joint effect : X² = ", round(t_gjr.joint_effect, digits=3),
+        "   p = ", round(t_gjr.joint_effect_pvalue, digits=4))
+```
+
+And the same test run on the GJR fit no longer rejects — `p = 0.22`
+against the symmetric model's `0.0021`. The `γ` term absorbed the
+thing the test was detecting, even though `γ`'s own t-statistic never
+cleared `1.5`.
+
+**Both facts are true at once, and the tension between them is the
+point.** A specification test asking "is there asymmetry here?" can be
+decisive while the individual parameter introduced to capture it looks
+weak, because the two are not testing the same thing: one pools all
+the evidence for asymmetry of any form, the other asks how precisely
+one specific functional form's coefficient is located. Reaching only
+for the coefficient's t-statistic — the more common habit — would
+have concluded "not significant" and stopped, on a series where the
+asymmetry is real, detectable at `p = 0.002`, and economically large.
+
+!!! julia "Under the Hood"
+    [`sign_bias_test`](@ref) was implemented by reading `rugarch`'s
+    own R source rather than Engle & Ng's paper, and the two genuinely
+    differ. The paper's exposition describes **three separate**
+    regressions, one per statistic. `rugarch` fits **one** regression
+    with all four regressors and reads three t-values off it. Those
+    give different numbers, and this package matches the reference
+    implementation rather than the textbook — every figure above
+    agrees with `rugarch 1.5.6` to all eight printed digits. Where a
+    paper and the software everyone actually uses disagree, this book
+    validates against the software and says which it chose.
+
 ## Model the logarithm instead
 
 ```@example ch26

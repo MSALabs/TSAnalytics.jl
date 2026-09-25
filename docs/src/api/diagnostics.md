@@ -32,3 +32,17 @@ DurbinWatsonTest
 ARCHLMTest
 DKHeteroTest
 ```
+
+## Asymmetry and parameter stability
+
+Both of these exist in R's `rugarch` and had no equivalent here; both
+were implemented by reading that package's own source rather than the
+originating papers, because the two disagree on construction in ways
+that change the numbers — see each docstring.
+
+```@docs
+sign_bias_test
+nyblom_test
+SignBiasTest
+NyblomTest
+```
