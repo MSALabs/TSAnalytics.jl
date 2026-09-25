@@ -1,6 +1,42 @@
 # Handoff: Robust Standard Errors and Diagnostic Plots — closing the R gap
 
-Status: pending
+Status: **partially implemented** — gaps 1, 2, 3a, 3b and 4 done; 3c, 3d, 3e open.
+
+## Implementation log
+
+| Item | Status | Commit | Validation achieved |
+|---|---|---|---|
+| Gap 1 — `se_type=:robust`, ARMA family | ✅ | `3eedd89` | collapse property; no reference exists in R or Python |
+| Gap 2 — `se_type=:robust` for `arx` | ✅ | `3eedd89` | **exact vs `sandwich::vcovHC(HC0)`, 1e-7** |
+| Gap 3a — Nyblom stability | ✅ | `e76c336` | **exact vs `rugarch::nyblom`, 10 digits** |
+| Gap 3b — Sign Bias (Engle–Ng) | ✅ | `3eedd89` | **exact vs `rugarch::signbias`, all 8 digits** |
+| Gap 3c — adjusted Pearson GoF | ⬜ open | — | reference values in §3c below |
+| Gap 3d — weighted LB / ARCH-LM | ⬜ open | — | reference values in §3d below |
+| Gap 3e — Shibata / Hannan–Quinn | ⬜ open | — | formulas confirmed, see note below |
+| Gap 4 — diagnostic plots | ✅ | `e76c336` | six GARCH panels, recipe-rendered |
+
+**Deviation from the original spec, stated plainly.** The request was
+for a `diagnostics::Bool` keyword on the fit functions that plots when
+true. That was implemented instead as `diagnostic_plot(::GarchModel)`,
+dispatching on model type, for three reasons: `src/` depends on
+`RecipesBase` and not `Plots`, so nothing inside a fit function can
+render; a boolean that triggers a side-effecting plot from inside an
+estimation call is not composable; and the package already had
+`diagnostic_plot(resid, ::ArmaModel)` as the established spelling for
+exactly this. `plot(diagnostic_plot(m))` draws the charts, and the
+returned object carries the numbers whether or not anything is drawn.
+
+**Gap 3e note.** All four information-criterion formulas were confirmed
+against `rugarch`'s reported values for the benchmark fit
+(`n=1260, k=3, LL=-2079.6025`): Akaike `3.305718`, Bayes `3.317954`,
+Shibata `3.305707`, Hannan–Quinn `3.310316`, where Shibata is
+`-2LL/n + log((n+2k)/n)` and Hannan–Quinn is
+`-2LL/n + 2k·log(log n)/n`. **`rugarch` divides all four by `n`; this
+package's `aic`/`bic` do not.** Implementing these means either
+breaking that convention or documenting a second one — decide before
+writing the code, not after.
+
+---
 
 ## Where this fits
 
