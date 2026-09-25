@@ -169,29 +169,27 @@ m_iip = fit_sarima(iip.value, (0,1,1), (0,1,1,12))
 println("SARIMA(0,1,1)(0,1,1)[12] on iip_india: seasonal MA coefficient Θ=", round(m_iip.Theta[1], digits=4))
 ```
 
-!!! india "The Indian Series"
-    A SARIMA model with `m = 12` assumes the seasonal effect recurs
-    every twelve months, at a fixed lag. For Indian monthly data, the
-    single largest seasonal event routinely does not — Diwali moves
-    between October and November from year to year, so the "annual"
-    pattern the model is asked to fit is not actually annual at a
-    fixed lag at all. SARIMA cannot represent that; there is no `m`
-    that captures a repeating event with a moving date.
+That fitted seasonal MA coefficient, `Θ = -1.0`, is pinned exactly on
+the boundary of invertibility — and it is the most informative number
+in this chapter.
 
-    Checked directly on the real `iip_india` series above, what
-    actually happens is more specific than a leftover residual smear:
-    the fitted seasonal MA coefficient lands at `Θ = -1.0` — pinned
-    exactly on the boundary of invertibility. Rather than leaving an
-    obvious diagnosable failure in the residual ACF, the model
-    compensates by straining a seasonal parameter to its structural
-    edge, and a naive portmanteau check on the residuals afterwards can
-    come back looking clean. **A boundary estimate on a seasonal MA
-    term is itself the diagnosable failure** — a sign the model is
-    working unusually hard to represent something it structurally
-    cannot, worth recognising on its own rather than only trusting a
-    residual test that the compensation can quietly satisfy. The fix is
-    not a better seasonal order — it is a regressor built from the
-    actual festival dates, which is Chapter 36's territory.
+A SARIMA model with `m = 12` assumes the seasonal effect recurs every
+twelve months, at a fixed lag. India's single largest seasonal event
+routinely does not: Diwali moves between October and November from
+year to year, so the "annual" pattern the model is asked to fit is not
+actually annual at a fixed lag. There is no `m` that captures a
+repeating event with a moving date.
+
+What happens then is more specific than a leftover residual smear.
+Rather than failing visibly in the residual ACF, the model compensates
+by straining a seasonal parameter to its structural edge, and a naive
+portmanteau check afterwards can come back looking clean. **A boundary
+estimate on a seasonal MA term is itself the diagnosable failure** — a
+sign the model is working unusually hard to represent something it
+structurally cannot, worth recognising on its own rather than trusting
+only a residual test that the compensation can quietly satisfy. The
+fix is not a better seasonal order; it is a regressor built from the
+actual festival dates, which is Chapter 36's territory.
 
 ## When one seasonal period is not the problem
 

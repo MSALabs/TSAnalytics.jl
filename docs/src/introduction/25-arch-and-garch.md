@@ -231,23 +231,22 @@ println("omega: robust se=", round(m_rob.se[1],digits=5), "   classic se=", roun
     than treating each occurrence as a fresh surprise — is the more
     useful habit for a reader to take away.
 
-!!! india "The Indian Series"
-    Fitted `α + β` for Indian equity indices typically lands in the
-    `0.95` to `0.99` range — high persistence, meaning a volatility
-    shock decays slowly, and close enough to `1` that the implied
-    long-run variance is only weakly determined by the data actually
-    available.
+Fitted `α + β` for Indian equity indices typically lands in the
+`0.95` to `0.99` range — high persistence, meaning a volatility
+shock decays slowly, and close enough to `1` that the implied
+long-run variance is only weakly determined by the data actually
+available.
 
-    That has a practical edge worth acting on rather than just noting.
-    A GARCH model fitted across a period that actually contains a
-    structural break will report very high persistence, because the
-    break itself looks to the model like an extremely slow-decaying
-    shock — it has no way to distinguish "genuinely persistent
-    clustering" from "one big level change that never reverted."
-    Unusually high estimated persistence is therefore weak evidence of
-    genuine persistence and reasonable evidence that Chapter 24's
-    variance-shift test should have been run before reaching for
-    GARCH at all.
+That has a practical edge worth acting on rather than just noting.
+A GARCH model fitted across a period that actually contains a
+structural break will report very high persistence, because the
+break itself looks to the model like an extremely slow-decaying
+shock — it has no way to distinguish "genuinely persistent
+clustering" from "one big level change that never reverted."
+Unusually high estimated persistence is therefore weak evidence of
+genuine persistence and reasonable evidence that Chapter 24's
+variance-shift test should have been run before reaching for
+GARCH at all.
 
 ## Where this leaves you
 

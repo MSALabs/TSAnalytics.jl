@@ -234,23 +234,22 @@ for most macroeconomic series. These methods complement Chapters 25 to
 27 on the narrow class of series where fine-grained data actually
 exists — they do not replace GARCH modelling generally.
 
-!!! india "The Indian Series"
-    NSE provides intraday data, so realized measures are directly
-    computable for Indian equities. The trading day is shorter than in
-    the US, though, and there is a substantial overnight gap — made
-    more consequential than it might otherwise be by how much relevant
-    news arrives from other time zones while the Indian market is
-    closed.
+NSE provides intraday data, so realized measures are directly
+computable for Indian equities. The trading day is shorter than in
+the US, though, and there is a substantial overnight gap — made
+more consequential than it might otherwise be by how much relevant
+news arrives from other time zones while the Indian market is
+closed.
 
-    Realized variance computed over the trading session alone
-    systematically understates the *total* daily variance, because it
-    has no way to see the overnight move at all. The standard
-    remedies — scaling the trading-session estimate up by a fixed
-    factor, or adding the squared overnight return directly — are both
-    approximations, and neither is obviously the right one for any
-    given series. Anyone computing realized measures on Indian data
-    should decide this explicitly, rather than silently inherit
-    whatever a piece of software happens to default to.
+Realized variance computed over the trading session alone
+systematically understates the *total* daily variance, because it
+has no way to see the overnight move at all. The standard
+remedies — scaling the trading-session estimate up by a fixed
+factor, or adding the squared overnight return directly — are both
+approximations, and neither is obviously the right one for any
+given series. Anyone computing realized measures on Indian data
+should decide this explicitly, rather than silently inherit
+whatever a piece of software happens to default to.
 
 ## Where this leaves you
 

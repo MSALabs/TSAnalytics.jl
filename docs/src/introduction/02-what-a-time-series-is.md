@@ -281,20 +281,19 @@ iip = dataset("iip_india")
 iip.date[1], iip.date[12], iip.date[13]
 ```
 
-!!! india "The Indian Series"
-    India's financial year runs from April to March, not January to
-    December, and this package's own bundled `iip_india` series shows
-    it directly: its very first observation, checked above, is dated
-    `2011-04-01`, not `2011-01-01` — MoSPI's own real first month of
-    its reporting year. A quarterly series published by MoSPI has its
-    first quarter in April — and a package, or an analyst, that assumes
-    calendar quarters will label every single observation wrongly, not
-    approximately but by an entire quarter. The values themselves are
-    perfectly fine; it is the index that is wrong, and nothing in a
-    plot of the series will ever say so. The same problem recurs for
-    any market whose fiscal year is not the Gregorian one, and it is,
-    underneath everything, a pure indexing problem of exactly the kind
-    this chapter has been about throughout.
+A series can also carry a calendar convention that has nothing to do
+with January. India's financial year runs from April to March, and
+`iip_india` shows it directly: the first observation is dated
+`2011-04-01`, not `2011-01-01`, because April is MoSPI's own first
+month of the reporting year.
+
+Anything that assumes calendar quarters will label every single
+observation from such a series wrongly — not approximately, but by an
+entire quarter. The values are perfectly fine; it is the index that is
+wrong, and nothing in a plot of the series will ever say so. The same
+trap recurs for any market whose fiscal year is not the Gregorian one,
+and underneath everything it is a pure indexing problem of exactly the
+kind this chapter has been about throughout.
 
 ## Where this leaves you
 

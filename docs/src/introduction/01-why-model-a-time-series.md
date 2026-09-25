@@ -72,19 +72,15 @@ It simply stays close to 1 and creeps down, slowly, with no rhythm in
 it anywhere. Two series, two shapes that share almost nothing, and by
 the end of Part I you will know exactly why.
 
-Electricity demand in Maharashtra is forecastable for the same reason
-Victorian demand is — a strong daily and weekly rhythm, driven by when
-people are awake, working, and running appliances — with one
-complication Australian data does not have. Diwali falls in October
-some years and November in others, and industrial and retail demand
-move with it. A model that assumes October is always October will be
-wrong in a way that more data cannot fix, only disguise. This is not a
-hypothetical — it is directly checkable in this package's own bundled
-data.
+## A rhythm that moves
+
+Both series above repeat on a fixed schedule — a day is always a day,
+a week always a week. Here is one that does not, and it is the reason
+this book keeps returning to Indian data.
 
 ```@example ch1
-iip = dataset("iip_india")
 using Dates
+iip = dataset("iip_india")
 diwali_month = Dict(2012=>11,2013=>11,2014=>10,2015=>11,2016=>10,2017=>10,2018=>11,
                      2019=>10,2020=>11,2021=>11,2022=>10,2023=>11,2024=>11,2025=>10)
 for yr in sort(collect(keys(diwali_month)))
@@ -96,18 +92,26 @@ for yr in sort(collect(keys(diwali_month)))
 end
 ```
 
-!!! india "The Indian Series"
-    Fourteen years of India's real monthly Index of Industrial
-    Production, checked against the real Diwali calendar: in every
-    single year Diwali fell in November, October's index reading came
-    out *higher* than November's (ratio `> 1`, up to `1.055`). In every
-    year it fell in October, November came out higher instead (ratio
-    `< 1`, down to `0.94`). Fourteen years, fourteen for fourteen, with
-    no exceptions — the production surge moves with the festival
-    exactly as claimed, not as an assertion but as something anyone can
-    re-run against this package's own bundled `iip_india` series.
-    Chapter 36 returns to this properly, building the regressor that
-    lets a model represent it.
+This is India's real monthly Index of Industrial Production, checked
+against the real Diwali calendar. In every year Diwali fell in
+November, October's reading came out higher than November's — ratio
+above `1`, up to `1.055`. In every year it fell in October, November
+came out higher instead — ratio below `1`, down to `0.94`. Fourteen
+years, fourteen for fourteen, no exceptions.
+
+The higher month is always the one the festival *missed*. Industrial
+production drops in the Diwali month, because Diwali is a holiday and
+plants shut — Chapter 36 measures the drop at about `4.8` index points
+and shows it holds in 13 of 15 years. (The consumer-facing surge
+everyone associates with the festival is real too, but it lives in
+retail sales, not in a production index.)
+
+What matters here is the timing, not the sign. A model that assumes
+October is always October will be wrong every single year, alternating
+direction as the festival moves, and no amount of additional data will
+fix it — more years simply supply more alternation. That is a
+different kind of problem from the two series above, and Chapter 36 is
+where it gets solved.
 
 ## The obvious attempt, and why it fails
 

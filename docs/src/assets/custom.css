@@ -1,4 +1,4 @@
-/* Three admonition categories used by the "Introduction to Time Series
+/* Two admonition categories used by the "Introduction to Time Series
  * Analysis" book, in addition to Documenter's own built-in categories
  * (note/info/tip/warning/danger/compat). Documenter renders
  * `!!! category "Title"` as `<div class="admonition is-category">`
@@ -8,8 +8,6 @@
  *
  * - is-disagreement: a documented case where two reference
  *   implementations (R/Python/SAS) disagree.
- * - is-india: material specific to adjusting Indian series (the
- *   lunisolar calendar, etc.).
  * - is-julia: an aside about the Julia implementation itself.
  *
  * Colors are deliberately muted -- these appear dozens of times across
@@ -21,13 +19,6 @@
 }
 .admonition.is-disagreement > .admonition-header {
     background-color: #ad6800;
-}
-
-.admonition.is-india {
-    border-color: #2f855a;
-}
-.admonition.is-india > .admonition-header {
-    background-color: #2f855a;
 }
 
 .admonition.is-julia {
@@ -45,13 +36,6 @@ html.theme--documenter-dark .admonition.is-disagreement {
 }
 html.theme--documenter-dark .admonition.is-disagreement > .admonition-header {
     background-color: #8a5300;
-}
-
-html.theme--documenter-dark .admonition.is-india {
-    border-color: #38a169;
-}
-html.theme--documenter-dark .admonition.is-india > .admonition-header {
-    background-color: #276749;
 }
 
 html.theme--documenter-dark .admonition.is-julia {

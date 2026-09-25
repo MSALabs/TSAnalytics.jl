@@ -4,10 +4,17 @@
 
 This appendix collects the recurring material that distinguishes this
 book from a standard time-series textbook: documented disagreements
-between reference implementations, the Indian-calendar seasonal
-adjustment work, and Julia-specific implementation notes. Each gets its
-own admonition category so a reader can recognize the kind of aside at
-a glance. One worked example of each, to exercise the styling:
+between reference implementations, and Julia-specific implementation
+notes. Each gets its own admonition category so a reader can recognize
+the kind of aside at a glance. One worked example of each, to exercise
+the styling:
+
+Indian data is deliberately *not* one of these categories. It appears
+throughout the book as ordinary worked examples on the bundled
+`iip_india` series — Chapters 1, 5, 8, 14, 15, 20 and 36 among
+others — rather than as a recurring aside, because a series is a
+series and the material stands on the same footing as `cmort` or
+`nyse`.
 
 !!! disagreement "When Implementations Disagree"
     R's `stats::arima()` reports `nobs`/`n.used` as `n − d` (verified
@@ -21,19 +28,6 @@ a glance. One worked example of each, to exercise the styling:
     convention its `nobs` used, so comparing `AIC` across R, Python,
     and this package for the same series and order is only meaningful
     once you know which convention each one is following.
-
-!!! india "The Indian Series"
-    Diwali has no closed-form Gregorian date -- it follows the
-    lunisolar Hindu calendar, so it shifts by roughly eleven days each
-    year and occasionally involves an intercalary month. A calendar
-    effect regressor built from a fixed Gregorian-date rule (the way
-    Easter or Christmas can be handled) will not capture it; official
-    Indian seasonal adjustment work has to compute the actual date per
-    year rather than approximate it. Chapter 1 checks the consequence
-    directly against this package's own bundled `iip_india` series:
-    fourteen real years, fourteen for fourteen, the month with the
-    higher industrial-production reading swaps exactly in step with
-    which month that year's Diwali actually fell in.
 
 !!! julia "Under the Hood"
     [`tsvalues`](@ref) is only two methods: identity on

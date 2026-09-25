@@ -229,31 +229,30 @@ What none of this checks is whether a fitted model actually captured
 the structure it was supposed to. That requires looking at what the
 model left behind once it has been fitted, and that is Chapter 10.
 
-!!! india "The Indian Series"
-    India's quarterly GDP series in its current form has been published
-    only since the 2011-12 base revision, which means a working series
-    of a few dozen observations at most. The power curve above is a
-    direct, quantitative statement about what can be learned from data
-    that short: at `n` around 50, a unit-root test applied to a
-    persistent series is close to uninformative, in exactly the sagging
-    region the curve showed.
+India's quarterly GDP series in its current form has been published
+only since the 2011-12 base revision, which means a working series
+of a few dozen observations at most. The power curve above is a
+direct, quantitative statement about what can be learned from data
+that short: at `n` around 50, a unit-root test applied to a
+persistent series is close to uninformative, in exactly the sagging
+region the curve showed.
 
-    Not every Indian series is this short, and the contrast is worth
-    drawing plainly. This package's own bundled `iip_india` series is
-    monthly rather than quarterly and runs to `180` real observations —
-    Chapter 8's own ADF check on it comes back decisive in both
-    directions (`p = 0.96` on the level, `p ≈ 3×10⁻⁷` on log-growth),
-    squarely on the informative side of the power curve above rather
-    than in the sagging middle GDP's own short quarterly history sits
-    in. The difference is not the series, it is the sample size — the
-    same underlying economic persistence that makes GDP hard to test at
-    `n ≈ 50` is easy to test once the same broad question is asked of a
-    frequency with `180` points instead.
+Not every Indian series is this short, and the contrast is worth
+drawing plainly. This package's own bundled `iip_india` series is
+monthly rather than quarterly and runs to `180` real observations —
+Chapter 8's own ADF check on it comes back decisive in both
+directions (`p = 0.96` on the level, `p ≈ 3×10⁻⁷` on log-growth),
+squarely on the informative side of the power curve above rather
+than in the sagging middle GDP's own short quarterly history sits
+in. The difference is not the series, it is the sample size — the
+same underlying economic persistence that makes GDP hard to test at
+`n ≈ 50` is easy to test once the same broad question is asked of a
+frequency with `180` points instead.
 
-    The practical response used across most Indian macroeconomic work
-    is to lean on economic reasoning rather than the test itself —
-    output is treated as difference-stationary because growth theory
-    implies it should be, not because a test confirmed it. That is a
-    defensible position, and it is worth stating as such rather than
-    quietly pretending a formal test settled a question the data was
-    never long enough to answer.
+The practical response used across most Indian macroeconomic work
+is to lean on economic reasoning rather than the test itself —
+output is treated as difference-stationary because growth theory
+implies it should be, not because a test confirmed it. That is a
+defensible position, and it is worth stating as such rather than
+quietly pretending a formal test settled a question the data was
+never long enough to answer.

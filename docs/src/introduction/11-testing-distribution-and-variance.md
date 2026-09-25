@@ -188,19 +188,18 @@ intervals will be too narrow and their advertised coverage will not be
 delivered in practice. That is the answer worth carrying forward, and
 it says more than any single test result does.
 
-!!! india "The Indian Series"
-    Indian equity and currency series show variance shifts tied to
-    identifiable policy moments, not merely ordinary clustering — the
-    1991 liberalisation, the 2016 demonetisation announcement, and the
-    introduction of currency futures each mark a point where the
-    variability of the relevant series changed level and stayed
-    changed. That distinction matters for choosing a remedy. A GARCH
-    model treats volatility as something that wanders and reverts,
-    which is the right picture for ordinary clustering. Fitting GARCH
-    across a genuine one-off regime change instead produces a model
-    that persistently over-predicts volatility through the calm period
-    and under-predicts through the turbulent one — the right diagnostic
-    tool, aimed at the wrong kind of variability.
+Indian equity and currency series show variance shifts tied to
+identifiable policy moments, not merely ordinary clustering — the
+1991 liberalisation, the 2016 demonetisation announcement, and the
+introduction of currency futures each mark a point where the
+variability of the relevant series changed level and stayed
+changed. That distinction matters for choosing a remedy. A GARCH
+model treats volatility as something that wanders and reverts,
+which is the right picture for ordinary clustering. Fitting GARCH
+across a genuine one-off regime change instead produces a model
+that persistently over-predicts volatility through the calm period
+and under-predicts through the turbulent one — the right diagnostic
+tool, aimed at the wrong kind of variability.
 
 ## Where this leaves you
 

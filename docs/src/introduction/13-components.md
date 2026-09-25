@@ -152,18 +152,17 @@ remainder is not an independent estimate of anything. It is a residue,
 and its statistical properties depend entirely on the method that
 produced it, not on some property of the data alone.
 
-!!! india "The Indian Series"
-    Indian GDP growth is routinely discussed as though the trend were a
-    fixed underlying rate the economy temporarily deviates from and
-    eventually returns to. The trend-cycle distinction above says that
-    framing is a modelling *assumption*, not an observed fact — and the
-    choice carries real policy weight. If a slowdown is cycle, it
-    reverses on its own given time. If it is trend, it does not, and
-    treating one as the other leads to genuinely different policy
-    conclusions. None of the decompositions in Part III can settle
-    which is which, because none of them separates trend from cycle at
-    all — worth knowing which question a tool cannot answer before
-    reaching for it to answer one.
+Indian GDP growth is routinely discussed as though the trend were a
+fixed underlying rate the economy temporarily deviates from and
+eventually returns to. The trend-cycle distinction above says that
+framing is a modelling *assumption*, not an observed fact — and the
+choice carries real policy weight. If a slowdown is cycle, it
+reverses on its own given time. If it is trend, it does not, and
+treating one as the other leads to genuinely different policy
+conclusions. None of the decompositions in Part III can settle
+which is which, because none of them separates trend from cycle at
+all — worth knowing which question a tool cannot answer before
+reaching for it to answer one.
 
 ## Where this leaves you
 

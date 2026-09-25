@@ -256,25 +256,24 @@ it was written and is not accurate now, which is itself a small
 illustration of why every claim in this book is checked against
 current source rather than trusted from an earlier session's notes.
 
-!!! india "The Indian Series"
-    The relationship between Indian monetary policy and bank lending
-    rates has changed repeatedly — through the base-rate regime, then
-    MCLR, then external benchmarking. A fixed-coefficient regression
-    across the whole period estimates something like an average of
-    several genuinely different regimes, and describes none of them
-    particularly well.
+The relationship between Indian monetary policy and bank lending
+rates has changed repeatedly — through the base-rate regime, then
+MCLR, then external benchmarking. A fixed-coefficient regression
+across the whole period estimates something like an average of
+several genuinely different regimes, and describes none of them
+particularly well.
 
-    A drifting-coefficient model of the kind built in this chapter
-    handles the gradual parts of that transition reasonably — banks
-    repricing their books slowly as a new regime beds in. It handles
-    the regulatory switch dates themselves badly, for exactly the
-    reason the third series above showed: the changes were announced
-    and abrupt, not gradual, and a smooth drift model will smear each
-    one across the months on either side of it rather than locating it
-    precisely. Knowing which kind of change is actually present is the
-    whole point of the three-series comparison above, and for Indian
-    policy data the honest answer is usually "both, at different
-    times."
+A drifting-coefficient model of the kind built in this chapter
+handles the gradual parts of that transition reasonably — banks
+repricing their books slowly as a new regime beds in. It handles
+the regulatory switch dates themselves badly, for exactly the
+reason the third series above showed: the changes were announced
+and abrupt, not gradual, and a smooth drift model will smear each
+one across the months on either side of it rather than locating it
+precisely. Knowing which kind of change is actually present is the
+whole point of the three-series comparison above, and for Indian
+policy data the honest answer is usually "both, at different
+times."
 
 ## Where this leaves you
 

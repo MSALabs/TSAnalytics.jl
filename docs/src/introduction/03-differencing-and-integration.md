@@ -254,21 +254,20 @@ println("typical |diff| elsewhere (median): ", median(abs.(diff(iip.value))))
 println("the join spike is ", round(abs(d[79])/median(abs.(diff(iip.value))), digits=1), "x a typical month's move")
 ```
 
-!!! india "The Indian Series"
-    India's Index of Industrial Production has been rebased more than
-    once — to 2011-12, and before that to 2004-05. The series bundled
-    with this package (`iip_india`) already starts on the 2011-12 base
-    (its first observation is April 2011), so the real historical
-    rebasing join is not present in this file — worth saying plainly
-    rather than implying it is. The mechanism is easy to demonstrate
-    anyway: splicing a rebased series onto its predecessor introduces a
-    level shift at the join, and differencing across that join produces
-    a spike that has nothing to do with Indian industry and everything
-    to do with the accounting change — the constructed spike above,
-    built directly from the real series, comes out `5.5` times the size
-    of a typical month's genuine move. It is easy to spot once you know
-    to look for it at the known rebasing dates, and easy to mistake for
-    a real event if you do not.
+That spike is `5.5` times the size of a typical month's genuine move,
+and it is entirely an accounting artefact. India's Index of Industrial
+Production has been rebased more than once — to 2011-12, and before
+that to 2004-05 — and splicing a rebased series onto its predecessor
+introduces exactly this kind of level shift at the join.
+
+The splice above is constructed, and deliberately so: `iip_india`
+already starts on the 2011-12 base, so the real historical join is not
+present in the bundled file and pretending otherwise would be
+dishonest. The mechanism is what matters, and it generalises to any
+rebased index. A differencing step run across such a join produces one
+enormous value that has nothing to do with the underlying economy —
+easy to spot once you know to look for it at the known rebasing dates,
+and easy to mistake for a real event if you do not.
 
 ## Where this leaves you
 

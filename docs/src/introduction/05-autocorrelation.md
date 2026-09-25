@@ -218,20 +218,20 @@ println("iip_india month-on-month growth, ACF(12): ", round(acf(iip_growth, 12:1
 println("prodn (US Fed industrial production) growth, ACF(12): ", round(acf(prodn_growth, 12:12).values[1], digits=3))
 ```
 
-!!! india "The Indian Series"
-    Indian monthly industrial data carries a real annual rhythm, so its
-    ACF does show the expected spike near lag 12 — genuinely weaker than
-    a comparable Western series shows at the same lag, checked directly
-    above: `0.36` for India's real `iip_india` growth rate against
-    `0.72` for `prodn`, the US Federal Reserve's own industrial
-    production index, computed the same way on both. Part of the reason
-    is that the festival calendar itself moves: the Diwali-linked
-    production surge (Chapter 1's own real check) lands in October some
-    years and November in others, so the "annual" pattern is not
-    repeating at a genuinely fixed lag every time. The ACF only knows
-    about fixed lags, and it blurs anything that is not one — a real
-    limitation of the tool, not a fault in the data, and one reason the
-    calendar regressors of Chapter 36 exist at all.
+Two industrial production indices, the same growth-rate calculation
+applied to both, and a real gap at the seasonal lag: `0.36` for India's
+`iip_india` against `0.72` for `prodn`, the US Federal Reserve's own
+production index. India's annual rhythm is genuinely the weaker of the
+two as the ACF measures it — half the strength, on a series that is
+not obviously less seasonal to the eye.
+
+Part of the reason is the moving festival from Chapter 1. The
+Diwali-linked drop in production lands in October some years and
+November in others, so the "annual" pattern is not repeating at a
+genuinely fixed lag every time. The ACF only knows about fixed lags,
+and it blurs anything that is not one — a real limitation of the tool
+rather than a fault in the data, and one reason the calendar
+regressors of Chapter 36 exist at all.
 
 ## Where this leaves you
 

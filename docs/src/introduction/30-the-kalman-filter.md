@@ -224,26 +224,25 @@ version that worked.
     `ForwardDiff` overloads directly turned out to be the faster
     choice for this specific loop, the opposite of the usual advice.
 
-!!! india "The Indian Series"
-    Checked directly in Chapter 29: this package's own bundled
-    `iip_india` series has no missing months at all — the 2020 lockdown
-    shows up there as an extreme *value* (`54.0` in April 2020), not an
-    absence. Genuine gaps are still a real feature of Indian official
-    statistics more broadly — several state-level series carry
-    administrative gaps of a few months at a time — just not the
-    specific series bundled here. This chapter's treatment of a gap,
-    wherever one genuinely occurs, is not a workaround bolted on for
-    the occasion — the uncertainty band widens through it and narrows
-    again once observations resume, an honest representation of what is
-    actually known at each point in time.
+Checked directly in Chapter 29: this package's own bundled
+`iip_india` series has no missing months at all — the 2020 lockdown
+shows up there as an extreme *value* (`54.0` in April 2020), not an
+absence. Genuine gaps are still a real feature of Indian official
+statistics more broadly — several state-level series carry
+administrative gaps of a few months at a time — just not the
+specific series bundled here. This chapter's treatment of a gap,
+wherever one genuinely occurs, is not a workaround bolted on for
+the occasion — the uncertainty band widens through it and narrows
+again once observations resume, an honest representation of what is
+actually known at each point in time.
 
-    Compare that with the common alternative of interpolating a gap
-    before modelling starts. An interpolated series looks complete, and
-    every calculation run on it afterwards treats the invented values
-    exactly as if they were real data, with no way to tell the
-    difference downstream. This chapter's version looks uncertain
-    through the gap because it is, and that honesty is the entire
-    point.
+Compare that with the common alternative of interpolating a gap
+before modelling starts. An interpolated series looks complete, and
+every calculation run on it afterwards treats the invented values
+exactly as if they were real data, with no way to tell the
+difference downstream. This chapter's version looks uncertain
+through the gap because it is, and that honesty is the entire
+point.
 
 ## Where this leaves you
 

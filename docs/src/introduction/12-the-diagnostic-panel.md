@@ -201,23 +201,18 @@ println("iip_india, period unspecified: nlag=", r_iip_default.nlag)
 println("iip_india, period=12 given:    nlag=", r_iip_monthly.nlag)
 ```
 
-!!! india "The Indian Series"
-    For Indian monthly data the panel's fourth quadrant needs to reach
-    at least lag 12, and preferably lag 24, because the seasonal lag is
-    exactly where a model of Indian industrial or retail data is most
-    likely to fail — the festival calendar moves, and a fixed
-    twelve-month structure cannot fully absorb that movement.
+Twenty lags against thirty-six, on the same series, from the same
+function — the only difference is whether `period=12` was supplied.
 
-    Checked directly on the real `iip_india` series above, the actual
-    risk is narrower than "the lag count needs manual widening": this
-    package's own default, once `period=12` is supplied, already reaches
-    `36` — past both `12` and `24` automatically, confirmed against
-    `_diagnostic_nlag`'s own formula. The genuine trap is leaving
-    `period` unspecified in the first place, the way this chapter's own
-    earlier seasonal example showed: that silently reverts to `nlag=20`
-    — a bill of health that looks clean only because it never reached
-    the seasonal lag at all. On Indian monthly data, passing `period=12`
-    is the one setting that actually matters here.
+For monthly data the panel's fourth quadrant needs to reach the
+seasonal lag, because that is exactly where a model of industrial or
+retail data is most likely to fail. The risk is narrower than "the lag
+count needs manual widening", though: the default already reaches `36`
+once `period=12` is given, past both `12` and `24` automatically. The
+genuine trap is leaving `period` unspecified, which silently reverts
+to `nlag=20` — a bill of health that looks clean only because it never
+reached the seasonal lag at all. On monthly data, `period=12` is the
+one setting here that actually matters.
 
 ## Where this leaves you
 

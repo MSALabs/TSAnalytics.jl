@@ -222,20 +222,19 @@ is less useful, because it has moved the problem from a place a reader
 would notice — a gap, or a missing value — to a place they would not:
 a plausible-looking number sitting quietly among the real ones.
 
-!!! india "The Indian Series"
-    The Reserve Bank and MoSPI publish most monthly indicators with a
-    lag of several weeks, so anyone tracking current conditions is
-    already looking at data that is not quite current. Smooth that data
-    with a trailing filter, and the filter's own lag stacks on top of
-    the publication lag rather than replacing it. A 12-month trailing
-    average of a series that was itself six weeks late describes
-    conditions closer to a year old than to today — a perfectly
-    reasonable thing to do deliberately, and a genuinely misleading
-    thing to do without noticing. A centred filter avoids this
-    particular trap and cannot be computed for the most recent months
-    at all; there is no arrangement that avoids the trade-off
-    altogether, only a choice about which side of it to be explicit
-    about.
+The Reserve Bank and MoSPI publish most monthly indicators with a
+lag of several weeks, so anyone tracking current conditions is
+already looking at data that is not quite current. Smooth that data
+with a trailing filter, and the filter's own lag stacks on top of
+the publication lag rather than replacing it. A 12-month trailing
+average of a series that was itself six weeks late describes
+conditions closer to a year old than to today — a perfectly
+reasonable thing to do deliberately, and a genuinely misleading
+thing to do without noticing. A centred filter avoids this
+particular trap and cannot be computed for the most recent months
+at all; there is no arrangement that avoids the trade-off
+altogether, only a choice about which side of it to be explicit
+about.
 
 ## Where this leaves you
 

@@ -277,16 +277,15 @@ specified, and on this particular series the answer is "not much".
     reader coming from Python and expecting `statsmodels`' own default
     answer should pass `se_type=:opg` explicitly.
 
-!!! india "The Indian Series"
-    Indian quarterly macroeconomic series often run to only sixty or
-    eighty observations. All three covariance estimators above are
-    justified *asymptotically*, and at `n = 80` "asymptotically" is
-    doing real work — the gap between them widens as the sample
-    shrinks, which is the opposite of reassuring for exactly the
-    series where a clear answer matters most. The practical response
-    costs two lines: report which estimator was used, and check
-    whether the significance conclusion survives the alternatives.
-    Almost nobody does the second one.
+Indian quarterly macroeconomic series often run to only sixty or
+eighty observations. All three covariance estimators above are
+justified *asymptotically*, and at `n = 80` "asymptotically" is
+doing real work — the gap between them widens as the sample
+shrinks, which is the opposite of reassuring for exactly the
+series where a clear answer matters most. The practical response
+costs two lines: report which estimator was used, and check
+whether the significance conclusion survives the alternatives.
+Almost nobody does the second one.
 
 ## Where this leaves you
 

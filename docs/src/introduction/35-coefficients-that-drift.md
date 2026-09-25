@@ -202,23 +202,22 @@ intervention term — an ordinary dummy regressor at the known date,
 exactly Chapter 34's own material — which needs none of this chapter's
 machinery at all.
 
-!!! india "The Indian Series"
-    The pass-through from the RBI's own policy rate to bank lending
-    rates has changed repeatedly — through the base-rate regime, then
-    MCLR, then external benchmarking. Some of that change was gradual,
-    as banks slowly repriced their loan books under a new regime; some
-    was abrupt, landing on an announced switch date.
+The pass-through from the RBI's own policy rate to bank lending
+rates has changed repeatedly — through the base-rate regime, then
+MCLR, then external benchmarking. Some of that change was gradual,
+as banks slowly repriced their loan books under a new regime; some
+was abrupt, landing on an announced switch date.
 
-    A drifting-coefficient model of the kind built in this chapter
-    handles the gradual repricing reasonably and the regulatory switch
-    dates badly, for exactly the reason the constructed break above
-    shows. The honest approach for Indian policy-rate data is usually
-    a combination — a drift term for the gradual repricing alongside
-    explicit intervention dummies at the known regulatory dates — and
-    that combination is straightforward to specify. Almost nobody
-    actually does it, mostly because the two mechanisms live in
-    different chapters of most textbooks and rarely get put together
-    in the same model.
+A drifting-coefficient model of the kind built in this chapter
+handles the gradual repricing reasonably and the regulatory switch
+dates badly, for exactly the reason the constructed break above
+shows. The honest approach for Indian policy-rate data is usually
+a combination — a drift term for the gradual repricing alongside
+explicit intervention dummies at the known regulatory dates — and
+that combination is straightforward to specify. Almost nobody
+actually does it, mostly because the two mechanisms live in
+different chapters of most textbooks and rarely get put together
+in the same model.
 
 ## Where this leaves you
 

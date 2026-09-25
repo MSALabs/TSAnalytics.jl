@@ -254,25 +254,23 @@ println("October's own STL seasonal component, 2012-2024:")
 println(round.(res_iip.seasonal[idx_oct], digits=2))
 ```
 
-!!! india "The Indian Series"
-    Indian monthly series need an evolving seasonal pattern more than
-    most, because the festival calendar moves against the Gregorian
-    one — the October effect and the November effect trade places from
-    year to year depending on when Diwali falls. Checked directly
-    above, on the real `iip_india` series: October's own fitted
-    seasonal component swings from about `-1.5` in the early 2010s, up
-    through a positive `+2.6` around 2019, back down to `-5.6` by 2024
-    — genuinely drifting rather than fixed, confirming the premise
-    directly rather than asserting it. A frozen seasonal index,
-    classical decomposition's kind, cannot represent that movement at
-    all. A short STL seasonal window can partially absorb it, since the
-    window lets the fitted pattern drift year to year.
+October's fitted seasonal component on the real series swings from
+about `-1.5` in the early 2010s, up through a positive `+2.6` around
+2019, and back down to `-5.6` by 2024. That is not a fixed seasonal
+index with noise around it; it is genuine drift, and a frozen index of
+classical decomposition's kind cannot represent it at all.
 
-    Only partially, though, and it is worth being precise about the
-    limit. STL adapts to *drift* in a seasonal pattern; it has no
-    concept of a calendar, and does not know the drift it is following
-    is caused by one. The proper fix is a regressor built from the
-    actual festival dates rather than a decomposition parameter tuned
-    to chase the symptom — that is Chapter 36.
+Monthly Indian series need this flexibility more than most, because
+the festival calendar moves against the Gregorian one — the October
+effect and the November effect trade places from year to year
+depending on when Diwali falls. A short STL seasonal window absorbs
+part of that, since the window lets the fitted pattern drift.
+
+Only part of it, though, and the limit is worth being precise about.
+STL adapts to *drift* in a seasonal pattern; it has no concept of a
+calendar and does not know the drift it is following is caused by one.
+The proper fix is a regressor built from the actual festival dates
+rather than a decomposition parameter tuned to chase the symptom —
+that is Chapter 36.
 
 Chapter 16 takes on the three-periods-at-once case directly.

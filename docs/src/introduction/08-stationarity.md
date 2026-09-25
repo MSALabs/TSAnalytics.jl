@@ -229,21 +229,19 @@ println("iip_india, level:  ADF statistic=", round(adf_level.statistic,digits=3)
 println("iip_india, growth: ADF statistic=", round(adf_growth.statistic,digits=3), "  p=", round(adf_growth.pvalue,sigdigits=3))
 ```
 
-!!! india "The Indian Series"
-    Almost every headline Indian macroeconomic series — GDP, the IIP,
-    the CPI, bank credit — is non-stationary in level and roughly
-    stationary in its growth rate. Checked directly on the real
-    `iip_india` series above: the ADF test cannot reject a unit root in
-    the level at all (`p = 0.96`), and rejects overwhelmingly on the
-    log-growth rate (`p ≈ 3×10⁻⁷`) — exactly the pattern this box
-    describes, on real data rather than as an assertion. That is why
-    Indian policy discussion is conducted almost entirely in growth
-    terms rather than levels, and why the RBI's own publications lead
-    with year-on-year change rather than the level itself.
+The split is about as clean as this test ever gives. On the level, the
+ADF test cannot reject a unit root at all (`p = 0.96`); on the
+log-growth rate it rejects overwhelmingly (`p ≈ 3×10⁻⁷`). Same series,
+one difference apart, opposite verdicts.
 
-    The convention is not merely presentational. Regressing one Indian
-    level series on another reproduces this chapter's opening problem
-    exactly, and an apparent relationship between, say, credit growth
-    and output can be almost entirely an artefact of both series
-    trending upward across three decades rather than any genuine link
-    between them.
+Almost every headline Indian macroeconomic series behaves this way —
+GDP, the IIP, the CPI, bank credit — non-stationary in level and
+roughly stationary in growth. That is why Indian policy discussion is
+conducted almost entirely in growth terms, and why the RBI's own
+publications lead with year-on-year change rather than the level
+itself. The convention is not merely presentational: regressing one
+Indian level series on another reproduces this chapter's opening
+problem exactly, and an apparent relationship between, say, credit
+growth and output can be almost entirely an artefact of both series
+trending upward across three decades rather than any genuine link
+between them.

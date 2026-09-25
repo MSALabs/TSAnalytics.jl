@@ -265,31 +265,26 @@ idx2020 = findfirst(t -> t == Date(2020,4,1), iip.date)
 println("Feb-Jun 2020: ", iip.value[idx2020-2:idx2020+2])
 ```
 
-!!! india "The Indian Series"
-    Checked directly above, this package's own bundled `iip_india`
-    series has no missing months at all — worth stating plainly rather
-    than assuming a gap where none exists. The 2020 lockdown shows up
-    not as an absence but as a real, extreme, *present* value: `54.0`
-    in April 2020, down from `117.2` in February, before recovering
-    through `90.2` and `107.9` the following two months. That is a
-    genuinely different kind of stress case from the one this chapter's
-    own construction handles — an extreme observation the model must
-    absorb, not a missing one it must estimate through.
+Every expected month is present, so the 2020 lockdown shows up not as
+an absence but as a real, extreme, *present* value: `54.0` in April
+2020, down from `117.2` in February, recovering through `90.2` and
+`107.9` over the next two months. That is a different kind of stress
+case from the one this chapter's construction handles — an extreme
+observation the model must absorb, not a missing one it must estimate
+through — and worth checking rather than assuming a gap where none
+exists.
 
-    Real gaps do exist elsewhere in Indian official statistics — the
-    general pattern, not this specific bundled series — several
-    state-level series carry missing months from administrative
-    changes, and some older series have stretches where the collection
-    methodology changed and the original data was withdrawn entirely.
-    Every method built in Parts I to V requires either a complete
-    series or an ad-hoc patch applied before modelling starts.
-    Interpolating first and modelling afterwards treats a guess as if
-    it were data, and nothing downstream can tell the difference
-    between an observation and an invented one. The construction shown
-    above handles a genuine gap natively, and the resulting uncertainty
-    band shows honestly, at every point, where the information
-    genuinely runs thin. For the Indian series that do have gaps, this
-    is not a minor convenience.
+Real gaps do exist elsewhere in official statistics: several Indian
+state-level series carry missing months from administrative changes,
+and some older series have stretches where the collection methodology
+changed and the original data was withdrawn entirely. Every method
+built in Parts I to V requires either a complete series or an ad-hoc
+patch applied before modelling starts. Interpolating first and
+modelling afterwards treats a guess as if it were data, and nothing
+downstream can tell the difference between an observation and an
+invented one. The construction above handles a genuine gap natively,
+and the resulting uncertainty band shows honestly, at every point,
+where the information runs thin.
 
 ## The cost of generality
 

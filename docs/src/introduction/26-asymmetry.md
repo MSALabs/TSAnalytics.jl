@@ -228,23 +228,22 @@ genuine signal. The model is not free, and the fact that it is
 theoretically well-motivated does not mean every fit of it is worth
 trusting blindly.
 
-!!! india "The Indian Series"
-    The leverage effect is well documented for Indian equity indices,
-    and the asymmetry parameter is typically positive and significant
-    for the Nifty and the Sensex — the same pattern seen in developed
-    markets, which is worth stating explicitly because it is not
-    automatic that every market shows it.
+The leverage effect is well documented for Indian equity indices,
+and the asymmetry parameter is typically positive and significant
+for the Nifty and the Sensex — the same pattern seen in developed
+markets, which is worth stating explicitly because it is not
+automatic that every market shows it.
 
-    The rupee is a more interesting case. A managed float with
-    periodic central bank intervention does not produce the clean
-    asymmetry that a freely floating currency, or an equity index,
-    typically shows — a currency fall against one counterpart is
-    definitionally a rise for the other side of the pair, which removes
-    the structural reason equities have for an asymmetric response in
-    the first place. An asymmetry term fitted to the rupee may be
-    capturing the pattern of central bank intervention rather than
-    anything resembling the leverage effect, and the two should not be
-    conflated just because the fitted `γ` comes out nonzero.
+The rupee is a more interesting case. A managed float with
+periodic central bank intervention does not produce the clean
+asymmetry that a freely floating currency, or an equity index,
+typically shows — a currency fall against one counterpart is
+definitionally a rise for the other side of the pair, which removes
+the structural reason equities have for an asymmetric response in
+the first place. An asymmetry term fitted to the rupee may be
+capturing the pattern of central bank intervention rather than
+anything resembling the leverage effect, and the two should not be
+conflated just because the fitted `γ` comes out nonzero.
 
 ## Where this leaves you
 

@@ -227,18 +227,17 @@ multiplicative case, once logged, becomes an additive one — and
 additive decomposition, by its very construction, cannot represent an
 interaction between the pieces it adds.
 
-!!! india "The Indian Series"
-    Indian electricity demand carries the same three periods Victorian
-    demand does, plus a fourth that Australia's grid does not have at
-    all — festival days produce a genuinely distinct load shape, and
-    the dates move every year against the Gregorian calendar. MSTL can
-    fit three fixed periods without difficulty. It cannot fit a fourth
-    whose timing shifts from year to year, because the whole method
-    decomposes by fixed period, and a moving festival simply has no
-    fixed period to give it. That is a real limit shared by everything
-    built across Part III, and the remedy is not a decomposition
-    parameter at all — it is a regressor built from the actual festival
-    dates, which is Chapter 36.
+Indian electricity demand carries the same three periods Victorian
+demand does, plus a fourth that Australia's grid does not have at
+all — festival days produce a genuinely distinct load shape, and
+the dates move every year against the Gregorian calendar. MSTL can
+fit three fixed periods without difficulty. It cannot fit a fourth
+whose timing shifts from year to year, because the whole method
+decomposes by fixed period, and a moving festival simply has no
+fixed period to give it. That is a real limit shared by everything
+built across Part III, and the remedy is not a decomposition
+parameter at all — it is a regressor built from the actual festival
+dates, which is Chapter 36.
 
 ## Where this leaves you
 

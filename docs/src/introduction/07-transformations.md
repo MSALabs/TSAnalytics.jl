@@ -193,23 +193,23 @@ println("rolling 24-month mean-vs-sd correlation, level:     ", round(cor(means,
 println("rolling 24-month mean-vs-sd correlation, log level: ", round(cor(lmeans, lsds), digits=3))
 ```
 
-!!! india "The Indian Series"
-    Indian macroeconomic series are very often published as index
-    numbers with a base year set to 100 — the IIP, the WPI, the CPI.
-    An index is already a ratio by construction, which means
-    proportional growth is baked into how the series is built in the
-    first place, and such series often do want a log transform on that
-    basis alone. Checked directly on the real `iip_india` series above:
-    the correlation between a rolling window's own level and its own
-    spread is a modest `0.12` on the level, and drops to essentially
-    zero, `-0.04`, once logged — real evidence in the expected
-    direction, if not a dramatic one on this particular series. It is
-    worth checking rather than assuming, but the prior is genuinely
-    different from a series measured in physical units. There is also a
-    practical wrinkle worth carrying forward: a rebased index resets to
-    100 partway through its own history, which is a level shift, and
-    taking logs does not remove it — Chapter 3's rebasing spike
-    survives a log transform completely intact.
+An index number carries a prior of its own. `iip_india`, like the WPI
+and the CPI, is published with a base year set to 100 — already a
+ratio by construction, so proportional growth is baked into how the
+series is built. Such series often do want a log transform on that
+basis alone.
+
+The check above says so, mildly: the correlation between a rolling
+window's own level and its own spread is `0.12` on the level and drops
+to `-0.04` once logged. Real evidence in the expected direction,
+though not a dramatic one on this particular series — which is the
+argument for checking rather than assuming, even where the prior is
+genuinely different from a series measured in physical units.
+
+One wrinkle worth carrying forward: a rebased index resets to 100
+partway through its own history, which is a level shift, and taking
+logs does not remove it. Chapter 3's rebasing spike survives a log
+transform completely intact.
 
 ## Where this leaves you
 

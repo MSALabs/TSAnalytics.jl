@@ -63,32 +63,27 @@ m_yoy = fit_arma(yoy_growth, (1,0))
 println("real iip_india year-on-year growth, AR(1): phi=", round(m_yoy.ar[1], digits=3))
 ```
 
-!!! india "The Indian Series"
-    Indian monthly inflation and industrial-growth series are often
-    described as showing AR coefficients as high as `0.7` to `0.95` —
-    persistent enough that a shock takes many months to fade. Checked
-    directly above, on the real `iip_india` series's own year-on-year
-    growth rate (the RBI's own reporting convention, not month-on-month,
-    which is dominated by within-year seasonal swings rather than
-    genuine persistence): the fitted AR(1) coefficient comes out at
-    `0.56` — real, positive, and closer to the middle panel above than
-    either edge, but short of the `0.7`-plus range sometimes quoted.
-    Two things are both true at once: industrial *growth* is only
-    moderately persistent on this real check, while inflation series
-    specifically (not bundled here to verify directly) are the ones
-    more consistently reported in that higher range. Worth not
-    collapsing the two into a single number the way a casual restating
-    of both in one sentence invites.
+India's industrial growth fits `φ = 0.56` — real, positive, and
+sitting closer to the middle panel above than either edge. The
+year-on-year rate is the right quantity to fit here, not
+month-on-month: the RBI reports growth that way, and month-on-month
+changes in a strongly seasonal production index are dominated by
+within-year swings rather than by genuine persistence.
 
-    Whichever the exact figure, the qualitative point holds: this sits
-    in precisely the region Chapter 9's power curve identified as
-    hardest to test for a unit root — a persistent stationary process
-    and a genuine random walk produce sample paths that look alike over
-    any sample size actually available, and the ADF test's power there
-    was shown to be weak for exactly that reason. Persistence and
-    testability are inversely related, and Indian macro data sits
-    closer to the awkward side of that trade than a low-persistence
-    series would.
+That figure is worth stating carefully, because Indian macroeconomic
+series are often described as carrying AR coefficients of `0.7` to
+`0.95`. Industrial growth, checked directly, does not — it is only
+moderately persistent. Inflation series specifically are the ones more
+consistently reported in that higher range, and none is bundled here
+to verify. Two different claims that a single sentence invites you to
+collapse into one number.
+
+Whichever figure applies, the qualitative point holds: this is
+precisely the region Chapter 9's power curve identified as hardest to
+test for a unit root. A persistent stationary process and a genuine
+random walk produce sample paths that look alike over any sample size
+actually available, and the ADF test's power there is weak for exactly
+that reason. Persistence and testability are inversely related.
 
 ## A series that forgets
 

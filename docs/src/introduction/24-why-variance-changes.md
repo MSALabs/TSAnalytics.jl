@@ -206,24 +206,23 @@ academic concern. It is the reason this entire literature exists and
 the reason financial regulators require variance models of the kind
 the next three chapters build, not the kind built so far.
 
-!!! india "The Indian Series"
-    Indian equity and currency series show both patterns from this
-    chapter's fourth section, and telling them apart matters in
-    practice. There is genuine clustering of the kind the rest of Part
-    V models. There are also datable variance shifts tied to specific
-    policy moments — the 1991 liberalisation, the 2016 demonetisation
-    announcement, the introduction of currency futures — where the
-    variability changed level once and stayed changed rather than
-    reverting.
+Indian equity and currency series show both patterns from this
+chapter's fourth section, and telling them apart matters in
+practice. There is genuine clustering of the kind the rest of Part
+V models. There are also datable variance shifts tied to specific
+policy moments — the 1991 liberalisation, the 2016 demonetisation
+announcement, the introduction of currency futures — where the
+variability changed level once and stayed changed rather than
+reverting.
 
-    Fitting a clustering model to what is really a structural break
-    produces a model that persistently over-predicts volatility in the
-    calm regime and under-predicts it in the turbulent one, because
-    the model's whole mechanism assumes reversion that never actually
-    happens. The tests above distinguish the two cases, at least in
-    their effect size if not always in their bare significance; the
-    temptation, in practice, is to skip straight to fitting a GARCH
-    model without checking which situation is actually present.
+Fitting a clustering model to what is really a structural break
+produces a model that persistently over-predicts volatility in the
+calm regime and under-predicts it in the turbulent one, because
+the model's whole mechanism assumes reversion that never actually
+happens. The tests above distinguish the two cases, at least in
+their effect size if not always in their bare significance; the
+temptation, in practice, is to skip straight to fitting a GARCH
+model without checking which situation is actually present.
 
 ## Where this leaves you
 

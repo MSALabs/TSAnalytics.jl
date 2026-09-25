@@ -295,21 +295,20 @@ produced by smoothing — and many official releases effectively are,
 once revisions are folded in — it will change as more data arrives.
 That is correct behaviour, not an error to be explained away.
 
-!!! india "The Indian Series"
-    Indian statistical releases are revised, sometimes substantially,
-    and the revisions are frequently read in public commentary as
-    mistakes or worse. Some of them are exactly what this chapter
-    describes: an estimate that correctly used the information
-    available at the time it was made, updated honestly once more
-    information arrived.
+Indian statistical releases are revised, sometimes substantially,
+and the revisions are frequently read in public commentary as
+mistakes or worse. Some of them are exactly what this chapter
+describes: an estimate that correctly used the information
+available at the time it was made, updated honestly once more
+information arrived.
 
-    That is not a blanket defence of every revision — methodology
-    changes and base-year revisions are a genuinely different matter,
-    not this. But a quarterly figure that moves once the following
-    quarter is published is behaving exactly the way a filtered
-    estimate should behave, and the distinction between "revised
-    because more data arrived" and "revised because the method itself
-    changed" is worth being able to draw.
+That is not a blanket defence of every revision — methodology
+changes and base-year revisions are a genuinely different matter,
+not this. But a quarterly figure that moves once the following
+quarter is published is behaving exactly the way a filtered
+estimate should behave, and the distinction between "revised
+because more data arrived" and "revised because the method itself
+changed" is worth being able to draw.
 
 ## Where this leaves you
 

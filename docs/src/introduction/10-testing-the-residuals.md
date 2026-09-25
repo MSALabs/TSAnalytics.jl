@@ -217,19 +217,19 @@ println("ARIMA(1,1,1), no seasonal handling at all: QS statistic=", round(qs.sta
 println("residual ACF, lags 10-14: ", round.(acf(resid, 10:14).values, digits=3))
 ```
 
-!!! india "The Indian Series"
-    Residual seasonality is the diagnostic most likely to matter, and
-    most likely to fail, for Indian monthly data. Checked directly
-    above, on this package's own real `iip_india` series: an ARIMA(1,1,1)
-    fitted with no seasonal handling at all leaves exactly the pattern
-    this box describes — not one clean spike at lag 12 but a smear
-    across neighbouring lags (`-0.28` at 11, `0.42` at 12, `-0.15` at
-    13), and QS catches it decisively (`p ≈ 1×10⁻¹⁴`). A model built
-    around a fixed twelve-month cycle still leaves structure behind
-    once the actual cycle moves — Diwali in October one year, November
-    the next — and a test aimed specifically at the seasonal lags, the
-    way QS is, catches this more reliably than a general portmanteau
-    test spreading its attention across every lag equally.
+An ARIMA(1,1,1) fitted to India's industrial production with no
+seasonal handling at all leaves the signature this chapter has been
+building toward — and not as one clean spike. The residual
+autocorrelation smears across neighbouring lags: `-0.28` at 11, `0.42`
+at 12, `-0.15` at 13. QS catches it decisively, `p ≈ 1×10⁻¹⁴`.
+
+That smear, rather than a single clean spike, is what a moving
+seasonal event leaves behind. A model built around a fixed
+twelve-month cycle still has structure left over once the actual cycle
+moves — Diwali in October one year, November the next — and a test
+aimed specifically at the seasonal lags, the way QS is, catches it
+more reliably than a general portmanteau test spreading its attention
+across every lag equally.
 
 ## Where this leaves you
 

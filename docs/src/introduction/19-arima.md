@@ -254,19 +254,18 @@ lag 13, against a minimum of `0.18` for the correctly-differenced fit
 two panels back. The tools built across the last eight chapters catch
 a genuine mistake here, which is the entire point of having them.
 
-!!! india "The Indian Series"
-    Indian quarterly GDP in its current base runs to only a few dozen
-    observations, and a full seasonal specification costs both a
-    regular and a seasonal difference before any parameter is even
-    estimated. At `n = 50`, one difference already leaves less than
-    fifty points; a regular-and-seasonal combination leaves fewer
-    still, and the AICc gap in the table above is at its widest
-    exactly there. This compounds Chapter 9's `india` box rather than
-    duplicating it: short series make unit-root tests uninformative,
-    *and* the same shortness makes the model-selection criterion
-    sensitive to a counting convention that would not matter on a
-    longer series. Neither problem is fixable by better software —
-    both are the honest cost of working with a short sample.
+Indian quarterly GDP in its current base runs to only a few dozen
+observations, and a full seasonal specification costs both a
+regular and a seasonal difference before any parameter is even
+estimated. At `n = 50`, one difference already leaves less than
+fifty points; a regular-and-seasonal combination leaves fewer
+still, and the AICc gap in the table above is at its widest
+exactly there. This compounds Chapter 9's finding rather than
+duplicating it: short series make unit-root tests uninformative,
+*and* the same shortness makes the model-selection criterion
+sensitive to a counting convention that would not matter on a
+longer series. Neither problem is fixable by better software —
+both are the honest cost of working with a short sample.
 
 ## Where this leaves you
 

@@ -237,25 +237,24 @@ iip = dataset("iip_india")
 println("iip_india (General Index) minimum value: ", minimum(iip.value), " -- never near zero")
 ```
 
-!!! india "The Indian Series"
-    MAPE is the default reported accuracy metric across most Indian
-    corporate and government forecasting practice, and a great deal of
-    Indian data is exactly what MAPE handles worst — series with
-    genuine zeros, and series with values small enough that a small
-    absolute error becomes an enormous percentage. Worth being precise
-    about which series that actually applies to, now that a real one is
-    bundled: `iip_india`'s own General Index never comes close, its
-    real minimum (checked above) is `54.0`, even through the 2020
-    lockdown collapse — MAPE behaves perfectly reasonably on the
-    headline index itself. The genuine zero-and-near-zero problem
-    belongs one level down, on the sub-components the headline index is
-    built from: district-level agricultural output and individual
-    industry sub-categories do this routinely, and a reported MAPE of
-    `400%` on one of those usually means one month had a value near
-    zero, not that the forecast was catastrophically bad. MASE has
-    neither problem, at any level of aggregation — it needs no true
-    value in the denominator at all — and it is barely used in
-    practice.
+A minimum of `54.0`, even through the 2020 lockdown collapse — which
+is worth knowing before repeating a common warning too broadly.
+
+MAPE is the default reported accuracy metric across most Indian
+corporate and government forecasting practice, and a great deal of
+Indian data is exactly what MAPE handles worst: series with genuine
+zeros, and series with values small enough that a small absolute error
+becomes an enormous percentage. The headline production index is not
+one of them. MAPE behaves perfectly reasonably on it.
+
+The genuine zero-and-near-zero problem belongs one level down, among
+the sub-components the headline index is built from — district-level
+agricultural output and individual industry sub-categories do this
+routinely, and a reported MAPE of `400%` on one of those usually means
+one month had a value near zero, not that the forecast was
+catastrophically bad. MASE has neither problem at any level of
+aggregation, since it needs no true value in the denominator at all,
+and it is barely used in practice.
 
 ## Where this leaves you
 

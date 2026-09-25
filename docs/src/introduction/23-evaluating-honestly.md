@@ -182,28 +182,25 @@ println("iip_india, naive one-step-ahead RMSE, expanding window: ", round(sqrt(m
 println("iip_india, naive one-step-ahead RMSE, rolling(48) window: ", round(sqrt(mean(errs_roll.^2)), digits=3))
 ```
 
-!!! india "The Indian Series"
-    The expanding-versus-rolling choice is not academic for Indian
-    macroeconomic series. Structural breaks are frequent and datable —
-    the 1991 liberalisation, the 2016 demonetisation, the 2017 GST
-    transition — and an expanding window keeps training on data from a
-    regime that may no longer apply, in exactly the way the cement
-    example above kept averaging in decades-old production levels long
-    after they stopped being informative. Run directly on the real
-    `iip_india` series above, spanning both the 2016 and 2017 breaks:
-    the rolling window comes out ahead, `10.04` against the expanding
-    window's `10.35` — a real difference in the expected direction,
-    genuinely modest rather than dramatic on this particular series.
-    That is itself the honest lesson: the effect is real but does not
-    have to be large to be worth checking for, and asserting a
-    structural break matters without measuring its size the way this
-    check does is exactly the overclaim this book keeps warning
-    against. A rolling window handles the break by forgetting, which is
-    crude but honest. The alternative is to model the break explicitly,
-    which is Chapter 41's territory and not built here. In the
-    meantime, comparing both windows on the same series, the way the
-    code above does, is cheap and tells you directly whether the older
-    data is helping or hurting.
+The rolling window comes out ahead on the real series — `10.04`
+against the expanding window's `10.35`, over a span containing both
+the 2016 demonetisation and the 2017 GST transition. A real difference
+in the expected direction, and genuinely modest rather than dramatic.
+
+That modesty is itself the lesson. Structural breaks in Indian
+macroeconomic series are frequent and datable, and an expanding window
+keeps training on data from a regime that may no longer apply —
+exactly the way the cement example above kept averaging in
+decades-old production levels long after they stopped being
+informative. But asserting that a break matters without measuring how
+much it matters is precisely the overclaim this book keeps warning
+against, and the measurement here costs two lines.
+
+A rolling window handles a break by forgetting, which is crude but
+honest. Modelling the break explicitly is Chapter 41's territory and
+not built here. In the meantime, comparing both windows on the same
+series is cheap and tells you directly whether the older data is
+helping or hurting.
 
 ## Horizons behave differently
 

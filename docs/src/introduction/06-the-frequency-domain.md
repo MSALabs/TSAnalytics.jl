@@ -214,15 +214,14 @@ plot!(rl1; label="taper=0.1")
     differenced earlier in a workflow is, without anyone intending it,
     about to be detrended a second time.
 
-!!! india "The Indian Series"
-    Indian monsoon rainfall carries a dominant annual frequency, which
-    a spectrum recovers immediately and without ambiguity. It also
-    shows quasi-periodic variation on a longer scale tied to El
-    Niño — the same broad, low-frequency band the `soi` spectrum
-    displayed above, not a Pacific curiosity but a genuine and
-    well-documented driver of Indian agricultural outcomes. `soi`
-    earns its place in this book on that basis alone, not merely as a
-    borrowed American series.
+Indian monsoon rainfall carries a dominant annual frequency, which
+a spectrum recovers immediately and without ambiguity. It also
+shows quasi-periodic variation on a longer scale tied to El
+Niño — the same broad, low-frequency band the `soi` spectrum
+displayed above, not a Pacific curiosity but a genuine and
+well-documented driver of Indian agricultural outcomes. `soi`
+earns its place in this book on that basis alone, not merely as a
+borrowed American series.
 
 ## Where this leaves you
 

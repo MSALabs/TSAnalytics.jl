@@ -177,21 +177,20 @@ println("post-GST October factor: ", round(fig_post.figure[10], digits=3))
 println("largest single-month shift: ", round(maximum(abs.(fig_pre.figure .- fig_post.figure)), digits=3))
 ```
 
-!!! india "The Indian Series"
-    Indian retail and industrial series have seasonal patterns that
-    have genuinely changed shape over the past two decades —
-    e-commerce has shifted festival buying earlier in the calendar, and
-    the 2017 introduction of GST altered the timing of within-year
-    inventory movements. Checked directly above, splitting the real
-    `iip_india` series at the actual GST transition date: October's own
-    seasonal factor moves from `1.022` before GST to `0.911` after —
-    an `11`-percentage-point shift in a single calendar month's typical
-    multiplier, the largest of any month, on real data rather than an
-    assumption. A method that forces one fixed seasonal pattern across
-    the whole period fits the average of two genuinely different
-    regimes and matches neither one well. For a long Indian series,
-    evolving seasonality is not the exceptional case worth a footnote —
-    it is closer to the normal situation.
+Split the real series at the actual GST transition date and October's
+own seasonal factor moves from `1.022` before to `0.911` after — an
+`11`-percentage-point shift in a single calendar month's typical
+multiplier, the largest of any month.
+
+Indian retail and industrial series have seasonal patterns that have
+genuinely changed shape over the past two decades: e-commerce shifted
+festival buying earlier in the calendar, and the 2017 introduction of
+GST altered the timing of within-year inventory movements. A method
+that forces one fixed seasonal pattern across the whole period fits
+the average of two genuinely different regimes and matches neither one
+well. On a series this long, evolving seasonality is not the
+exceptional case worth a footnote — it is closer to the normal
+situation.
 
 ## Where this leaves you
 

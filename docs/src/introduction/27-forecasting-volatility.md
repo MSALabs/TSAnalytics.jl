@@ -214,21 +214,20 @@ ever having to know which model was fitted.
     run's own seed rather than from thread-scheduling order, for the
     same simulated call to give the same answer twice.
 
-!!! india "The Indian Series"
-    Mean reversion in variance has a direct, practical use for Indian
-    markets. NSE volatility spikes around Union Budget announcements,
-    election results and monetary policy decisions — largely scheduled
-    events with known dates fixed well in advance.
+Mean reversion in variance has a direct, practical use for Indian
+markets. NSE volatility spikes around Union Budget announcements,
+election results and monetary policy decisions — largely scheduled
+events with known dates fixed well in advance.
 
-    A GARCH forecast made the day before such an event will not
-    anticipate the spike at all — the model has no calendar and no
-    notion that Thursday is a policy day, only the variance history it
-    has already seen. It will, however, correctly predict the decay
-    *afterwards*, and this chapter's half-life gives a real number for
-    roughly how long the elevated volatility should be expected to
-    persist. Anticipating the spike itself, rather than only its
-    aftermath, needs an exogenous regressor built from the calendar —
-    the same answer Chapter 36 gives for festivals.
+A GARCH forecast made the day before such an event will not
+anticipate the spike at all — the model has no calendar and no
+notion that Thursday is a policy day, only the variance history it
+has already seen. It will, however, correctly predict the decay
+*afterwards*, and this chapter's half-life gives a real number for
+roughly how long the elevated volatility should be expected to
+persist. Anticipating the spike itself, rather than only its
+aftermath, needs an exogenous regressor built from the calendar —
+the same answer Chapter 36 gives for festivals.
 
 ## Where this leaves you
 
