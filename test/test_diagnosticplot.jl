@@ -80,3 +80,64 @@ end
     r_override = diagnostic_plot(resid_probe, m_arma; fitdf=3)
     @test r_override.ppq == 2 + 3
 end
+
+@testset "diagnostic_plot(::GarchModel) — variance-model panels" begin
+    Random.seed!(1)
+    n = 600
+    e = zeros(n); s2 = ones(n)
+    for t in 2:n
+        s2[t] = 0.05 + 0.08*e[t-1]^2 + 0.86*s2[t-1]
+        e[t] = sqrt(s2[t])*randn()
+    end
+
+    m = fit_garch(e, 1, 1)
+    d = diagnostic_plot(m)
+
+    @test d isa GarchDiagnosticPlotResult
+    @test length(d.std_resid) == n
+    @test length(d.sigma) == n
+    @test length(d.abs_resid) == n
+    @test d.abs_resid == abs.(m.resid)
+    @test isapprox(d.std_resid, m.resid ./ sqrt.(m.sigma2); atol=1e-12)
+    @test length(d.acf) == length(d.acf_lags) == length(d.acf_sq)
+    @test length(d.qq_theoretical) == length(d.qq_sample) == n
+    @test issorted(d.qq_sample)          # Q-Q sample quantiles are the sorted residuals
+    @test d.model == :garch
+
+    @testset "lags keyword and its bound" begin
+        d20 = diagnostic_plot(m; lags=15)
+        @test length(d20.acf_lags) == 15
+        @test_throws ArgumentError diagnostic_plot(m; lags=n)
+    end
+
+    @testset "news impact curve: symmetric for :garch, asymmetric for :gjr" begin
+        @test d.news_impact_e !== nothing
+        # GARCH is symmetric in the shock: NIC(-x) == NIC(+x)
+        i_lo = argmin(abs.(d.news_impact_e .+ 2.0))
+        i_hi = argmin(abs.(d.news_impact_e .- 2.0))
+        @test isapprox(d.news_impact_sigma2[i_lo], d.news_impact_sigma2[i_hi]; rtol=0.05)
+
+        # GJR must put MORE variance on a negative shock -- the leverage effect,
+        # and the same asymmetry sign_bias_test is built to detect
+        Random.seed!(4)
+        eg = zeros(n); sg = ones(n)
+        for t in 2:n
+            sg[t] = 0.05 + 0.05*eg[t-1]^2 + 0.85*sg[t-1] + 0.15*(eg[t-1] < 0)*eg[t-1]^2
+            eg[t] = sqrt(sg[t])*randn()
+        end
+        mg = fit_garch(eg, 1, 1; model=:gjr)
+        dg = diagnostic_plot(mg)
+        j_lo = argmin(abs.(dg.news_impact_e .+ 2.0))
+        j_hi = argmin(abs.(dg.news_impact_e .- 2.0))
+        @test dg.news_impact_sigma2[j_lo] > dg.news_impact_sigma2[j_hi]
+    end
+
+    @testset ":egarch omits the news impact curve rather than drawing a wrong one" begin
+        me = fit_garch(e, 1, 1; model=:egarch)
+        de = diagnostic_plot(me)
+        @test de.model == :egarch
+        @test de.news_impact_e === nothing
+        @test de.news_impact_sigma2 === nothing
+        @test length(de.std_resid) == n     # every other panel still populated
+    end
+end

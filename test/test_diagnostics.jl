@@ -421,3 +421,47 @@ end
         @test_throws ArgumentError sign_bias_test(randn(50), bad)
     end
 end
+
+@testset "nyblom_test (Nyblom 1989 / Hansen 1992) — exact real rugarch validation" begin
+    # Fixture + ground truth: test/verification/nyblom/README.txt
+    G = readdlm(joinpath(@__DIR__, "verification", "nyblom", "rugarch_garch11_scores.csv"),
+                ',', skipstart=1)
+    t = nyblom_test(Float64.(G); names=["omega", "alpha1", "beta1"])
+
+    @test isapprox(t.joint, 0.6638156567; atol=1e-9)
+    @test isapprox(t.individual, [0.2633213626, 0.3825469283, 0.2736797979]; atol=1e-9)
+
+    # critical values come from rugarch's own table, not an extrapolation
+    @test t.joint_critical == (0.846, 1.010, 1.350)
+    @test t.individual_critical == (0.353, 0.470, 0.748)
+    @test t.n == size(G, 1)
+    @test t.names == ["omega", "alpha1", "beta1"]
+    @test statistic(t) == t.joint
+    @test occursin("Nyblom", sprint(show, t))
+    @test !occursin("reject", lowercase(sprint(show, t)))
+
+    @testset "beyond the published table the critical values are nothing, not extrapolated" begin
+        t_big = nyblom_test(randn(200, 25))
+        @test t_big.joint_critical === nothing
+        @test t_big.individual_critical == (0.353, 0.470, 0.748)   # k=1 is still tabulated
+        @test length(t_big.individual) == 25
+    end
+
+    @testset "flags a genuinely unstable parameter" begin
+        # scores with a drifting mean have cumulative sums that wander far from
+        # zero, which is exactly what the statistic is built to detect
+        Random.seed!(2024)
+        n = 600
+        stable = randn(n, 1)
+        drifting = randn(n, 1) .+ range(-0.6, 0.6; length=n)
+        @test nyblom_test(drifting).individual[1] > nyblom_test(stable).individual[1]
+        @test nyblom_test(drifting).individual[1] > 0.748   # past the 1% critical value
+    end
+
+    @testset "error paths" begin
+        @test_throws ArgumentError nyblom_test(randn(1, 3))
+        bad = randn(50, 2); bad[7, 1] = Inf
+        @test_throws ArgumentError nyblom_test(bad)
+        @test_throws ArgumentError nyblom_test(randn(50, 3); names=["a", "b"])
+    end
+end

@@ -1,10 +1,10 @@
 using LinearAlgebra: eigen, I
 
 export LjungBoxTest, QSTest, JarqueBeraTest, DurbinWatsonTest, ARCHLMTest, DKHeteroTest,
-       SignBiasTest,
+       SignBiasTest, NyblomTest,
        ljungbox_test, qs_test, jarque_bera_test, durbin_watson_test,
        arch_lm_test, dk_heteroskedasticity_test, durbin_watson_pvalue_exact,
-       sign_bias_test
+       sign_bias_test, nyblom_test
 
 """_chisq_ccdf(x, df) -- upper tail P(X > x) for X ~ chi-squared(df),
 via the regularized upper incomplete gamma function, computed by a
@@ -1046,4 +1046,133 @@ function sign_bias_test(z, resid)
 
     return SignBiasTest(tvals[1], pvals[1], tvals[2], pvals[2], tvals[3], pvals[3],
                          joint, joint_p, n)
+end
+
+# ---------------------------------------------------------------------------
+# Nyblom (1989) / Hansen (1992) parameter-stability test
+# ---------------------------------------------------------------------------
+
+"Nyblom/Hansen asymptotic critical values at the 10%/5%/1% levels, indexed
+by the number of parameters tested jointly. Transcribed from
+`rugarch:::.nyblomCritical`'s own table (read directly, not from the
+paper's typeset table), which covers 1 through 20 parameters; beyond 20
+the statistic is returned with `critical_values = nothing` rather than
+an extrapolated number."
+const _NYBLOM_CRITICAL = [
+    (0.353, 0.470, 0.748), (0.610, 0.749, 1.070), (0.846, 1.010, 1.350),
+    (1.070, 1.240, 1.600), (1.280, 1.470, 1.880), (1.490, 1.680, 2.120),
+    (1.690, 1.900, 2.350), (1.890, 2.110, 2.590), (2.100, 2.320, 2.820),
+    (2.290, 2.540, 3.050), (2.490, 2.750, 3.270), (2.690, 2.960, 3.510),
+    (2.890, 3.150, 3.690), (3.080, 3.340, 3.900), (3.260, 3.540, 4.070),
+    (3.460, 3.750, 4.300), (3.640, 3.950, 4.510), (3.830, 4.140, 4.730),
+    (4.030, 4.330, 4.920), (4.220, 4.520, 5.130),
+]
+
+_nyblom_critical(k::Integer) = 1 <= k <= length(_NYBLOM_CRITICAL) ? _NYBLOM_CRITICAL[k] : nothing
+
+"""
+    NyblomTest <: HypothesisTest
+
+Result of the Nyblom (1989)/Hansen (1992) test for *parameter
+instability* -- whether a fitted model's parameters drifted over the
+sample rather than staying constant.
+
+`individual` holds one statistic per parameter, `joint` the statistic
+for all of them together. Both are compared against asymptotic critical
+values rather than converted to p-values, matching `rugarch`'s own
+reporting: `individual_critical`/`joint_critical` are
+`(10%, 5%, 1%)` tuples, or `nothing` when the parameter count exceeds
+the published table.
+
+There is deliberately no `pvalue` here -- the null distribution is
+non-standard and only tabulated at those three levels.
+"""
+struct NyblomTest <: HypothesisTest
+    joint::Float64
+    individual::Vector{Float64}
+    joint_critical::Union{Nothing,NTuple{3,Float64}}
+    individual_critical::Union{Nothing,NTuple{3,Float64}}
+    n::Int
+    names::Vector{String}
+end
+
+statistic(t::NyblomTest) = t.joint
+
+function Base.show(io::IO, t::NyblomTest)
+    println(io, "Nyblom-Hansen parameter stability test")
+    println(io, "  n                : ", t.n)
+    println(io, "  Joint statistic  : ", round(t.joint, digits=4))
+    if t.joint_critical !== nothing
+        println(io, "    critical (10%/5%/1%) : ", t.joint_critical)
+    end
+    println(io, "  Individual statistics:")
+    for (nm, v) in zip(t.names, t.individual)
+        println(io, "    ", rpad(nm, 12), round(v, digits=4))
+    end
+    if t.individual_critical !== nothing
+        print(io, "    critical (10%/5%/1%) : ", t.individual_critical)
+    end
+end
+
+"""
+    nyblom_test(scores; names=nothing) -> NyblomTest
+
+Nyblom (1989)/Hansen (1992) parameter-stability test, computed from an
+`n x k` matrix of **per-observation score contributions** -- the
+gradient of each observation's own log-likelihood term with respect to
+each parameter, evaluated at the fitted values. This is the same
+quantity the OPG standard errors are built from
+(`ForwardDiff.jacobian` of the per-observation contributions), so any
+model in this package that can produce those can be tested.
+
+With `G` the score matrix and `X` its column-wise cumulative sum:
+
+```
+joint        = trace(X'X (G'G)⁻¹) / n
+individual_i = (X'X)_ii / (n (G'G)_ii)
+```
+
+**Read directly from `rugarch:::nyblom`'s own source**, including its
+use of the outer-product `G'G` in place of the Hessian, rather than
+reconstructed from Hansen's paper.
+
+Large statistics indicate the parameter did not stay constant across
+the sample -- the natural formal counterpart to Chapter 32's
+drifting-coefficient models, which assume instability rather than test
+for it.
+
+# Examples
+```jldoctest
+julia> using TSAnalytics, Random
+
+julia> Random.seed!(5); G = randn(400, 3);
+
+julia> t = nyblom_test(G);
+
+julia> length(t.individual)
+3
+```
+"""
+function nyblom_test(scores::AbstractMatrix{<:Real}; names=nothing)
+    G = Float64.(scores)
+    n, k = size(G)
+    n >= 2 || throw(ArgumentError("nyblom_test: need at least 2 observations, got $n"))
+    any(!isfinite, G) && throw(ArgumentError("nyblom_test: scores contain non-finite values"))
+    nms = names === nothing ? ["param$i" for i in 1:k] : collect(String.(names))
+    length(nms) == k ||
+        throw(ArgumentError("nyblom_test: names has length $(length(nms)) but scores has $k columns"))
+
+    hes = G' * G
+    X = cumsum(G; dims=1)
+    xx = X' * X
+
+    individual = [hes[i, i] > 0 ? xx[i, i] / (hes[i, i] * n) : NaN for i in 1:k]
+    joint = try
+        tr(xx * inv(Symmetric(hes))) / n
+    catch e
+        e isa Union{LinearAlgebra.SingularException,LinearAlgebra.LAPACKException} || rethrow()
+        NaN
+    end
+
+    return NyblomTest(joint, individual, _nyblom_critical(k), _nyblom_critical(1), n, nms)
 end

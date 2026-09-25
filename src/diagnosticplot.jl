@@ -1,4 +1,4 @@
-export DiagnosticPlotResult, diagnostic_plot
+export DiagnosticPlotResult, GarchDiagnosticPlotResult, diagnostic_plot
 
 """
     _diagnostic_nlag(; period, ppq, fitdf=0) -> Int
@@ -175,4 +175,115 @@ function diagnostic_plot(resid, m::SarimaModel; fitdf::Union{Nothing,Integer}=no
     P, _, Q, s = m.seasonal_order
     fd = fitdf === nothing ? 0 : fitdf
     return diagnostic_plot(resid; fitdf=fd, ppq=p + q + P + Q, period=s, lags=lags)
+end
+
+# ---------------------------------------------------------------------------
+# GARCH-specific diagnostic panels
+# ---------------------------------------------------------------------------
+
+"""
+    GarchDiagnosticPlotResult
+
+Data behind [`diagnostic_plot`](@ref)`(::GarchModel)` -- the
+variance-model counterpart to [`DiagnosticPlotResult`](@ref). Carries
+six panels' worth of computed values; plotting them is a
+`RecipesBase` recipe, so no rendering backend is needed to produce this
+object.
+
+The panel set is the *applicable* subset of the twelve `rugarch::plot`
+offers, restricted to what a fitted [`GarchModel`](@ref) actually
+carries: a conditional standard deviation against `|resid|`, the
+standardized residuals themselves, their ACF and their **squared**
+ACF (the pair that distinguishes "correlation removed" from "variance
+clustering removed"), a normal Q-Q plot, and the news-impact curve.
+
+`news_impact_e`/`news_impact_sigma2` are `nothing` for `model=:egarch`,
+whose news-impact curve is defined on a different (log-variance) scale
+and is not reduced to the same construction here rather than drawn on a
+silently incomparable axis.
+"""
+struct GarchDiagnosticPlotResult
+    sigma::Vector{Float64}
+    abs_resid::Vector{Float64}
+    std_resid::Vector{Float64}
+    acf_lags::Vector{Int}
+    acf::Vector{Float64}
+    acf_sq::Vector{Float64}
+    qq_theoretical::Vector{Float64}
+    qq_sample::Vector{Float64}
+    news_impact_e::Union{Nothing,Vector{Float64}}
+    news_impact_sigma2::Union{Nothing,Vector{Float64}}
+    model::Symbol
+end
+
+"""
+    diagnostic_plot(m::GarchModel; lags=nothing) -> GarchDiagnosticPlotResult
+
+Diagnostic panels applicable to a fitted conditional-variance model.
+`plot(diagnostic_plot(m))` renders them; the returned object holds the
+computed values either way, so the numbers are usable without a
+plotting backend -- the same "return the data, not just a picture"
+property [`diagnostic_plot`](@ref)`(resid)` already has, and which R's
+own `tsdiag` does not (it returns `NULL`).
+
+Which panels are drawn depends on the model: the news-impact curve is
+built from `omega`/`alpha`/`gamma`/`beta` for `:garch` and `:gjr`, and
+omitted for `:egarch` (see [`GarchDiagnosticPlotResult`](@ref)).
+
+`lags` defaults to `min(20, n÷5)` for both ACF panels.
+
+# Examples
+```jldoctest
+julia> using TSAnalytics, Random
+
+julia> Random.seed!(1); e = randn(400);
+
+julia> m = fit_garch(e, 1, 1);
+
+julia> d = diagnostic_plot(m);
+
+julia> length(d.std_resid) == 400
+true
+```
+"""
+function diagnostic_plot(m::GarchModel; lags::Union{Nothing,Integer}=nothing)
+    sigma2 = m.sigma2
+    resid = m.resid
+    n = length(resid)
+    sigma = sqrt.(max.(sigma2, 0.0))
+    z = resid ./ sigma
+
+    nlag = lags === nothing ? max(1, min(20, n ÷ 5)) : Int(lags)
+    nlag < n || throw(ArgumentError("diagnostic_plot: lags ($nlag) must be < n ($n)"))
+    lagrange = 1:nlag
+    a = acf(z, lagrange).values
+    a_sq = acf(z .^ 2, lagrange).values
+
+    zs = sort(z)
+    qq_theo = [_std_normal_quantile((i - 0.5) / n) for i in 1:n]
+
+    nie, nis = _news_impact(m)
+
+    return GarchDiagnosticPlotResult(sigma, abs.(resid), z, collect(lagrange), a, a_sq,
+                                      qq_theo, zs, nie, nis, m.model)
+end
+
+"_news_impact(m) -- the news-impact curve (Engle & Ng 1993): next
+period's conditional variance as a function of this period's shock,
+holding the lagged variance at the model's own unconditional level.
+`:garch` is symmetric; `:gjr` adds the `gamma` term for negative
+shocks, which is exactly the asymmetry [`sign_bias_test`](@ref) tests
+for. Returns `(nothing, nothing)` for `:egarch`."
+function _news_impact(m::GarchModel)
+    m.model === :egarch && return (nothing, nothing)
+    persistence = sum(m.alpha) + sum(m.beta) +
+                  (m.gamma === nothing ? 0.0 : 0.5 * sum(m.gamma))
+    sigma2_bar = persistence < 1 ? m.omega / (1 - persistence) : sum(m.sigma2) / length(m.sigma2)
+    lo, hi = extrema(m.resid)
+    grid = collect(range(lo, hi; length=201))
+    base = m.omega + sum(m.beta) * sigma2_bar
+    a1 = m.alpha[1]
+    g1 = m.gamma === nothing ? 0.0 : m.gamma[1]
+    nis = [base + a1 * e^2 + (e < 0 ? g1 * e^2 : 0.0) for e in grid]
+    return (grid, nis)
 end

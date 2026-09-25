@@ -343,3 +343,99 @@ real structure.
         [0.05]
     end
 end
+
+"""
+    @recipe f(r::GarchDiagnosticPlotResult)
+
+Six-panel variance-model diagnostic display: conditional standard
+deviation against `|resid|`, standardized residuals, their ACF, the ACF
+of their squares, a normal Q-Q plot, and the news-impact curve. The
+squared-residual ACF is the panel with no counterpart in the ARIMA-side
+display, and the one that says whether the variance model actually
+worked.
+
+The news-impact panel is omitted for `model=:egarch`, whose curve lives
+on a log-variance scale (see [`GarchDiagnosticPlotResult`](@ref)); the
+layout drops to five panels in that case rather than drawing an empty
+frame.
+"""
+@recipe function f(r::GarchDiagnosticPlotResult)
+    has_nic = r.news_impact_e !== nothing
+    layout --> (2, 3)
+    legend --> false
+    # six panels need more room than Plots' 600x400 default, or every title clips
+    size --> (1000, 650)
+    titlefontsize --> 9
+
+    @series begin
+        subplot := 1
+        seriestype := :line
+        title := "Conditional SD vs |resid|"
+        color := :gray
+        alpha := 0.45
+        1:length(r.abs_resid), r.abs_resid
+    end
+    @series begin
+        subplot := 1
+        seriestype := :line
+        linewidth := 1.5
+        title := "Conditional SD vs |resid|"
+        1:length(r.sigma), r.sigma
+    end
+
+    @series begin
+        subplot := 2
+        seriestype := :line
+        title := "Standardized Residuals"
+        1:length(r.std_resid), r.std_resid
+    end
+
+    @series begin
+        subplot := 3
+        seriestype := :sticks
+        marker := :circle
+        title := "ACF of Std. Residuals"
+        xlabel := "Lag"
+        r.acf_lags, r.acf
+    end
+
+    @series begin
+        subplot := 4
+        seriestype := :sticks
+        marker := :circle
+        title := "ACF of Squared Std. Residuals"
+        xlabel := "Lag"
+        r.acf_lags, r.acf_sq
+    end
+
+    @series begin
+        subplot := 5
+        seriestype := :scatter
+        markersize := 3
+        title := "Normal Q-Q Plot"
+        xlabel := "Theoretical Quantiles"
+        ylabel := "Sample Quantiles"
+        r.qq_theoretical, r.qq_sample
+    end
+    @series begin
+        subplot := 5
+        seriestype := :line
+        linestyle := :dash
+        color := :gray
+        title := "Normal Q-Q Plot"
+        lo, hi = extrema(r.qq_theoretical)
+        [lo, hi], [lo, hi]
+    end
+
+    if has_nic
+        @series begin
+            subplot := 6
+            seriestype := :line
+            linewidth := 1.5
+            title := "News Impact Curve"
+            xlabel := "shock"
+            ylabel := "next conditional variance"
+            r.news_impact_e, r.news_impact_sigma2
+        end
+    end
+end
