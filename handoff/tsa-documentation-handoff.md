@@ -1,5 +1,47 @@
 # Handoff: Completing the TSAnalytics.jl Documentation
 
+## Status: COMPLETE (2026-09-28)
+
+Every page listed below is written, and every `@example` block in them
+executes. The documentation has no remaining stubs.
+
+Decisions taken, for the record:
+
+- **§2.7, the state-space export question** — resolved in favour of
+  exporting the engine. `GaussianSSM`, `TimeVaryingSSM`,
+  `build_statespace`, `stationary_cov`, `combined_ar_ma`,
+  `kalman_filter`, `kalman_smoother`, `to_time_varying` and
+  `kalman_filter_diffuse` are public API, documented in
+  `docs/src/api/state-space.md` and used directly in Manual 07.
+- **§3.1, the TSA/SA boundary** — approved as proposed. Chapters 38–40
+  are a bridge, not a treatment; 39 and 40's code blocks are written
+  against SeasonalAdjustment.jl's real API but marked not-executed,
+  since pulling the Census binary into this docs build would be the
+  wrong trade. Chapter 36 turned out to cover the Diwali material in
+  full, so 40 narrowed to "what it takes to *publish* an adjusted
+  series", as §3.1 anticipated it might.
+- **§2.x, the divergence list** — `manual/11-coming-from-r-python.md`
+  is its single canonical home. Other pages link to it rather than
+  restating it.
+
+Three real bugs were found by writing the documentation, each fixed
+with a regression test:
+
+1. `stl_decompose(robust=true)` threw `DimensionMismatch` on a large
+   outlier — a zero-weight Loess window produced a `NaN` that
+   `_stl_lowpass`'s `filter(!isnan, ...)` then swallowed.
+2. `fit_arma(y, (1,0); method=:css_ml)` returned `ar = 1.0` with
+   `loglik = -Inf` while reporting `converged = true` — the CSS warm
+   start walked onto a gradient plateau in the unbounded transformed
+   space.
+3. `test/runtests.jl` imported `Statistics: mean` but not `std`, so a
+   `test_sarima.jl` assertion passed in isolation and errored under the
+   full suite.
+
+The original plan follows, unchanged.
+
+---
+
 Eighteen pages to write, two to expand. The conceptual half is done —
 Introduction chapters 1–37 are 68,368 words — and what remains is the
 onboarding and task-oriented layer.
