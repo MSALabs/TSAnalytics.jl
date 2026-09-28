@@ -229,3 +229,47 @@ end
         end
     end
 end
+
+@testset "fit_arma -- :css_ml on order (1,0) (CSS plateau regression)" begin
+    # Regression for a silently-wrong fit: `_css_start_values` optimises in
+    # the unbounded transformed space, where the CSS objective flattens as
+    # the partial correlation approaches 1 and its gradient underflows to
+    # exactly 0.  On order (1,0) -- the only order with a single free
+    # parameter, so a single search direction and no way back -- LBFGS's
+    # line search overstepped onto that plateau, met g_tol there, and
+    # reported convergence at a unit root.  :css_ml then started the exact
+    # likelihood from it and returned ar = 1.0 with loglik = -Inf, while
+    # still reporting converged = true.
+    #
+    # Ground truth: R 4.6.0 stats::arima() on this exact file.
+    z = readdlm(joinpath(@__DIR__, "verification", "arma", "css_ml_ar1.csv"), ',', skipstart=1) |> vec
+
+    for (im, ar_r, ll_r, se_r) in ((true,  0.6402259235, -419.9035771, 0.0444440421),
+                                    (false, 0.6475261546, -420.4956475, 0.0440131105))
+        m_ml  = fit_arma(z, (1, 0); include_mean=im, method=:ml)
+        m_css = fit_arma(z, (1, 0); include_mean=im, method=:css_ml)
+
+        for m in (m_ml, m_css)
+            @test m.converged
+            @test isfinite(m.loglik)
+            @test isapprox(m.ar[1], ar_r; atol=1e-4)
+            @test isapprox(m.loglik, ll_r; atol=1e-4)
+            @test isapprox(m.se[1], se_r; atol=1e-4)
+        end
+        # the two methods must reach the same optimum, not merely both be
+        # near R -- this is what failed before (0.640 vs 1.000)
+        @test isapprox(m_ml.ar[1], m_css.ar[1]; atol=1e-6)
+    end
+
+    # the warm start itself must stay inside the stationary region
+    zc = z .- sum(z) / length(z)
+    @test all(abs.(TSAnalytics.partrans(TSAnalytics._css_start_values(zc, 1, 0))) .< 0.99)
+
+    # converged is never reported true alongside a non-finite likelihood
+    @testset "order $ord" for ord in ((1, 0), (0, 1), (1, 1), (2, 0), (0, 2), (2, 1))
+        for mth in (:ml, :css_ml)
+            m = fit_arma(z, ord; method=mth)
+            @test !m.converged || isfinite(m.loglik)
+        end
+    end
+end

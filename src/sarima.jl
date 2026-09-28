@@ -126,7 +126,21 @@ function _sarima_css_start_values(yc::Vector{Float64}, p::Integer, q::Integer, P
         Theta = Q > 0 ? partrans(raw[(p + q + P + 1):(p + q + P + Q)]) : T[]
         return combined_ar_ma(phi, Phi, theta, Theta, s)
     end
-    res = _optimize(raw -> _css_objective(raw, yc, unpack), zeros(p + q + P + Q))
+    objective = raw -> _css_objective(raw, yc, unpack)
+    n_raw = p + q + P + Q
+    res = _optimize(objective, zeros(n_raw))
+
+    # Same plateau guard as `_css_start_values` -- see the comment there.
+    # The check is on the individual partial correlations rather than on
+    # `unpack`'s output, because `combined_ar_ma` multiplies the seasonal
+    # and non-seasonal polynomials together and a combined coefficient can
+    # legitimately exceed 1 in a stationary model.
+    on_boundary(raw) = any(x -> abs(x) > 0.9999, partrans(raw))
+    if on_boundary(res.minimizer)
+        alt = _optimize(objective, zeros(n_raw); method=:nelder_mead)
+        on_boundary(alt.minimizer) && return zeros(n_raw)
+        return alt.minimum < res.minimum ? alt.minimizer : zeros(n_raw)
+    end
     return res.minimizer
 end
 
@@ -283,7 +297,7 @@ function fit_sarima(y, order::Tuple{Int,Int,Int}, seasonal_order::Tuple{Int,Int,
 
     return SarimaModel(phi_hat, theta_hat, Phi_hat, Theta_hat, mu_hat, se,
                         loglik, sigma2, aic, bic, n, order, seasonal_order,
-                        method, se_type, result.converged)
+                        method, se_type, result.converged && isfinite(loglik))
 end
 
 function Base.show(io::IO, m::SarimaModel)

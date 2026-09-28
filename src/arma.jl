@@ -242,7 +242,28 @@ function _css_start_values(yc::Vector{Float64}, p::Integer, q::Integer)
     p + q == 0 && return Float64[]  # nothing to warm-start (order (0,0))
     unpack(raw) = (p > 0 ? partrans(raw[1:p]) : eltype(raw)[],
                    q > 0 ? partrans(raw[(p + 1):(p + q)]) : eltype(raw)[])
-    res = _optimize(raw -> _css_objective(raw, yc, unpack), zeros(p + q))
+    objective = raw -> _css_objective(raw, yc, unpack)
+    res = _optimize(objective, zeros(p + q))
+
+    # The transformed space is unbounded while the CSS objective flattens
+    # out completely as a partial correlation approaches +/-1, so far enough
+    # along the plateau its gradient underflows to exactly zero.  A
+    # gradient-based line search that oversteps from the origin lands there,
+    # finds the value lower than where it started and the gradient below
+    # g_tol, and reports convergence -- at a unit root rather than at a
+    # minimum.  Observed on order (1,0), where the single search direction
+    # makes the overstep unrecoverable; with two or more free parameters the
+    # remaining directions keep the gradient alive.
+    #
+    # Retry derivative-free before handing a unit root to the
+    # exact-likelihood stage, which would inherit it and return a boundary
+    # fit with loglik = -Inf.  R's arima guards the same failure, more
+    # bluntly: it refuses outright with "non-stationary AR part from CSS".
+    if any(x -> abs(x) > 0.9999, vcat(unpack(res.minimizer)...))
+        alt = _optimize(objective, zeros(p + q); method=:nelder_mead)
+        any(x -> abs(x) > 0.9999, vcat(unpack(alt.minimizer)...)) && return zeros(p + q)
+        return alt.minimum < res.minimum ? alt.minimizer : zeros(p + q)
+    end
     return res.minimizer
 end
 
@@ -410,7 +431,8 @@ function fit_arma(y, order::Tuple{Int,Int};
     bic = -2 * loglik + k * log(n)
 
     return ArmaModel(phi_hat, theta_hat, mu_hat, se,
-                      loglik, sigma2, aic, bic, n, order, method, se_type, result.converged)
+                      loglik, sigma2, aic, bic, n, order, method, se_type,
+                      result.converged && isfinite(loglik))
 end
 
 function Base.show(io::IO, m::ArmaModel)
