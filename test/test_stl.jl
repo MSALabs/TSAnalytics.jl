@@ -338,3 +338,35 @@ end
     @test TSAnalytics._nextodd(12) == 13
     @test TSAnalytics._nextodd(23.0) == 23
 end
+
+@testset "robust STL survives an outlier large enough to zero a whole window" begin
+    # Regression test. A large enough outlier drives the outer loop's
+    # robustness weights to exactly 0 across an entire local Loess window.
+    # _stl_est1 used to return NaN there; _stl_lowpass trims edge NaNs with
+    # `filter(!isnan, ...)`, which also swallowed that *interior* NaN and
+    # returned a vector shorter than n, surfacing as a DimensionMismatch in
+    # the caller. R's stl.f falls back to the nearest raw value instead.
+    y = vec(readdlm(joinpath(@__DIR__, "verification", "robustse", "cardox240.csv"), ',', skipstart=1))
+
+    for bump in (5.0, 15.0, 50.0, 200.0)
+        yy = copy(y); yy[120] += bump
+        s = stl_decompose(yy, 12; robust=true)
+        @test length(s.trend) == length(yy)
+        @test length(s.seasonal) == length(yy)
+        @test length(s.resid) == length(yy)
+        @test all(isfinite, s.trend)
+        @test all(isfinite, s.seasonal)
+        @test all(isfinite, s.resid)
+    end
+
+    # and it must actually do its job: the outlier is downweighted to zero and
+    # left in the remainder rather than absorbed into trend/seasonal
+    yy = copy(y); yy[120] += 15.0
+    s = stl_decompose(yy, 12; robust=true)
+    @test s.weights[120] == 0.0
+    @test s.resid[120] > 14.0
+
+    # the non-robust path was never affected and must be unchanged
+    s_plain = stl_decompose(yy, 12)
+    @test all(isfinite, s_plain.trend)
+end

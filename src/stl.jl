@@ -77,7 +77,16 @@ function _stl_est1(x::AbstractVector{<:Real}, y::AbstractVector{<:Real},
         w[j] *= robweights[idx]
         a += w[j]
     end
-    a <= 0 && return NaN
+    # Every point in this local window carries zero weight -- either all are
+    # beyond the bandwidth, or (the case that actually bites) the outer
+    # robustness loop drove them all to exactly 0 around a large outlier.
+    # Returning NaN here propagates: `_stl_lowpass` trims edge NaNs with
+    # `filter(!isnan, ...)`, which silently swallows an *interior* NaN too and
+    # shortens its output below `n`, surfacing much later as a
+    # DimensionMismatch. R's own stl.f hits the same condition (`ok = .false.`
+    # out of `stlest`) and falls back to the raw value at the nearest design
+    # point rather than emitting a missing one -- matched here.
+    a <= 0 && return float(y[nb[1]])
 
     w ./= a
     if h > 0 && degree > 0
