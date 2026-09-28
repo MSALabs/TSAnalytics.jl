@@ -97,13 +97,21 @@ for (lab, mm) in (("garch", m), ("gjr", mg), ("egarch", me))
     println(rpad(lab, 7), " loglik = ", round(mm.loglik, digits=2),
             "   AIC = ", round(mm.aic, digits=1))
 end
+println("GJR alpha : ", round(mg.alpha[1], digits=5))
 println("GJR gamma : ", round(mg.gamma[1], digits=5))
 ```
 
-`gamma = 0.129` on top of `alpha = 0.085` means a negative shock moves
-the variance roughly **2.5 times** as much as a positive one of the
-same size, and the AIC improvement of 113 units is not a rounding
-error. This is the single most reliable stylised fact in equity
+Read those two GJR numbers together, because they are more emphatic
+than a leverage effect usually is. `alpha` — the symmetric response,
+applying to shocks of either sign — is driven to **zero**. All of the
+news impact has moved into `gamma`, which applies only when the shock
+was negative.
+
+On this series, over this decade, the model's answer is that a
+*positive* return carries essentially no information about tomorrow's
+variance and a negative one carries all of it. The AIC improvement of
+113 units over plain GARCH is not a rounding error, and neither is the
+finding: asymmetry is the single most reliable stylised fact in equity
 returns.
 
 | `model` | Recursion | Asymmetry enters as |
