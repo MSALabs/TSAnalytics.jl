@@ -64,6 +64,27 @@ resid = randn(MersenneTwister(2), 200)
 plot(diagnostic_plot(resid))
 ```
 
+### Variance models
+
+Handed a fitted [`GarchModel`](@ref) rather than a residual vector,
+[`diagnostic_plot`](@ref) returns a six-panel variance-model display
+instead: fitted conditional volatility over the series, absolute
+residuals, standardised residuals, the ACF of those and of their
+squares, a Q-Q plot, and the **news impact curve** — variance response
+plotted against shock size, which is where an asymmetric model's
+leverage effect becomes visible as a kink rather than a number.
+
+```@example plots
+e = randn(MersenneTwister(4), 800)
+plot(diagnostic_plot(fit_garch(e, 1, 1)))
+```
+
+The news impact panel is omitted for `model=:egarch`, whose
+log-variance recursion has no directly comparable curve on the variance
+scale — [`GarchDiagnosticPlotResult`](@ref)'s `news_impact_e` field is
+`nothing` there. See [GARCH and Volatility](06-garch-and-volatility.md)
+for what the panels are telling you.
+
 ## Box-Cox profile likelihood
 
 The classic by-eye Box-Cox `lambda` selection view — [`boxcox_profile_plot`](@ref)

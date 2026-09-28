@@ -2,7 +2,7 @@ using Test
 using TSAnalytics
 using Random
 using LinearAlgebra: norm
-using Statistics: mean
+using Statistics: mean, std
 using Dates: Date
 
 @testset "TSAnalytics.jl" begin
