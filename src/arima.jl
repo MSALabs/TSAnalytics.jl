@@ -120,3 +120,22 @@ function Base.show(io::IO, m::ArimaModel)
             " (", m.arma.method, ", se: ", m.arma.se_type, ")")
     show(io, m.arma)
 end
+
+"""
+    residuals(m::ArimaModel[, y]) -> Vector{Float64}
+
+One-step-ahead prediction errors from a fitted [`fit_arima`](@ref)
+model. Unlike the ARMA and SARIMA methods, `y` is **optional** here:
+`ArimaModel` retains the series it was fitted to in `original_y`, so
+the no-argument form works. Passing `y` explicitly overrides it.
+
+Returns `n - d` entries — see
+[`residuals`](@ref)`(::SarimaModel, y)` on why the leading
+observations are absent rather than padded.
+"""
+function StatsAPI.residuals(m::ArimaModel, y)
+    yv = Float64.(collect(tsvalues(y)))
+    yd = m.d > 0 ? diff(yv, 1; differences=m.d) : yv
+    return StatsAPI.residuals(m.arma, yd)
+end
+StatsAPI.residuals(m::ArimaModel) = StatsAPI.residuals(m, m.original_y)

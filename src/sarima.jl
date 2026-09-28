@@ -305,3 +305,43 @@ function Base.show(io::IO, m::SarimaModel)
           "   AIC: ", round(m.aic, digits=2), "   BIC: ", round(m.bic, digits=2))
     m.converged || print(io, "\nWARNING: optimizer did not converge")
 end
+
+"""
+    residuals(m::SarimaModel, y) -> Vector{Float64}
+
+One-step-ahead prediction errors from a fitted [`fit_sarima`](@ref)
+model, on the scale of the differenced series, matching what R's
+`stats::arima` returns in its own `\$residuals` field.
+
+`y` is passed explicitly because `SarimaModel` does not retain the
+series it was fitted to — the same convention
+[`forecast`](@ref)`(::SarimaModel, y, horizon)` already uses, for the
+same reason.
+
+The returned vector has `n - d - D*s` entries, not `length(y)`: the
+differencing consumes the leading observations, and this package
+reports the residuals it actually has rather than padding the front
+with `NaN` or zeros to restore the original length. `nobs(m)` is the
+same count.
+
+Computed by running the fitted coefficients back through the same
+Kalman filter the likelihood used (`v ./ sqrt.(F)`, which puts them on the original scale with
+variance `sigma2`, matching R),
+not by a separate recursion that could drift from it.
+"""
+function StatsAPI.residuals(m::SarimaModel, y)
+    yv = Float64.(collect(tsvalues(y)))
+    p, d, q = m.order
+    P, D, Q, s = m.seasonal_order
+    yd = yv
+    D > 0 && (yd = diff(yd, s; differences=D))
+    d > 0 && (yd = diff(yd, 1; differences=d))
+    mu = m.mean === nothing ? 0.0 : m.mean
+    ar, ma = combined_ar_ma(m.phi, m.Phi, m.theta, m.Theta, s)
+    ssm = build_statespace(ar, ma)
+    _, sigma2, v, F, converged = kalman_filter(ssm, yd .- mu)
+    converged || throw(ErrorException(
+        "residuals(::SarimaModel, y): the Kalman filter did not converge at the fitted " *
+        "parameters -- this usually means `y` is not the series the model was fitted to"))
+    return v ./ sqrt.(F)
+end

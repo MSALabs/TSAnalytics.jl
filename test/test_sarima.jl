@@ -137,3 +137,36 @@ end
     @test_throws ArgumentError fit_sarima(y, (1, 0, 0), (1, 1, 0, 1))    # P>0 needs s>=2
     @test_throws ArgumentError fit_sarima(y, (1, 0, 0), (1, 1, 0, 12); se_type=:bogus)
 end
+
+@testset "residuals(::SarimaModel, y) — R stats::arima cross-check" begin
+    y = vec(readdlm(joinpath(@__DIR__, "verification", "robustse", "cardox240.csv"), ',', skipstart=1))
+    m = fit_sarima(y, (1, 1, 1), (0, 1, 1, 12))
+    r = StatsAPI.residuals(m, y)
+
+    # length is n - d - D*s, NOT length(y): R pads its own to the full length,
+    # this package returns only what it computed. nobs(m) agrees.
+    @test length(r) == length(y) - 1 - 12
+    @test length(r) == m.nobs
+
+    # residuals are on the original scale, so their spread matches sqrt(sigma2)
+    @test isapprox(std(r), sqrt(m.sigma2); rtol=0.05)
+
+    # R: arima(y, order=c(1,1,1), seasonal=list(order=c(0,1,1), period=12))
+    #    tail(residuals(m), 4) -> 0.091840 0.066789 0.427919 -0.262364
+    # agreement is to ~1e-4, limited by the two optimisers' fitted parameters,
+    # not by the residual definition
+    @test isapprox(r[end-3:end], [0.091840, 0.066789, 0.427919, -0.262364]; atol=5e-4)
+
+    @testset "ArmaModel and ArimaModel methods" begin
+        ma = fit_arma(y[1:120], (1, 0))
+        @test length(StatsAPI.residuals(ma, y[1:120])) == 120
+        mi = fit_arima(y[1:120], (1, 1, 0))
+        # ArimaModel retains original_y, so the no-argument form works
+        @test StatsAPI.residuals(mi) == StatsAPI.residuals(mi, y[1:120])
+        @test length(StatsAPI.residuals(mi)) == 119
+    end
+
+    @testset "wrong series is rejected rather than silently answered" begin
+        @test_throws ErrorException StatsAPI.residuals(m, fill(1.0, length(y)))
+    end
+end

@@ -429,3 +429,23 @@ function Base.show(io::IO, m::ArmaModel)
           "   AIC: ", round(m.aic, digits=2), "   BIC: ", round(m.bic, digits=2))
     m.converged || print(io, "\nWARNING: optimizer did not converge")
 end
+
+"""
+    residuals(m::ArmaModel, y) -> Vector{Float64}
+
+One-step-ahead prediction errors from a fitted [`fit_arma`](@ref)
+model. `y` is passed explicitly because `ArmaModel` does not retain
+the series it was fitted to — see
+[`residuals`](@ref)`(::SarimaModel, y)` for the reasoning and the
+computation, which is the same one with no differencing.
+"""
+function StatsAPI.residuals(m::ArmaModel, y)
+    yv = Float64.(collect(tsvalues(y)))
+    mu = m.mean === nothing ? 0.0 : m.mean
+    ssm = build_statespace(m.ar, m.ma)
+    _, sigma2, v, F, converged = kalman_filter(ssm, yv .- mu)
+    converged || throw(ErrorException(
+        "residuals(::ArmaModel, y): the Kalman filter did not converge at the fitted " *
+        "parameters -- this usually means `y` is not the series the model was fitted to"))
+    return v ./ sqrt.(F)
+end
