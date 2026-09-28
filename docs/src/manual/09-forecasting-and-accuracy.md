@@ -28,7 +28,7 @@ println("point[1:3]: ", round.(f.point[1:3], digits=3))
 retain it — the same reason `residuals` does. `ArimaModel` and
 `ARXModel` do, so `forecast(m, h)` works for those.
 
-[`StatsAPI.predict`](@ref) is exactly equivalent. `forecast` exists as a
+`StatsAPI.predict(m, y, h; level=level)` is exactly equivalent. `forecast` exists as a
 direct alias for people arriving from R's `forecast()`.
 
 ### Intervals
