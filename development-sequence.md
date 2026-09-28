@@ -469,6 +469,31 @@ exponential smoothing) — placed in `manual/04-fitting-arma-models.md`'s
 matching `api/arma-models.md` file as the closest thematic fit; revisit
 if a dedicated exponential-smoothing chapter is ever added.
 
+**Content ✅ complete (2026-09-28)** (`handoff/tsa-documentation-handoff.md`)
+— every page in the tree above is written and has no stub text left. The
+5-chapter Getting Started, all 11 Manual pages, Introduction chapters
+1-41 and all three appendices. Every `@example` block executes at build
+time; `checkdocs=:exports` and `doctest=true` both pass.
+
+Two notes in the paragraph above are now superseded. **`api/state-space.md`
+is no longer a short note**: the Kalman engine *is* public API —
+`GaussianSSM`, `TimeVaryingSSM`, `build_statespace`, `stationary_cov`,
+`combined_ar_ma`, `kalman_filter`, `kalman_smoother`, `to_time_varying`
+and `kalman_filter_diffuse` are all exported and documented, and
+`manual/07-state-space-and-kalman.md` uses them directly. And the
+bibliography moved from `introduction/B-further-reading.md` to
+`introduction/C-further-reading.md`, with `B-verification.md` now
+carrying the verification standard itself.
+
+**Three real bugs were found by writing the documentation**, each fixed
+with a regression test against a live reference: `stl_decompose`'s
+`robust=true` path crashing with `DimensionMismatch` on a large outlier;
+`fit_arma(y, (1,0); method=:css_ml)` silently returning a unit root with
+`loglik = -Inf` while reporting `converged = true`; and `test/runtests.jl`
+importing `Statistics: mean` but not `std`, so a `test_sarima.jl`
+assertion passed in isolation and errored under the full suite.
+Documentation that executes is a test suite with a different shape.
+
 **Content — Getting Started/Manual stub pages still waiting** (unaffected
 by the Introduction restructure below), tracked here so the next
 content-writing handoff has a complete checklist rather than needing to
