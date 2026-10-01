@@ -1,6 +1,18 @@
 # Handoff: Stage 9B — Everything Else
 
-## Status: TIER 1 COMPLETE, 2.1 COMPLETE (2026-10-01)
+## Status: TIER 1 COMPLETE, 2.1 + 2.2 COMPLETE (2026-10-01)
+
+**§2.2 (`vcov` coverage) is done**, and its diagnosis was correct: a
+fit-path change, not an accessor. Beyond the written scope it turned up
+two pre-existing defects -- `coef` omitting the estimated mean that `se`
+included (contradicting `ArmaModel`'s own docstring), and `_vcov_to_se`
+clamping a non-positive variance to `0.0`, which printed
+`ma1 1.0 0.0 Inf NaN` at a boundary optimum. Both fixed. The clamp had
+been masking a genuinely degenerate `fit_autoreg_garch` fit whose OPG
+covariance diagonal reaches `-5199`; that test now asserts the truth.
+
+Note §2.2's own `se` target is in R's printed order; Julia orders
+`[exog..., arma...]`. Same three numbers.
 
 **§2.1 (seasonal unit-root test) is done**, and two of its premises were
 wrong:

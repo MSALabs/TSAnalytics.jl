@@ -25,7 +25,9 @@ end
 StatsAPI.loglikelihood(m::ArimaModel) = m.arma.loglik
 StatsAPI.aic(m::ArimaModel) = m.arma.aic
 StatsAPI.bic(m::ArimaModel) = m.arma.bic
-StatsAPI.coef(m::ArimaModel) = vcat(m.arma.ar, m.arma.ma)
+StatsAPI.coef(m::ArimaModel) = StatsAPI.coef(m.arma)
+StatsAPI.vcov(m::ArimaModel) = m.arma.vcov
+StatsAPI.stderror(m::ArimaModel) = m.arma.se
 
 """
     StatsAPI.nobs(m::ArimaModel) -> Int

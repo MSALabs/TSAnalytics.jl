@@ -33,6 +33,7 @@ struct AutoregGarchModel <: UnivariateModel
     bic::Float64
     nobs::Int
     se::Vector{Float64}
+    vcov::Matrix{Float64}
     converged::Bool
 end
 
@@ -236,7 +237,7 @@ function fit_autoreg_garch(y, m::Integer, exog;
                          se_type=se_type, optimizer_method=optimizer_method,
                          n_restarts=n_restarts, parallel=parallel, start_params=start_params)
         return AutoregGarchModel(am.beta, am.arma.ar, nothing, am.loglik, am.aic, am.bic, am.nobs,
-                                  am.se, am.converged)
+                                  am.se, am.vcov, am.converged)
     end
 
     p, q = garch_order
@@ -348,18 +349,18 @@ function fit_autoreg_garch(y, m::Integer, exog;
         _, contribs, = _ar_garch_loglik(beta, phi, omega, alpha, ggbeta, yv, Xmat, m)
         isempty(contribs) ? fill(T(-1e10) / (n0 - m + 1), n0 - m + 1) : contribs
     end
-    se = se_type == :hessian ? _hessian_se(natobj, params_hat) :
-         se_type == :opg     ? _opg_se(llcontrib, params_hat) :
-                               _robust_se(natobj, llcontrib, params_hat)
+    vc = _select_vcov(se_type, natobj, llcontrib, params_hat)
+    se = _vcov_to_se(vc)
 
     aic = -2 * loglik + 2 * nparam
     bic = -2 * loglik + nparam * log(n0)
 
     garch_se = se[(k + m + 1):end]
+    garch_vc = vc[(k + m + 1):end, (k + m + 1):end]
     garch = GarchModel(:garch, omega_hat, alpha_hat, nothing, ggbeta_hat, :zero, nothing, h_hat, e_hat,
-                        garch_se, loglik, aic, bic, n0, p, q, :classic, result.converged)
+                        garch_se, garch_vc, loglik, aic, bic, n0, p, q, :classic, result.converged)
 
-    return AutoregGarchModel(beta_hat, phi_hat, garch, loglik, aic, bic, n0, se, result.converged)
+    return AutoregGarchModel(beta_hat, phi_hat, garch, loglik, aic, bic, n0, se, vc, result.converged)
 end
 
 function Base.show(io::IO, m::AutoregGarchModel)
@@ -375,3 +376,6 @@ function Base.show(io::IO, m::AutoregGarchModel)
           "   AIC: ", round(m.aic, digits=2), "   BIC: ", round(m.bic, digits=2))
     m.converged || print(io, "\nWARNING: optimizer did not converge")
 end
+
+StatsAPI.vcov(m::AutoregGarchModel) = m.vcov
+StatsAPI.stderror(m::AutoregGarchModel) = m.se

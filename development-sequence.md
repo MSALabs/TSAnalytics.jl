@@ -554,6 +554,52 @@ through.
 
 ---
 
+## Stage 9B Tier 2.2 — full covariance matrices (cross-cutting)
+
+**✅ built (2026-10-01)** (`handoff/stage-9B-nonets-handoff.md` §2.2, whose
+diagnosis was right: this is a **fit-path** change, not an accessor).
+`ARXModel` was the only type retaining a full matrix; every other type kept
+`se::Vector{Float64}`, the diagonal only, so `vcov` could not be
+reconstructed after the fact -- the off-diagonal terms were already gone,
+and they are the part a joint test, a linear combination or a forecast
+variance actually needs.
+
+`_hessian_se`/`_opg_se`/`_robust_se` now wrap `_hessian_vcov`/`_opg_vcov`/
+`_robust_vcov`, with the three-way `se_type` dispatch collected into one
+`_select_vcov` instead of being repeated at every fit site. `ArmaModel`,
+`SarimaModel`, `ArimaxModel`, `SarimaxModel`, `GarchModel` and
+`AutoregGarchModel` all gained a `vcov` field, and `StatsAPI.vcov`/
+`stderror` are defined for all of them plus `ArimaModel`. `GarchModel`
+already *computed* its covariance matrix and threw it away.
+
+Two things surfaced that were not in the handoff's scope:
+
+- **`coef` omitted the estimated mean while `se` included it**, so
+  `length(coef(m)) != length(stderror(m))` whenever a mean was fitted --
+  and `ArmaModel`'s own docstring claimed the two matched. `coef` now
+  includes it, agreeing with `GarchModel`, which always included its `mu`.
+  Two tests pinned the old behaviour and were updated.
+- **`_vcov_to_se` clamped a non-positive variance to `0.0`.** Fitting
+  ARMA(1,1) to undifferenced CO2 drives the MA term to exactly `1.0`, the
+  invertibility boundary, and the coefficient table then printed
+  `ma1 1.0 0.0 Inf NaN` -- a zero standard error claiming *infinite*
+  precision about a parameter the model knew nothing about, with an `Inf`
+  z-statistic inviting the opposite reading. It reports `NaN` now, which is
+  what `fit_arma`'s docstring already promised for this case.
+
+**That clamp was hiding a genuinely degenerate fit.** A
+`fit_autoreg_garch` test asserted `all(isfinite, se)` and passed only
+because of it: on its fixture the GARCH block fits `alpha = 3e-16` and
+`garch_beta = 0.99999`, both pinned at their constraint boundaries with
+persistence at 1, and the OPG covariance diagonal reaches **-5199**. The
+test now asserts what the fixture can honestly support -- the regression
+block's standard errors are usable, the GARCH block's are not -- and says
+why. One further test compared `se` vectors with `==`, which NaN fails even
+when the vectors are bit-identical; switched to `isequal`, which is what
+an exactness guard means.
+
+---
+
 ## Documentation restructuring (cross-cutting, not a numbered stage)
 
 **Skeleton ✅ built** (`handoff/docs-restructure-skeleton-handoff.md`) —

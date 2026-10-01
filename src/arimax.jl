@@ -45,6 +45,7 @@ struct ArimaxModel <: UnivariateModel
     original_y::Vector{Float64}
     exog::Matrix{Float64}
     se::Vector{Float64}
+    vcov::Matrix{Float64}
     loglik::Float64
     aic::Float64
     bic::Float64
@@ -72,6 +73,7 @@ struct SarimaxModel <: UnivariateModel
     original_y::Vector{Float64}
     exog::Matrix{Float64}
     se::Vector{Float64}
+    vcov::Matrix{Float64}
     loglik::Float64
     aic::Float64
     bic::Float64
@@ -100,6 +102,8 @@ for M in (:ArimaxModel, :SarimaxModel)
             m.model == :mle ? vcat(m.beta, phi, theta, Phi, Theta) :
                                vcat(phi, theta, Phi, Theta, m.arma.sigma2, m.Q_beta)
         end
+        StatsAPI.vcov(m::$M) = m.vcov
+        StatsAPI.stderror(m::$M) = m.se
     end
 end
 
@@ -587,35 +591,41 @@ function _fit_arimax_core(y, order::Tuple{Int,Int,Int}, seasonal_order::Tuple{In
         params_hat = vcat(beta_hat, phi_hat, theta_hat, Phi_hat, Theta_hat)
         natobj = raw -> _arimax_natural_objective(raw, yd, Xd, p, q, P, Q, s, k)
         llcontrib = raw -> _arimax_loglik_contributions(raw, yd, Xd, p, q, P, Q, s, k)
-        se = se_type == :hessian ? _hessian_se(natobj, params_hat) :
-             se_type == :opg     ? _opg_se(llcontrib, params_hat) :
-                                   _robust_se(natobj, llcontrib, params_hat)
+        vc = _select_vcov(se_type, natobj, llcontrib, params_hat)
+        se = _vcov_to_se(vc)
+        # the nested ARMA/SARIMA record is a summary view of the same fit, so
+        # it carries the corresponding block of the covariance matrix rather
+        # than a separate estimate
+        arma_vc = vc[(k + 1):end, (k + 1):end]
 
         kfull = nparam + 1  # +1 for sigma2
         aic = -2 * loglik + 2 * kfull
         bic = -2 * loglik + kfull * log(nd)
 
         arma_fields = if seasonal_order == (0, 0, 0, 1) || constructor === ArimaxModel
-            ArmaModel(phi_hat, theta_hat, nothing, se[(k + 1):end], loglik, sigma2, aic, bic, nd,
-                      (p, q), method, se_type, result.converged, yd)
+            ArmaModel(phi_hat, theta_hat, nothing, se[(k + 1):end], arma_vc, loglik, sigma2,
+                      aic, bic, nd, (p, q), method, se_type, result.converged, yd)
         else
             nothing
         end
         arma_seasonal = constructor === SarimaxModel ?
-            SarimaModel(phi_hat, theta_hat, Phi_hat, Theta_hat, nothing, se[(k + 1):end], loglik, sigma2,
-                        aic, bic, nd, order, seasonal_order, method, se_type, result.converged, yd) : nothing
+            SarimaModel(phi_hat, theta_hat, Phi_hat, Theta_hat, nothing, se[(k + 1):end], arma_vc,
+                        loglik, sigma2, aic, bic, nd, order, seasonal_order, method, se_type,
+                        result.converged, yd) : nothing
 
         arma_result = constructor === ArimaxModel ? arma_fields : arma_seasonal
         common = (model=:mle, method=method, beta=beta_hat, beta_filtered=nothing, Q_beta=nothing,
-                  se=se, loglik=loglik, aic=aic, bic=bic, nobs=nd, nobs_diffuse=nothing,
-                  converged=result.converged)
+                  se=se, vcov=vc, loglik=loglik, aic=aic, bic=bic, nobs=nd,
+                  nobs_diffuse=nothing, converged=result.converged)
         return constructor === ArimaxModel ?
                ArimaxModel(common.model, common.method, common.beta, common.beta_filtered, common.Q_beta,
-                            arma_result, d, yv, Xmat, common.se, common.loglik, common.aic, common.bic,
-                            common.nobs, common.nobs_diffuse, common.converged) :
+                            arma_result, d, yv, Xmat, common.se, common.vcov, common.loglik,
+                            common.aic, common.bic, common.nobs, common.nobs_diffuse,
+                            common.converged) :
                SarimaxModel(common.model, common.method, common.beta, common.beta_filtered, common.Q_beta,
-                             arma_result, seasonal_order, yv, Xmat, common.se, common.loglik, common.aic,
-                             common.bic, common.nobs, common.nobs_diffuse, common.converged)
+                             arma_result, seasonal_order, yv, Xmat, common.se, common.vcov,
+                             common.loglik, common.aic, common.bic, common.nobs,
+                             common.nobs_diffuse, common.converged)
     else
         # model = :tvss
         nq = Q_beta === nothing ? k : 0
@@ -699,27 +709,29 @@ function _fit_arimax_core(y, order::Tuple{Int,Int,Int}, seasonal_order::Tuple{In
                             Q_beta === nothing ? Qbeta_hat : Float64[])
         natobj_tv = nat -> _arimax_tvss_natural_objective(nat, yd, Xd, p, q, P, Q, s, k, Q_beta)
         llcontrib_tv = nat -> _arimax_tvss_loglik_contributions(nat, yd, Xd, p, q, P, Q, s, k, Q_beta, nobs_diffuse)
-        se_full = se_type == :hessian ? _hessian_se(natobj_tv, natural_hat) :
-                  se_type == :opg     ? _opg_se(llcontrib_tv, natural_hat) :
-                                        _robust_se(natobj_tv, llcontrib_tv, natural_hat)
+        vc_full = _select_vcov(se_type, natobj_tv, llcontrib_tv, natural_hat)
+        se_full = _vcov_to_se(vc_full)
 
         kfull = nparam
         aic = -2 * loglik + 2 * kfull
         bic = -2 * loglik + kfull * log(nd)
 
         arma_placeholder_se = se_full[1:(p + q + P + Q)]
+        arma_placeholder_vc = vc_full[1:(p + q + P + Q), 1:(p + q + P + Q)]
         arma_result = constructor === ArimaxModel ?
-            ArmaModel(phi_hat, theta_hat, nothing, arma_placeholder_se, loglik, sigma2_hat, aic, bic,
-                      nd, (p, q), method, se_type, result.converged, yd) :
-            SarimaModel(phi_hat, theta_hat, Phi_hat, Theta_hat, nothing, arma_placeholder_se, loglik,
-                        sigma2_hat, aic, bic, nd, order, seasonal_order, method, se_type,
-                        result.converged, yd)
+            ArmaModel(phi_hat, theta_hat, nothing, arma_placeholder_se, arma_placeholder_vc,
+                      loglik, sigma2_hat, aic, bic, nd, (p, q), method, se_type,
+                      result.converged, yd) :
+            SarimaModel(phi_hat, theta_hat, Phi_hat, Theta_hat, nothing, arma_placeholder_se,
+                        arma_placeholder_vc, loglik, sigma2_hat, aic, bic, nd, order,
+                        seasonal_order, method, se_type, result.converged, yd)
 
         return constructor === ArimaxModel ?
                ArimaxModel(:tvss, method, nothing, beta_filtered, Qbeta_hat, arma_result, d, yv, Xmat,
-                            se_full, loglik, aic, bic, nd, nobs_diffuse, result.converged) :
+                            se_full, vc_full, loglik, aic, bic, nd, nobs_diffuse, result.converged) :
                SarimaxModel(:tvss, method, nothing, beta_filtered, Qbeta_hat, arma_result, seasonal_order,
-                             yv, Xmat, se_full, loglik, aic, bic, nd, nobs_diffuse, result.converged)
+                             yv, Xmat, se_full, vc_full, loglik, aic, bic, nd, nobs_diffuse,
+                             result.converged)
     end
 end
 

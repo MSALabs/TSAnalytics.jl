@@ -22,6 +22,7 @@ struct SarimaModel <: UnivariateModel
     Theta::Vector{Float64}
     mean::Union{Nothing,Float64}
     se::Vector{Float64}
+    vcov::Matrix{Float64}
     loglik::Float64
     sigma2::Float64
     aic::Float64
@@ -38,7 +39,11 @@ end
 StatsAPI.loglikelihood(m::SarimaModel) = m.loglik
 StatsAPI.aic(m::SarimaModel) = m.aic
 StatsAPI.bic(m::SarimaModel) = m.bic
-StatsAPI.coef(m::SarimaModel) = vcat(m.phi, m.theta, m.Phi, m.Theta)
+StatsAPI.coef(m::SarimaModel) = m.mean === nothing ?
+    vcat(m.phi, m.theta, m.Phi, m.Theta) :
+    vcat(m.phi, m.theta, m.Phi, m.Theta, m.mean)
+StatsAPI.vcov(m::SarimaModel) = m.vcov
+StatsAPI.stderror(m::SarimaModel) = m.se
 
 """
     StatsAPI.nobs(m::SarimaModel) -> Int
@@ -288,15 +293,14 @@ function fit_sarima(y, order::Tuple{Int,Int,Int}, seasonal_order::Tuple{Int,Int,
                                             vcat(phi_hat, theta_hat, Phi_hat, Theta_hat)
     natobj = params -> _sarima_natural_objective(params, yd, p, q, P, Q, s, include_mean_effective)
     llcontrib = params -> _sarima_loglik_contributions(params, yd, p, q, P, Q, s, include_mean_effective)
-    se = se_type == :hessian ? _hessian_se(natobj, params_hat) :
-         se_type == :opg     ? _opg_se(llcontrib, params_hat) :
-                               _robust_se(natobj, llcontrib, params_hat)
+    vc = _select_vcov(se_type, natobj, llcontrib, params_hat)
+    se = _vcov_to_se(vc)
 
     k = nparam + 1  # +1 for sigma2, matching R's actual AIC/BIC exactly (Stage 6.5's finding)
     aic = -2 * loglik + 2 * k
     bic = -2 * loglik + k * log(n)
 
-    return SarimaModel(phi_hat, theta_hat, Phi_hat, Theta_hat, mu_hat, se,
+    return SarimaModel(phi_hat, theta_hat, Phi_hat, Theta_hat, mu_hat, se, vc,
                         loglik, sigma2, aic, bic, n, order, seasonal_order,
                         method, se_type, result.converged && isfinite(loglik), yv)
 end

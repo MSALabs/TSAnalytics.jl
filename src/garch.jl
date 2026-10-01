@@ -42,6 +42,7 @@ struct GarchModel <: UnivariateModel
     sigma2::Vector{Float64}
     resid::Vector{Float64}
     se::Vector{Float64}
+    vcov::Matrix{Float64}
     loglik::Float64
     aic::Float64
     bic::Float64
@@ -612,14 +613,14 @@ function fit_garch(y, p::Integer=1, q::Integer=1;
         score_cov = Statistics.cov(scores)
         invH * score_cov * invH ./ n
     end
-    se = sqrt.(max.(diag(covmat), 0.0))
+    se = _vcov_to_se(covmat)
 
     aic = -2 * loglik + 2 * nparam
     bic = -2 * loglik + nparam * log(n)
 
     return GarchModel(model, omega_hat, alpha_hat, gamma_hat, beta_hat, mean_spec,
-                       has_mean ? mu_hat : nothing, sigma2_hat, e_hat, se, loglik, aic, bic, n, p, q,
-                       cov_type, result.converged)
+                       has_mean ? mu_hat : nothing, sigma2_hat, e_hat, se, Matrix(covmat),
+                       loglik, aic, bic, n, p, q, cov_type, result.converged)
 end
 
 """
@@ -694,3 +695,6 @@ function Base.show(io::IO, m::GarchModel)
           "   AIC: ", round(m.aic, digits=2), "   BIC: ", round(m.bic, digits=2))
     m.converged || print(io, "\nWARNING: optimizer did not converge")
 end
+
+StatsAPI.vcov(m::GarchModel) = m.vcov
+StatsAPI.stderror(m::GarchModel) = m.se

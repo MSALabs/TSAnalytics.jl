@@ -146,10 +146,42 @@ Common causes and what to do:
 | Poor starting values | Try `method=:css_ml`, which warm-starts from a conditional-sum-of-squares fit |
 | Genuinely flat likelihood | The data may not identify the model |
 
-`NaN` entries in `se` with `converged=true` mean the Hessian was
-singular at the optimum — usually an MA coefficient sitting on the
-invertibility boundary. That is reported honestly rather than papered
-over with a pseudo-inverse.
+`NaN` entries in `se` with `converged=true` mean the information matrix
+was not positive-definite at the optimum — usually an MA coefficient
+sitting on the invertibility boundary, where that parameter's standard
+error is genuinely undefined rather than small.
+
+```@example fitting
+mb = fit_arma(y, (1, 1))              # undifferenced, so the MA term hits 1.0
+println("ma        : ", round(mb.ma[1], digits=6))
+println("se        : ", mb.se)
+println("converged : ", mb.converged)
+```
+
+That is reported honestly rather than papered over with a pseudo-inverse
+— and rather than clamped to `0.0`, which is what this used to do and
+which printed a `z` of `Inf` against a coefficient the model knew
+nothing about.
+
+## Standard errors as a matrix
+
+```@example fitting
+using StatsAPI: vcov, stderror, coef
+V = vcov(ms)
+println("size     : ", size(V), "   coefficients: ", length(coef(ms)))
+println("stderror : ", round.(stderror(ms), digits=5))
+println("off-diagonal corr(phi, theta): ",
+        round(V[1,2] / sqrt(V[1,1]*V[2,2]), digits=4))
+```
+
+[`vcov`](https://juliastats.org/StatsAPI.jl/) returns the full covariance
+matrix, not just the diagonal that `se` reports. The off-diagonal terms
+are the part you cannot recover afterwards, and they are what a joint
+test or a linear combination of coefficients needs — a forecast's
+variance, for instance, depends on them.
+
+`coef`, `stderror` and `vcov` agree on ordering and length, **including
+the estimated mean** when there is one.
 
 ## Estimation method
 

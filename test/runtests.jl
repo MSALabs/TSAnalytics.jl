@@ -44,6 +44,7 @@ using Dates: Date
     include("test_autoarima_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally
     include("test_arimax.jl")
     include("test_arimaxforecast.jl")
+    include("test_vcov.jl")
     include("test_autoarimax.jl")
     include("test_forecast.jl")
     include("test_accuracy.jl")

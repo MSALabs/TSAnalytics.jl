@@ -83,7 +83,12 @@ end
         @test m_wrapped.arma.ar == m_direct.ar
         @test m_wrapped.arma.ma == m_direct.ma
         @test m_wrapped.arma.loglik == m_direct.loglik
-        @test m_wrapped.arma.se == m_direct.se
+        # isequal, not ==: at a boundary optimum an entry is NaN, and
+        # NaN == NaN is false even when the two vectors are bit-identical.
+        # The guard is about the wrapper being exact, so isequal is what it
+        # actually means.
+        @test isequal(m_wrapped.arma.se, m_direct.se)
+        @test isequal(vcov(m_wrapped), vcov(m_direct))
         @test StatsAPI.nobs(m_wrapped) == m_direct.nobs == length(y1)
     end
 end

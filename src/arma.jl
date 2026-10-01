@@ -25,6 +25,7 @@ struct ArmaModel <: UnivariateModel
     ma::Vector{Float64}
     mean::Union{Nothing,Float64}
     se::Vector{Float64}
+    vcov::Matrix{Float64}
     loglik::Float64
     sigma2::Float64
     aic::Float64
@@ -114,17 +115,43 @@ which the ML surface can have as a real local optimum, matching R's own
 documented starting-value sensitivity) rather than something to paper
 over with a misleadingly small pseudo-inverse-based number.
 """
-function _hessian_se(natural_objective, params_hat::Vector{Float64})
+function _hessian_vcov(natural_objective, params_hat::Vector{Float64})
+    k = length(params_hat)
     H = ForwardDiff.hessian(natural_objective, params_hat)
-    vc = try
+    return try
         inv(H)
     catch e
         e isa Union{LinearAlgebra.SingularException,LinearAlgebra.LAPACKException} ||
             rethrow()
-        return fill(NaN, length(params_hat))
+        fill(NaN, k, k)
     end
-    return sqrt.(max.(diag(vc), 0.0))
 end
+
+_hessian_se(natural_objective, params_hat::Vector{Float64}) =
+    _vcov_to_se(_hessian_vcov(natural_objective, params_hat))
+
+"""
+    _vcov_to_se(vc) -> Vector{Float64}
+
+Standard errors from a covariance matrix: the square root of its
+diagonal, with **a non-positive variance reported as `NaN`**.
+
+A negative diagonal entry means the information matrix was not
+positive-definite at the optimum -- in practice an MA coefficient
+sitting on the invertibility boundary, where that parameter's standard
+error is genuinely undefined rather than small. `NaN` says so.
+
+This used to clamp to `0.0`, which produced a coefficient table reading
+`ma1  1.0  0.0  Inf  NaN`: a zero standard error claims the parameter
+was estimated with *infinite* precision, the exact opposite of what a
+boundary optimum means, and the `Inf` z-statistic invited reading it as
+overwhelming significance. `fit_arma`'s docstring already promised
+`NaN` for this case; the code now delivers it.
+
+A genuinely singular matrix arrives here already full of `NaN`, which
+propagates unchanged.
+"""
+_vcov_to_se(vc::AbstractMatrix{<:Real}) = [d > 0 ? sqrt(d) : NaN for d in diag(vc)]
 
 """
     _opg_se(loglik_contributions, params_hat) -> Vector{Float64}
@@ -138,17 +165,20 @@ reasoning as `_hessian_se`. Genuinely different numbers from
 `_hessian_se` -- both asymptotically valid estimators of the
 same quantity, not a bug in either (see [`fit_arma`](@ref)'s docstring).
 """
-function _opg_se(loglik_contributions, params_hat::Vector{Float64})
+function _opg_vcov(loglik_contributions, params_hat::Vector{Float64})
+    k = length(params_hat)
     J = ForwardDiff.jacobian(loglik_contributions, params_hat)
-    vc = try
+    return try
         inv(J' * J)
     catch e
         e isa Union{LinearAlgebra.SingularException,LinearAlgebra.LAPACKException} ||
             rethrow()
-        return fill(NaN, length(params_hat))
+        fill(NaN, k, k)
     end
-    return sqrt.(max.(diag(vc), 0.0))
 end
+
+_opg_se(loglik_contributions, params_hat::Vector{Float64}) =
+    _vcov_to_se(_opg_vcov(loglik_contributions, params_hat))
 
 """
     _robust_se(natural_objective, loglik_contributions, params_hat) -> Vector{Float64}
@@ -176,18 +206,35 @@ them. Any test asserting `robust >= classical` would be wrong.
 Returns `NaN` entries under the same singularity conditions as the other
 two, rather than papering over a degenerate optimum with a pseudo-inverse.
 """
-function _robust_se(natural_objective, loglik_contributions, params_hat::Vector{Float64})
+function _robust_vcov(natural_objective, loglik_contributions, params_hat::Vector{Float64})
+    k = length(params_hat)
     H = ForwardDiff.hessian(natural_objective, params_hat)
     J = ForwardDiff.jacobian(loglik_contributions, params_hat)
-    vc = try
+    return try
         Hinv = inv(H)
         Hinv * (J' * J) * Hinv
     catch e
         e isa Union{LinearAlgebra.SingularException,LinearAlgebra.LAPACKException} ||
             rethrow()
-        return fill(NaN, length(params_hat))
+        fill(NaN, k, k)
     end
-    return sqrt.(max.(diag(vc), 0.0))
+end
+
+_robust_se(natural_objective, loglik_contributions, params_hat::Vector{Float64}) =
+    _vcov_to_se(_robust_vcov(natural_objective, loglik_contributions, params_hat))
+
+"""
+    _select_vcov(se_type, natobj, llcontrib, params_hat) -> Matrix{Float64}
+
+The three-way `se_type` dispatch, in one place rather than repeated at
+every fit site. Returns the full covariance matrix; callers take
+[`_vcov_to_se`](@ref) of it for the diagonal.
+"""
+function _select_vcov(se_type::Symbol, natobj, llcontrib, params_hat::Vector{Float64})
+    se_type === :hessian && return _hessian_vcov(natobj, params_hat)
+    se_type === :opg && return _opg_vcov(llcontrib, params_hat)
+    se_type === :robust && return _robust_vcov(natobj, llcontrib, params_hat)
+    throw(ArgumentError("se_type must be :hessian, :opg, or :robust, got :$se_type"))
 end
 
 """
@@ -423,15 +470,14 @@ function fit_arma(y, order::Tuple{Int,Int};
     params_hat = include_mean ? vcat(phi_hat, theta_hat, mu_hat) : vcat(phi_hat, theta_hat)
     natobj = params -> _arma_natural_objective(params, yv, p, q, include_mean)
     llcontrib = params -> _arma_loglik_contributions(params, yv, p, q, include_mean)
-    se = se_type == :hessian ? _hessian_se(natobj, params_hat) :
-         se_type == :opg     ? _opg_se(llcontrib, params_hat) :
-                               _robust_se(natobj, llcontrib, params_hat)
+    vc = _select_vcov(se_type, natobj, llcontrib, params_hat)
+    se = _vcov_to_se(vc)
 
     k = nparam + 1  # +1 for sigma2, matching R's actual AIC/BIC exactly
     aic = -2 * loglik + 2 * k
     bic = -2 * loglik + k * log(n)
 
-    return ArmaModel(phi_hat, theta_hat, mu_hat, se,
+    return ArmaModel(phi_hat, theta_hat, mu_hat, se, vc,
                       loglik, sigma2, aic, bic, n, order, method, se_type,
                       result.converged && isfinite(loglik), yv)
 end
@@ -481,3 +527,24 @@ function StatsAPI.residuals(m::ArmaModel, y)
 end
 
 StatsAPI.residuals(m::ArmaModel) = StatsAPI.residuals(m, m.original_y)
+
+# ---------------------------------------------------------------------------
+# StatsAPI covariance accessors (Stage 9B Tier 2.2)
+#
+# Every fit now retains the full covariance matrix rather than only its
+# diagonal, because `vcov` cannot be reconstructed from `se` -- the
+# off-diagonal terms are gone by then, and they are the part that matters
+# for a joint test or a linear combination of coefficients. Retaining a
+# k x k matrix per fit is O(k^2) in a small k, so there is nothing to
+# weigh against doing it at fit time, where the information is cheapest.
+#
+# `coef` includes the estimated mean. It did not before, while `se` always
+# did -- so `length(coef(m)) != length(m.se)` whenever a mean was fitted,
+# and `ArmaModel`'s own docstring claimed otherwise. Aligned with
+# `GarchModel`, which already included its `mu`.
+# ---------------------------------------------------------------------------
+
+StatsAPI.coef(m::ArmaModel) =
+    m.mean === nothing ? vcat(m.ar, m.ma) : vcat(m.ar, m.ma, m.mean)
+StatsAPI.vcov(m::ArmaModel) = m.vcov
+StatsAPI.stderror(m::ArmaModel) = m.se

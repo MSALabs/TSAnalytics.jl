@@ -60,11 +60,27 @@ using DelimitedFiles, Statistics, StatsAPI
         @test !isapprox(m_true.loglik, m_false.loglik; atol=1e-6)
     end
 
-    @testset "se_type=:hessian vs :opg -- both finite, genuinely different" begin
+    @testset "se_type=:hessian vs :opg -- genuinely different; GARCH block is degenerate here" begin
         m_hess = fit_autoreg_garch(y, 1, x; include_mean=false, garch_order=(1, 1), se_type=:hessian)
         m_opg = fit_autoreg_garch(y, 1, x; include_mean=false, garch_order=(1, 1), se_type=:opg)
-        @test all(isfinite, m_hess.se)
-        @test all(isfinite, m_opg.se)
+
+        # This asserted `all(isfinite, se)` and passed only because
+        # _vcov_to_se used to clamp a negative variance to 0.0. On this
+        # fixture the GARCH part fits alpha = 3e-16 and garch_beta = 0.99999
+        # -- both pinned at their constraint boundaries, alpha+beta at 1 --
+        # so the information matrix is singular in those directions and
+        # their standard errors are undefined. The OPG variant is worse: its
+        # covariance diagonal reaches -5199, which is not rounding.
+        #
+        # The regression-block standard errors ARE usable, and that is what
+        # this fixture can honestly support.
+        @test m_hess.converged && m_opg.converged
+        @test all(isfinite, m_hess.se[1:2])        # beta, phi
+        @test all(isfinite, m_opg.se[1:2])
+        @test any(isnan, m_hess.se)                # the GARCH block is not
+        @test any(isnan, m_opg.se)
+        @test m_hess.garch.alpha[1] < 1e-8         # at the lower bound
+        @test m_hess.garch.beta[1] > 0.999         # and persistence at 1
         @test length(m_hess.se) == length(m_opg.se) == 1 + 1 + 1 + 1 + 1  # beta,phi,omega,alpha,garch_beta
 
         m_hess0 = fit_autoreg_garch(y, 1, x; include_mean=false, garch_order=nothing, se_type=:hessian)
