@@ -65,8 +65,10 @@ using DelimitedFiles
     @test p_yw.values != p_ywm.values
     @test p_yw.values != p_ols.values
 
-    # invalid pacf method (including the documented :burg gap)
-    @test_throws ArgumentError pacf(y, 1:5; method=:burg)
+    # :burg landed in Stage 9B Tier 1.4 -- it is a fourth real method now,
+    # not a documented gap. R's own :mle takes its place as the rejected one.
+    @test length(pacf(y, 1:5; method=:burg).values) == 5
+    @test_throws ArgumentError pacf(y, 1:5; method=:mle)
     @test_throws ArgumentError pacf(y, 1:5; method=:invalid)
 
     # NaN input rejected (mirrors R's na.fail default)
@@ -141,4 +143,59 @@ using DelimitedFiles
     pw = pacf(wn, 1:20)
     within = count(l -> pw.lower[1] <= pw.values[l] <= pw.upper[1], eachindex(pw.values))
     @test within >= 17   # allow a small number of false positives at 95% band
+end
+
+@testset "pacf(method=:burg) — Stage 9B Tier 1.4" begin
+    # Burg implemented from the textbook recursion, then validated against
+    # real statsmodels pacf_burg (the only available reference -- see below).
+    y = vec(readdlm(joinpath(@__DIR__, "verification", "stattools", "burg_y.csv")))
+
+    SM_BURG = [0.94515892, 0.08367719, 0.73939568, 0.68095041, -0.83492890, -0.38198286]
+    SM_YW   = [0.92801420, 0.08932240, 0.53211610, 0.29004921, -0.52704150, 0.00687497]
+    SM_OLS  = [0.97182246, 0.09673555, 0.78073061, 0.87902996, -0.63856087, -0.32056007]
+    R_PACF  = [0.9202807457, 0.0792418029, 0.4684062110,
+               0.2150550916, -0.4616234266, 0.0163384787]
+
+    @testset "matches statsmodels pacf_burg" begin
+        @test isapprox(pacf(y, 1:6; method=:burg).values, SM_BURG; atol=1e-7)
+    end
+
+    @testset "the other three still match their own references" begin
+        # pinned here because :burg's reference choice depends on these:
+        # :ywm is R's pacf(), :yw and :ols are statsmodels'
+        @test isapprox(pacf(y, 1:6; method=:yw).values,  SM_YW;  atol=1e-7)
+        @test isapprox(pacf(y, 1:6; method=:ols).values, SM_OLS; atol=1e-7)
+        @test isapprox(pacf(y, 1:6; method=:ywm).values, R_PACF; atol=1e-9)
+    end
+
+    @testset "R is not a reference for :burg, because R has none" begin
+        # R's pacf() silently ignores its own `method` argument -- all four of
+        # "yule-walker"/"burg"/"ols"/"mle" return bit-identical output, equal
+        # to this package's :ywm. Verified by direct execution; see
+        # verification/stattools/burg.R. So :burg follows statsmodels, and
+        # must NOT be expected to match R's single answer.
+        @test !isapprox(pacf(y, 1:6; method=:burg).values, R_PACF; atol=1e-3)
+    end
+
+    @testset "genuinely a fourth estimator" begin
+        for other in (:yw, :ywm, :ols)
+            @test !isapprox(pacf(y, 1:6; method=:burg).values,
+                            pacf(y, 1:6; method=other).values; atol=1e-3)
+        end
+    end
+
+    @testset "reflection coefficients stay bounded" begin
+        for s in (randn(MersenneTwister(5), 200), cumsum(randn(MersenneTwister(6), 200)))
+            @test all(abs.(pacf(s, 1:20; method=:burg).values) .<= 1.0)
+        end
+    end
+
+    @testset "result shape and error path" begin
+        p = pacf(y, 1:6; method=:burg)
+        @test p.kind == :pacf
+        @test p.lags == collect(1:6)
+        @test p.n == length(y)
+        @test_throws ArgumentError pacf(y, 1:3; method=:mle)   # names all four
+        @test_throws ArgumentError pacf(y, 1:3; method=:bogus)
+    end
 end

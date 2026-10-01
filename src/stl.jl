@@ -308,7 +308,7 @@ end
 
 """
     stl_decompose(x, period::Integer;
-                  seasonal_window::Integer=7, seasonal_degree::Integer=1,
+                  seasonal_window::Union{Integer,Symbol}=7, seasonal_degree::Integer=1,
                   trend_window::Union{Nothing,Integer}=nothing, trend_degree::Integer=1,
                   low_pass_window::Union{Nothing,Integer}=nothing,
                   low_pass_degree::Union{Nothing,Integer}=nothing,
@@ -399,11 +399,18 @@ in the algorithm itself.
   for hourly data with weekly seasonality), where a single-threaded
   cycle-subseries loop is genuinely a bottleneck.
 
-!!! note "`seasonal_window=:periodic` is not yet implemented"
-    R's `s.window="periodic"` mode (seasonal component = plain mean per
-    within-cycle position, no Loess) has no numeric verification target
-    in this package yet and is a documented gap, not silently
-    unsupported.
+`seasonal_window=:periodic` forces the seasonal pattern to repeat
+**exactly**, matching R's `s.window="periodic"`. It is not a separate
+algorithm: R sets `s.window = 10n+1` and `s.degree = 0`, decomposes
+normally, then averages each within-cycle position and recomputes the
+remainder. This does the same, in the same order -- the post-hoc average
+is what makes the repetition exact, since the wide window alone only
+makes it nearly so.
+
+Reach for it when you want frozen seasonal factors but still want STL's
+endpoint behaviour and `robust=true`; it sits between
+[`classical_decompose`](@ref)'s frozen seasonal and STL's fully evolving
+one.
 
 `x` accepts anything [`tsvalues`](@ref) does.
 
@@ -429,7 +436,7 @@ ERROR: ArgumentError: outer must be >= 0
 ```
 """
 function stl_decompose(x, period::Integer;
-                        seasonal_window::Integer=7, seasonal_degree::Integer=1,
+                        seasonal_window::Union{Integer,Symbol}=7, seasonal_degree::Integer=1,
                         trend_window::Union{Nothing,Integer}=nothing, trend_degree::Integer=1,
                         low_pass_window::Union{Nothing,Integer}=nothing,
                         low_pass_degree::Union{Nothing,Integer}=nothing,
@@ -438,6 +445,22 @@ function stl_decompose(x, period::Integer;
                         outer::Union{Nothing,Integer}=nothing,
                         parallel::Bool=true)
     period >= 2 || throw(ArgumentError("period must be >= 2"))
+
+    # R's s.window="periodic" is not a separate algorithm: stl.R sets
+    # s.window <- 10*n+1 and s.degree <- 0, runs the ordinary decomposition,
+    # and then forces the seasonal exactly periodic by averaging each
+    # within-cycle position, recomputing the remainder afterwards. Read
+    # directly from R's own stl.R rather than inferred -- the post-hoc
+    # average is what makes it exact, since a 10n+1 window alone only makes
+    # it nearly so.
+    periodic = false
+    if seasonal_window isa Symbol
+        seasonal_window === :periodic || throw(ArgumentError(
+            "seasonal_window must be an odd Integer >= 3 or :periodic, got :$seasonal_window"))
+        periodic = true
+        seasonal_window = 10 * length(tsvalues(x)) + 1
+        seasonal_degree = 0
+    end
     (isodd(seasonal_window) && seasonal_window >= 3) ||
         throw(ArgumentError("seasonal_window must be an odd integer >= 3, got $seasonal_window"))
     if trend_window !== nothing
@@ -491,6 +514,20 @@ function stl_decompose(x, period::Integer;
                                              parallel=parallel)
         pass == outer_n && break
         robweights = _stl_robustness_weights(resid)
+    end
+
+    if periodic
+        # average each within-cycle position, then recompute the remainder --
+        # the order matters, and matches R's stl.R
+        npts = length(yf)
+        for pos in 1:period
+            idx = pos:period:npts
+            m = sum(view(seasonal, idx)) / length(idx)
+            for i in idx
+                seasonal[i] = m
+            end
+        end
+        resid = yf .- seasonal .- trend
     end
 
     return STLDecomposition(yf, trend, seasonal, resid, period, robweights)

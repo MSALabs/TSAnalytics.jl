@@ -435,6 +435,69 @@ either a newer local Julia install or authenticated CI log access.
 
 ---
 
+## Stage 9B Tier 1 — finishing what was started (cross-cutting)
+
+**✅ built (2026-10-01)** (`handoff/stage-9B-nonets-handoff.md`, whose
+own Status header records the seven corrections verifying its premises
+turned up).
+
+- **`predict`/`forecast` for `ArimaxModel`/`SarimaxModel`.** The
+  estimation was already right -- `fit_arimax` matched R's
+  log-likelihood to all twelve digits before this work -- so the gap was
+  purely the forecast. Regression and ARMA error forecast separately and
+  added on the differenced scale, then integrated back up: the same
+  decomposition the fit uses, so the two cannot drift. Against R's
+  `predict(m, n.ahead=10, newxreg=xf)`, points agree to `3e-06` and
+  standard errors to `3e-07`, closer to R than `statsmodels` is.
+  Intervals treat the supplied regressors as **known**, matching both
+  references. `model=:tvss` is refused by name, since `beta` there is a
+  latent state needing a projected path and a second variance term.
+  Two reductions hold: zero exog reproduces `fit_arima` to `9e-16`, and
+  the seasonal path reproduces `fit_sarima` **bit-identically**, which is
+  what confirms the SARIMAX psi-weight polynomial multiplies both
+  differencing operators back in.
+- **Uniform `predict(model, horizon)`.** `ArmaModel` and `SarimaModel`
+  now retain `original_y`, so `predict`, `residuals` and
+  `diagnostic_plot` all work from the model alone on every fitted type.
+  `ArmaModel` gained `predict` at all, delegating to the `ArimaModel`
+  `d=0` path. Three-argument forms kept for callers who want to name the
+  series; every doc call site migrated.
+- **`ccf`** -- R's two-sided convention (lag `k` is `cor(x[t+k], y[t])`,
+  so a negative peak means `x` leads), matching R at all thirteen lags to
+  `5e-11`. Returns an `ACFResult` tagged `:ccf`, so the existing recipe
+  serves it. `statsmodels`' one-sided output genuinely omits the peak
+  when `x` leads `y`; documented rather than worked around.
+- **`pacf(method=:burg)`** -- Burg's (1967) recursion implemented from
+  the textbook statement, validated against real `statsmodels pacf_burg`
+  to `5e-09`. **R is not a reference here**: its `pacf()` silently
+  ignores its own `method` argument, all four options returning
+  bit-identical output equal to this package's `:ywm`. Confirmed by
+  execution. (`:yw` and `:ols` equal `statsmodels`' own, so all four
+  methods now have a named reference.)
+- **`stl_decompose(seasonal_window=:periodic)`** -- R's `s.window="periodic"`,
+  which is not a separate algorithm: R sets `s.window=10n+1`,
+  `s.degree=0`, decomposes, then averages each cycle position and
+  recomputes the remainder. Read from R's own `stl.R`; the post-hoc
+  average is what makes the repetition exact. Matches R's `s.jump=1` run
+  to `1e-8` once `inner=2` is passed (this package defaults to `5`,
+  matching `statsmodels` -- the pre-existing documented divergence).
+- **`mstl_decompose(lambda=:auto)`** and the new exported
+  **`boxcox_lambda`**, the bounded profile-likelihood MLE.
+  `scipy.stats.boxcox` is unbounded and returns `-1.836` on the fixture;
+  bounded on `[-1, 2]` -- matching R's `BoxCox.lambda` and this package's
+  own `guerrero_lambda` -- the answer is the boundary, and widening the
+  bounds reproduces scipy to `1e-5`. `MSTLDecomposition` gained a
+  `lambda` field reporting what was used.
+- **Housekeeping.** The Newey-West Bartlett long-run variance, written
+  out twice inline with *different* accumulation order (KPSS divided each
+  autocovariance by `n` inside the loop, PP summed raw and divided at the
+  end), is now one `_bartlett_lrv` -- verified bit-for-bit against
+  statistics captured before the refactor. `abstract.jl`'s
+  `StateSpaceModel` note no longer claims the Kalman engine is "planned,
+  not yet implemented".
+
+---
+
 ## Documentation restructuring (cross-cutting, not a numbered stage)
 
 **Skeleton ✅ built** (`handoff/docs-restructure-skeleton-handoff.md`) —

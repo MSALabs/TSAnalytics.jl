@@ -575,6 +575,35 @@ function _interp_pvalue_right(stat::Real, table)
 end
 
 """
+    _bartlett_lrv(u, l) -> Float64
+
+Newey-West long-run variance of `u` with a Bartlett kernel of bandwidth
+`l`:
+
+    (1/n) * [ sum(u^2) + 2 * sum_{j=1}^{l} (1 - j/(l+1)) * sum_t u_t u_{t-j} ]
+
+Shared by [`kpss_test`](@ref) and [`pp_test`](@ref), which had the same
+recursion written out twice with different accumulation order -- KPSS
+divided each autocovariance by `n` inside the loop, PP summed raw and
+divided once at the end. Algebraically identical; both now go through
+here, which is checked against the pre-refactor statistics to 1e-12 in
+`test_unitroot.jl`.
+
+`l = 0` gives the plain variance, which is the right degenerate answer
+rather than an error.
+"""
+function _bartlett_lrv(u::AbstractVector{<:Real}, l::Integer)
+    n = length(u)
+    l >= 0 || throw(ArgumentError("_bartlett_lrv: bandwidth must be >= 0, got $l"))
+    acc = sum(abs2, u)
+    @inbounds for j in 1:min(l, n - 1)
+        w = 1 - j / (l + 1)
+        acc += 2 * w * dot(view(u, (j+1):n), view(u, 1:(n-j)))
+    end
+    return acc / n
+end
+
+"""
     kpss_test(x; regression::Symbol=:c, nlags::Union{Symbol,Integer}=:short) -> KPSSTest
 
 KPSS test of the null hypothesis that `x` is (trend-)stationary, against
@@ -653,13 +682,7 @@ function kpss_test(x; regression::Symbol=:c, nlags::Union{Symbol,Integer}=:short
     S = cumsum(resid)
     numerator = sum(abs2, S) / n^2
 
-    gamma0 = sum(abs2, resid) / n
-    lrv = gamma0
-    for k in 1:l
-        w = 1 - k / (l + 1)            # Bartlett kernel
-        gk = dot(view(resid, 1:n-k), view(resid, 1+k:n)) / n
-        lrv += 2 * w * gk
-    end
+    lrv = _bartlett_lrv(resid, l)
 
     stat = numerator / lrv
     pval = _interp_pvalue_right(stat, _KPSS_CRIT[regression == :ct ? :trend : :level])
@@ -794,13 +817,7 @@ function pp_test(x; trend::Symbol=:c, test_type::Symbol=:tau, lags::Union{Nothin
     s = sqrt(s2)
     gamma0 = dot(u, u) / nobs
 
-    cov = sum(abs2, u)
-    for j in 1:l
-        w = 1 - j/(l+1)             # Bartlett kernel
-        gamma = dot(view(u, j+1:nobs), view(u, 1:nobs-j))
-        cov += w * 2 * gamma
-    end
-    lam2 = cov / nobs
+    lam2 = _bartlett_lrv(u, l)
     lam = sqrt(lam2)
 
     stat_tau = sqrt(gamma0/lam2)*((rho-1)/sigma) - 0.5*((lam2-gamma0)/lam)*(nobs*sigma/s)

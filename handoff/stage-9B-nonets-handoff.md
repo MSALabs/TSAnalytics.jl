@@ -1,5 +1,65 @@
 # Handoff: Stage 9B — Everything Else
 
+## Status: TIER 1 COMPLETE (2026-10-01)
+
+1.1, 1.2, 1.3 and 1.4 are all implemented, tested and documented. Every
+reference value in this document was **re-executed** against real R
+4.6.0 / scipy this session rather than transcribed, and all of them
+reproduced exactly. Tier 2 starts at 2.1 (the seasonal unit-root test).
+
+Corrections to this document, found by verifying its premises:
+
+- **The StatsAPI table understates two rows.** `ArimaxModel` and
+  `SarimaxModel` are shown as entirely empty; they already had `coef`,
+  `loglikelihood`, `aic`, `bic` and `nobs`. Only `vcov`, `residuals`
+  and `predict` were missing, so Tier 1 was smaller than scoped.
+  (`stderror` exists only on `ARXModel` and is absent from the table.)
+- **§2.2's ARIMAX `se` target is in R's order** `[ar1, intercept, x]`.
+  Julia orders `[exog..., arma...]`, so the correct assertion is
+  `[0.1110204142, 0.3269969227, 0.0686772108]`.
+- **`beta` already carries the intercept** as its last entry, with
+  `arma.mean` left `nothing` — `fit_arimax` appends a column of ones to
+  the design matrix. Now asserted, since the name invites the wrong
+  reading.
+- **§1.4's `mstl(lambda=0.0)` item was already done.** Verified:
+  `lambda=0.0` differs from `nothing` and matches `1e-8`. Stage 3.3
+  already recorded the falsy-zero divergence deliberately. The test is
+  a regression guard, not new work.
+- **The Bartlett line numbers are wrong** — `unitroot.jl:659` (KPSS)
+  and `:799` (PP), not 475/615. And the two were *not* a literal copy:
+  KPSS divided each autocovariance by `n` inside the loop, PP summed
+  raw and divided at the end. Algebraically identical, so the shared
+  `_bartlett_lrv` is checked bit-for-bit against the pre-refactor
+  statistics.
+- **§1.4's `pacf` finding is half right.** R's `pacf()` does ignore its
+  `method` argument — confirmed. But the claim that R's answer "matches
+  none of the three exactly" is wrong: **R equals this package's
+  `:ywm` exactly**, while `:yw` and `:ols` equal `statsmodels`' own.
+  So `:burg` follows `statsmodels` because R has no Burg PACF at all,
+  not because the conventions are unresolved.
+- **`stl(seasonal_window=:periodic)` needed `inner=2` to match R.**
+  R defaults to `inner=2`; this package defaults to `5`, matching
+  `statsmodels` — a pre-existing documented divergence, not a new one.
+  With `inner=2` Julia reproduces R's `s.jump=1` run to 1e-8. R's own
+  periodic branch uses `s.jump=121` and so differs from itself by
+  ~2e-6; this package has no jump shortcut and lands on the unjumped
+  answer.
+- **`lambda=:auto` had a reference choice to make.** `scipy.stats.boxcox`
+  is unbounded and returns `-1.836` on the shipped fixture, which fails
+  this document's own `-1 <= lambda <= 2` assertion. Implemented bounded
+  on `[-1, 2]`, matching R's `BoxCox.lambda` and this package's own
+  `guerrero_lambda`; widening the bounds reproduces scipy to 1e-5.
+  `MSTLDecomposition` gained a `lambda` field to report what was used.
+
+Also closed, beyond the written scope: `ArmaModel` had no `predict` at
+all, so it gained one (delegating to the `ArimaModel` `d=0` path), and
+`runtests.jl` now imports the StatsAPI accessors once so a test cannot
+pass in isolation and error under the full suite.
+
+The original plan follows, unchanged.
+
+---
+
 Tiered into **immediate**, **immediate next** and **later**. Every
 reference value below was generated this session; fixtures ship in
 `fixtures/`.

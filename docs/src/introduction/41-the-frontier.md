@@ -121,7 +121,6 @@ support.
 | Missing | Consequence | Reference |
 |---|---|---|
 | Seasonal unit-root test | `D` must be passed explicitly to [`auto_arima`](@ref) | Canova-Hansen (R), OCSB (`pmdarima`) |
-| `pacf(method=:burg)` | Three methods, not four | R, `statsmodels` |
 | `forecast` for `model=:tvss` | `model=:mle` forecasts with future regressors; the drifting-coefficient variant needs a projected `beta` path | R has no direct analogue |
 | Intermittent-demand methods (Croston, SBA, TSB) | Series that are mostly zeros are not served | `forecast::croston`, `statsforecast` |
 | Change-point detection | A break has to be found by eye | `changepoint` (R), `ruptures` (Python) |
@@ -160,9 +159,9 @@ underspecifies something, and to validate output numbers — never to
 translate from. That is slower, and it is the reason the divergences
 documented throughout this book are *decisions* rather than accidents.
 
-**No silent fallbacks.** `pacf(method=:burg)` errors rather than
-quietly using Yule-Walker. `dist=:t` errors rather than quietly using a
-normal. `forecast_volatility(egarch_model, 5; method=:analytic)` errors
+**No silent fallbacks.** `dist=:t` errors rather than quietly using a
+normal. `pacf(method=:mle)` errors rather than quietly using
+Yule-Walker — which is what R does. `forecast_volatility(egarch_model, 5; method=:analytic)` errors
 rather than quietly simulating. A wrong number you trust is worse than
 an error you can read.
 

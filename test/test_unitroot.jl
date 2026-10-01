@@ -443,3 +443,38 @@ end
     beta_qr_col, = TSAnalytics._ols(Xcol, y; method=:qr)  # QR's `\` handles this via least-squares
     @test all(isfinite, beta_qr_col)
 end
+
+@testset "shared Bartlett kernel leaves both tests unchanged (Stage 9B Tier 1.4)" begin
+    # kpss_test and pp_test each wrote the Newey-West Bartlett recursion out
+    # inline, with DIFFERENT accumulation order: KPSS divided each
+    # autocovariance by n inside the loop, PP summed raw and divided once at
+    # the end. Algebraically identical, so factoring them into
+    # _bartlett_lrv must not move a single bit.
+    #
+    # Values below were captured by running the tests BEFORE the refactor,
+    # printed at full precision, not recomputed afterwards.
+    y    = vec(readdlm(joinpath(@__DIR__, "verification", "stattools", "burg_y.csv")))
+    nile = Float64.(readdlm(TSAnalytics.NILE, ','; skipstart=1)[:, 2])
+
+    @test kpss_test(y; regression=:c).statistic  ≈ 2.032734544201163  atol=1e-12
+    @test kpss_test(y; regression=:ct).statistic ≈ 0.596962156290751  atol=1e-12
+    @test pp_test(y).statistic                   ≈ -0.019265382347267 atol=1e-12
+
+    @test kpss_test(nile; regression=:c).statistic  ≈ 0.965434907752654  atol=1e-12
+    @test kpss_test(nile; regression=:ct).statistic ≈ 0.237586975989973  atol=1e-12
+    @test pp_test(nile).statistic                   ≈ -6.383089598197588 atol=1e-12
+
+    @testset "the helper itself" begin
+        u = [1.0, -2.0, 3.0, -4.0, 5.0]
+        # l = 0 is the plain variance, the right degenerate answer
+        @test TSAnalytics._bartlett_lrv(u, 0) ≈ sum(abs2, u)/length(u)
+        # l = 1 adds 2*(1 - 1/2)*sum(u_t u_{t-1})
+        expected = (sum(abs2, u) + 2*0.5*sum(u[2:end] .* u[1:end-1])) / length(u)
+        @test TSAnalytics._bartlett_lrv(u, 1) ≈ expected
+        # weights decline linearly to zero at l+1, so lag l still contributes
+        @test TSAnalytics._bartlett_lrv(u, 4) != TSAnalytics._bartlett_lrv(u, 3)
+        @test_throws ArgumentError TSAnalytics._bartlett_lrv(u, -1)
+        # a bandwidth past the sample length must not index out of bounds
+        @test isfinite(TSAnalytics._bartlett_lrv(u, 20))
+    end
+end

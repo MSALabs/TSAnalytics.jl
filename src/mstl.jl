@@ -18,6 +18,7 @@ struct MSTLDecomposition
     resid::Vector{Float64}
     periods::Vector{Int}
     weights::Vector{Float64}
+    lambda::Union{Nothing,Float64}
 end
 
 """
@@ -68,11 +69,15 @@ source (`statsmodels/tsa/stl/mstl.py`) rather than its docs.
   execution, not just reading the source) -- an accidental quirk of using
   truthiness for a numeric check, not a considered choice worth
   reproducing, so this package checks `lambda !== nothing` instead.
-  `lambda=:auto` (MLE-estimated, like Python's
-  `scipy.stats.boxcox(x, lmbda=None)` or R's Guerrero-method default) is
-  **not yet implemented** -- it needs a 1-D likelihood optimizer this
-  package doesn't have yet (Stage 4.1), so it throws `ArgumentError`
-  rather than silently falling back to `lambda=nothing`.
+  `lambda=:auto` estimates it by maximum likelihood via
+  [`boxcox_lambda`](@ref) -- the same profile likelihood
+  `scipy.stats.boxcox` maximises, but **bounded to `[-1, 2]`** where
+  scipy is unbounded, matching R's `BoxCox.lambda` and this package's own
+  [`guerrero_lambda`](@ref) default. On a series whose unconstrained
+  optimum lies outside that interval the two answers genuinely differ and
+  this returns the boundary; see `boxcox_lambda`'s own docstring for the
+  worked case. The value actually used is returned in the result's
+  `lambda` field, which is `nothing` when no transform was applied.
 - `iterate`: number of passes over all periods, refining each one using
   the others' current estimates. Forced to `1` internally when there's
   only one period (matching both references -- with one period there's
@@ -165,15 +170,30 @@ function mstl_decompose(x, periods::Union{Integer,AbstractVector{<:Integer}};
     iterate_n = num_seasons == 1 ? 1 : iterate
     iterate_n >= 1 || throw(ArgumentError("iterate must be >= 1"))
 
+    lambda isa Symbol && lambda !== :auto &&
+        throw(ArgumentError("lambda must be `nothing`, `:auto`, or a Real, got :$lambda"))
+    lambda_used = if lambda === :auto
+        all(>(0), y) || throw(ArgumentError(
+            "mstl_decompose: lambda=:auto requires strictly positive data for the Box-Cox transform"))
+        boxcox_lambda(y)
+    elseif lambda isa Real
+        Float64(lambda)
+    else
+        nothing
+    end
+
     yt = if lambda === nothing
         collect(Float64, y)
-    elseif lambda === :auto
-        throw(ArgumentError("mstl_decompose: lambda=:auto (MLE Box-Cox estimation) is not yet " *
-                             "implemented -- pass an explicit Real lambda, or nothing"))
-    elseif lambda isa Real
+    elseif lambda isa Real || lambda === :auto
         all(>(0), y) ||
             throw(ArgumentError("mstl_decompose: lambda requires strictly positive data for the Box-Cox transform"))
-        lambda == 0 ? log.(Float64.(y)) : (Float64.(y) .^ lambda .- 1) ./ lambda
+        # `lambda !== nothing`, never `if lambda` -- Python's MSTL writes
+        # `elif self.lmbda:` and so silently SKIPS the transform at exactly
+        # zero, where the correct answer is log(x). Verified live against real
+        # statsmodels: lmbda=0 there is bit-identical to no transform while
+        # lmbda=1e-8 is not. That bug is deliberately not reproduced.
+        lambda_used == 0 ? log.(Float64.(y)) :
+            (Float64.(y) .^ lambda_used .- 1) ./ lambda_used
     else
         throw(ArgumentError("lambda must be `nothing`, `:auto`, or a Real"))
     end
@@ -193,5 +213,5 @@ function mstl_decompose(x, periods::Union{Integer,AbstractVector{<:Integer}};
 
     trend = res.trend
     resid = deseas .- trend
-    return MSTLDecomposition(yt, trend, seasonal, resid, periods_sorted, res.weights)
+    return MSTLDecomposition(yt, trend, seasonal, resid, periods_sorted, res.weights, lambda_used)
 end

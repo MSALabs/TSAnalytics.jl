@@ -175,6 +175,75 @@ function guerrero_lambda(x, period::Integer=1; bounds::Tuple{<:Real,<:Real}=(-1.
     return _golden_section_min(lam -> _boxcox_cv(lam, subseries), bounds[1], bounds[2])
 end
 
+export boxcox_lambda
+
+"""
+    boxcox_lambda(x; bounds=(-1.0, 2.0)) -> Float64
+
+Box-Cox `lambda` by **maximum likelihood** -- the value maximising the
+profile log-likelihood [`boxcox_profile_plot`](@ref) traces out,
+
+    -n/2 * log(RSS(lambda)/n) + (lambda - 1) * sum(log(x))
+
+which is the same objective `scipy.stats.boxcox` maximises. `x` must be
+strictly positive.
+
+This is the sibling of [`guerrero_lambda`](@ref) and they answer
+different questions. Guerrero's method minimises the coefficient of
+variation *across seasonal blocks*, so it targets variance
+stabilisation and needs a `period`; this maximises a Gaussian
+likelihood, so it targets normality and does not. On a series whose
+variance grows with its level they tend to agree; on one that is merely
+skewed they need not.
+
+!!! warning "`bounds` is why this can differ from scipy"
+    The search is **bounded**, `[-1, 2]` by default, matching
+    [`guerrero_lambda`](@ref)'s own default and R's
+    `forecast::BoxCox.lambda` (`lower=-1, upper=2`).
+    `scipy.stats.boxcox` is **unbounded**.
+
+    When the unconstrained optimum lies outside the interval the two
+    genuinely disagree, and this returns the boundary. On
+    `test/verification/transforms/bc_y.csv` scipy's MLE is
+    `-1.836495441613`; bounded on `[-1, 2]` the answer is `-1.0`.
+    Neither is wrong -- a lambda of `-1.8` is a reciprocal-squared
+    transform that few people intend, which is why both R and this
+    package bound it. Widen `bounds` to reproduce scipy.
+
+```jldoctest
+julia> using TSAnalytics
+
+julia> x = Float64[2, 3, 5, 8, 13, 21, 34, 55, 89, 144];
+
+julia> lam = boxcox_lambda(x);
+
+julia> -1.0 <= lam <= 2.0
+true
+```
+
+See also [`boxcox`](@ref), [`boxcox_inv`](@ref), [`guerrero_lambda`](@ref),
+[`boxcox_profile_plot`](@ref).
+"""
+function boxcox_lambda(x; bounds::Tuple{<:Real,<:Real}=(-1.0, 2.0))
+    xv = Float64.(collect(tsvalues(x)))
+    all(>(0), xv) || throw(ArgumentError("boxcox_lambda: x must be strictly positive"))
+    length(xv) >= 2 || throw(ArgumentError("boxcox_lambda: need at least 2 observations"))
+    bounds[1] < bounds[2] || throw(ArgumentError("boxcox_lambda: bounds must satisfy lo < hi"))
+
+    n = length(xv)
+    logsum = sum(log, xv)
+    # minimise the negative profile log-likelihood; the profile is unimodal in
+    # lambda for positive data, which is what makes a golden section safe here
+    # (the same routine guerrero_lambda uses, for the same reason)
+    negll(lam) = begin
+        yt = boxcox(xv, lam)
+        rss = sum(abs2, yt .- sum(yt) / n)
+        rss <= 0 && return Inf
+        -(-n / 2 * log(rss / n) + (lam - 1) * logsum)
+    end
+    return _golden_section_min(negll, Float64(bounds[1]), Float64(bounds[2]))
+end
+
 export boxcox_profile_plot
 
 """

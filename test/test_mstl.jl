@@ -120,8 +120,9 @@ end
     @test isapprox(r_lam0.observed, log.(y); atol=1e-10)
     @test r_lam0.trend != r_nolam.trend
 
-    # error paths
-    @test_throws ArgumentError mstl_decompose(y, [24, 168]; lambda=:auto)
+    # error paths. lambda=:auto landed in Stage 9B Tier 1.4 and now estimates
+    # the parameter rather than refusing; see the dedicated testset below.
+    @test mstl_decompose(y, [24, 168]; lambda=:auto).lambda isa Float64
     @test_throws ArgumentError mstl_decompose([1.0, -2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], 2; lambda=1.0)
     @test_throws ArgumentError mstl_decompose(y, [24, 168]; lambda=:not_auto)  # only :auto is a valid Symbol
 end
@@ -172,4 +173,47 @@ end
     # window validation errors surface naturally from the underlying
     # stl_decompose call (even window, too-small window, etc.)
     @test_throws ArgumentError mstl_decompose(y, [24, 168]; windows=[12, 21])  # even
+end
+
+@testset "mstl_decompose lambda — Stage 9B Tier 1.4" begin
+    yp = vec(readdlm(joinpath(@__DIR__, "verification", "transforms", "bc_y.csv")))
+
+    @testset "lambda=:auto estimates and reports it" begin
+        a = mstl_decompose(yp, [4]; lambda=:auto)
+        @test a.lambda isa Float64
+        @test -1.0 <= a.lambda <= 2.0
+        # the bounded MLE on this series sits on the lower bound; scipy's
+        # unbounded answer is -1.8365 -- see boxcox_lambda's own tests
+        @test isapprox(a.lambda, -1.0; atol=1e-5)
+        @test isapprox(a.lambda, boxcox_lambda(yp); atol=1e-12)
+    end
+
+    @testset "the lambda field records what was actually used" begin
+        @test mstl_decompose(yp, [4]; lambda=0.5).lambda == 0.5
+        @test mstl_decompose(yp, [4]; lambda=0.0).lambda == 0.0
+        @test mstl_decompose(yp, [4]).lambda === nothing
+        @test mstl_decompose(yp, [4]; lambda=nothing).lambda === nothing
+    end
+
+    @testset "lambda=0.0 applies a LOG — Python's falsy-zero bug is not copied" begin
+        # statsmodels MSTL writes `elif self.lmbda:` so 0.0 is falsy there and
+        # the transform is silently skipped. Confirmed live: lmbda=0 gives
+        # output bit-identical to no transform, while lmbda=1e-8 does not.
+        z = mstl_decompose(yp, [4]; lambda=0.0)
+        n = mstl_decompose(yp, [4]; lambda=nothing)
+        e = mstl_decompose(yp, [4]; lambda=1e-8)
+        @test !isapprox(z.trend, n.trend; atol=1e-6)   # must NOT equal no-transform
+        @test isapprox(z.trend, e.trend; rtol=1e-4)    # must equal near-zero lambda
+        @test isapprox(z.observed, log.(yp); atol=1e-12)
+    end
+
+    @testset "lambda=:auto needs positive data, and says so" begin
+        neg = copy(yp); neg[3] = -1.0
+        @test_throws ArgumentError mstl_decompose(neg, [4]; lambda=:auto)
+    end
+
+    @testset "any other Symbol is refused by name" begin
+        @test_throws ArgumentError mstl_decompose(yp, [4]; lambda=:bogus)
+        @test_throws ArgumentError mstl_decompose(yp, [4]; lambda=:guerrero)
+    end
 end

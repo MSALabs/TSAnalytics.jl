@@ -16,11 +16,18 @@ abstract type TimeSeriesModel end
     StateSpaceModel <: TimeSeriesModel
 
 Root abstract type for any model expressed in linear Gaussian state-space
-form (ARIMA/SARIMAX, UnobservedComponents, linear ETS, ...). Subtypes are
-expected to be convertible to a `GaussianSSM` representation (planned,
-not yet implemented -- see Stage 6 of `development-sequence.md`) so that
-they can all share a single, well-tested Kalman filter/smoother
-implementation instead of each reimplementing filtering.
+form (ARIMA/SARIMAX, UnobservedComponents, linear ETS, ...), so that they
+all share one well-tested Kalman filter/smoother rather than each
+reimplementing filtering.
+
+The engine is built and public: [`build_statespace`](@ref) produces the
+[`GaussianSSM`](@ref) that `fit_arma`/`fit_arima`/`fit_sarima` filter
+through, and [`kalman_filter`](@ref)/[`kalman_smoother`](@ref) are
+defined for both it and [`TimeVaryingSSM`](@ref). What is *not* built is
+a uniform `convert(GaussianSSM, ::StateSpaceModel)` method -- each fit
+function constructs its own representation directly, since the mapping
+differs per model family. See
+[Manual: State Space and the Kalman Filter](../manual/07-state-space-and-kalman.md).
 """
 abstract type StateSpaceModel <: TimeSeriesModel end
 

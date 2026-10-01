@@ -64,6 +64,22 @@ If a series' seasonal shape has changed — and over twenty years it
 usually has — the frozen version is fitting the average of two
 different regimes and matching neither.
 
+### When you want it frozen anyway
+
+```@example decomp
+sp = stl_decompose(y, 12; seasonal_window=:periodic)
+println("STL periodic, January: ", round.(sp.seasonal[jan], digits=3))
+println("repeats exactly: ", sp.seasonal[1:12] == sp.seasonal[13:24])
+```
+
+`seasonal_window=:periodic` sits between the two: a frozen seasonal
+like `classical_decompose`, but with STL's endpoint handling and
+`robust=true` still available. It matches R's `s.window="periodic"`,
+which is not a separate algorithm — R widens the window to `10n+1`,
+decomposes normally, then averages each calendar position and
+recomputes the remainder. The averaging is what makes the repetition
+exact rather than merely close.
+
 ## Additive or multiplicative
 
 ```@example decomp

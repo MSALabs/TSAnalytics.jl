@@ -370,3 +370,62 @@ end
     s_plain = stl_decompose(yy, 12)
     @test all(isfinite, s_plain.trend)
 end
+
+@testset "stl_decompose(seasonal_window=:periodic) — Stage 9B Tier 1.4" begin
+    y = vec(readdlm(joinpath(@__DIR__, "verification", "stattools", "burg_y.csv")))
+
+    @testset "the seasonal repeats exactly, not approximately" begin
+        d = stl_decompose(y, 4; seasonal_window=:periodic)
+        @test d.seasonal[1:4] == d.seasonal[5:8]        # ==, not isapprox
+        @test d.seasonal[5:8] == d.seasonal[9:12]
+        @test maximum(abs.(d.seasonal[1:end-4] .- d.seasonal[5:end])) == 0.0
+    end
+
+    @testset "components still sum to the observed series" begin
+        # the remainder is recomputed AFTER the seasonal is forced periodic,
+        # which is the order R's stl.R uses -- get it wrong and this fails
+        d = stl_decompose(y, 4; seasonal_window=:periodic)
+        @test maximum(abs.(d.seasonal .+ d.trend .+ d.resid .- y)) < 1e-10
+    end
+
+    @testset "matches R once inner is aligned" begin
+        # R's stl defaults to inner=2 for a non-robust fit; this package
+        # defaults to 5, matching statsmodels. That is a pre-existing,
+        # documented divergence in DEFAULTS, so the cross-check passes
+        # inner=2 explicitly. Reference: R 4.6.0
+        #   stl(ts(y, frequency=4), s.window=1201, s.degree=0, s.jump=1,
+        #       t.window=7, t.jump=1, l.jump=1)
+        # then the cycle-position average R's periodic branch applies.
+        d = stl_decompose(y, 4; seasonal_window=:periodic, inner=2)
+        @test isapprox(d.seasonal[1:4],
+            [6.2507697399, 0.6951201158, -8.6324869889, 1.6865970037]; atol=1e-8)
+        @test isapprox(d.trend[1:4],
+            [100.3333049170, 99.5829178164, 98.7211328210, 97.8360521135]; atol=1e-8)
+
+        # R's own s.window="periodic" uses s.jump=121 and so differs from its
+        # own s.jump=1 run by ~2e-6. We evaluate at every point (no jump
+        # shortcut), so we land on the s.jump=1 answer, not the jumped one.
+        @test isapprox(d.seasonal[1], 6.2507682356; atol=1e-5)
+        @test !isapprox(d.seasonal[1], 6.2507682356; atol=1e-9)
+    end
+
+    @testset "it is stricter than an ordinary window, not looser" begin
+        d = stl_decompose(y, 4; seasonal_window=:periodic)
+        o = stl_decompose(y, 4; seasonal_window=7)
+        # an evolving seasonal genuinely moves; a periodic one cannot
+        @test maximum(abs.(o.seasonal[1:end-4] .- o.seasonal[5:end])) > 1e-3
+    end
+
+    @testset "composes with robust=true" begin
+        yy = copy(y); yy[60] += 60.0
+        d = stl_decompose(yy, 4; seasonal_window=:periodic, robust=true)
+        @test d.seasonal[1:4] == d.seasonal[5:8]     # still exactly periodic
+        @test d.weights[60] < 0.5                    # and still downweighted
+        @test all(isfinite, d.trend)
+    end
+
+    @testset "any other Symbol is refused by name" begin
+        @test_throws ArgumentError stl_decompose(y, 4; seasonal_window=:bogus)
+        @test_throws ArgumentError stl_decompose(y, 4; seasonal_window=:cyclic)
+    end
+end

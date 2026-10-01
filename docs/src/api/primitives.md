@@ -56,6 +56,7 @@ PeriodogramResult
 boxcox
 boxcox_inv
 guerrero_lambda
+boxcox_lambda
 ```
 
 ## Abstract type hierarchy

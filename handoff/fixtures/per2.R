@@ -1,0 +1,10 @@
+options(digits=12)
+y <- scan("ets_y.csv", quiet=TRUE)
+d <- stl(ts(y, frequency=4), s.window="periodic")
+ts3 <- d$time.series
+cat("seasonal[1:4] :", format(round(as.numeric(ts3[1:4,"seasonal"]),10)), "\n")
+cat("trend[1:4]    :", format(round(as.numeric(ts3[1:4,"trend"]),10)), "\n")
+cat("trend[117:120]:", format(round(as.numeric(ts3[117:120,"trend"]),10)), "\n")
+cat("remainder[1:4]:", format(round(as.numeric(ts3[1:4,"remainder"]),10)), "\n")
+cat("sum check     :", format(max(abs(as.numeric(ts3[,1]+ts3[,2]+ts3[,3]) - y))), "\n")
+cat("s.window used by periodic: 10*n+1 =", 10*length(y)+1, " s.degree 0\n")

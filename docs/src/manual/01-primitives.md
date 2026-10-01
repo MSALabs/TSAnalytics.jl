@@ -94,26 +94,34 @@ println("ols : ", round.(pacf(y, 1:5; method=:ols).values, digits=4))
 Three methods are available and they do **not** agree on a strongly
 trending series like this one:
 
-| `method` | What it is |
-|---|---|
-| `:yw` (default) | Yule-Walker, biased denominator — R's `pacf` default |
-| `:ywm` | Yule-Walker, mean-adjusted denominator |
-| `:ols` | Regression-based |
+| `method` | What it is | Matches |
+|---|---|---|
+| `:yw` (default) | Yule-Walker, `n-k` denominator | `statsmodels`' `pacf_yw` |
+| `:ywm` | Yule-Walker, `n` denominator | **R's `pacf()`** |
+| `:ols` | Successive regression | `statsmodels`' `pacf_ols` |
+| `:burg` | Burg's maximum-entropy recursion | `statsmodels`' `pacf_burg` |
 
 The spread above is not a bug. On a near-unit-root series the
 Yule-Walker estimator is heavily biased toward zero, and `:ols` is
 generally the better choice when you intend to read an order off the
 result.
 
-!!! note "`:burg` is not implemented"
-    R and `statsmodels` both offer a Burg estimator; this package does
-    not. The error message says so explicitly rather than falling back
-    silently:
+`:burg` is the odd one out, and worth a note on why.
 
-    ```
-    pacf(y, 1:5; method=:burg)
-    ERROR: ArgumentError: method must be :yw, :ywm, or :ols (:burg not yet implemented)
-    ```
+!!! note "R's `pacf()` ignores its own `method` argument"
+    Verified by direct execution: R's `"yule-walker"`, `"burg"`,
+    `"ols"` and `"mle"` all return **bit-identical** output, equal to
+    this package's `:ywm`. Burg in R lives in `ar.burg()`, which
+    estimates AR coefficients rather than partial autocorrelations.
+
+    So R is not a reference for this option, and `:burg` is validated
+    against `statsmodels` alone — the one place in the package where a
+    `pacf` method has a single reference rather than two.
+
+Burg is a genuinely different estimator, not another denominator on the
+same one: it minimises the forward **and** backward prediction error
+jointly, which makes it better behaved near a unit root. On a strongly
+trending series it will sit between `:yw` and `:ols`.
 
 ## Two series at a time
 
@@ -193,6 +201,39 @@ println("Guerrero lambda: ", round(lambda, digits=4))
 [`guerrero_lambda`](@ref) picks the Box-Cox parameter that best
 stabilises variance across seasonal blocks. Near `0` means take logs;
 near `1` means the series is fine as it is.
+
+[`boxcox_lambda`](@ref) is the other one, and they answer different
+questions:
+
+```@example primitives
+println("guerrero (variance stabilisation): ", round(guerrero_lambda(y, 12), digits=4))
+println("MLE (normality)                  : ", round(boxcox_lambda(y), digits=4))
+```
+
+| | Minimises | Needs a period | Matches |
+|---|---|---|---|
+| [`guerrero_lambda`](@ref) | Coefficient of variation across seasonal blocks | Yes | R's `BoxCox.lambda` default |
+| [`boxcox_lambda`](@ref) | Negative profile log-likelihood | No | `scipy.stats.boxcox`, once unbounded |
+
+They disagree sharply here, and the reason is worth knowing: this
+series sits at `315`–`340`, a range of under 8 % of its own level. Over
+such a narrow window every power transform is nearly a linear rescaling
+of every other, the profile likelihood is almost flat, and the MLE
+drifts to whichever bound it was given — the `-1.0` above is the bound,
+not a finding. Guerrero's `-0.003` is the one to act on, because
+stabilising variance across seasonal blocks is a question this data can
+actually answer.
+
+**Prefer `guerrero_lambda` on seasonal data**, and read a `boxcox_lambda`
+result that lands exactly on a bound as "the data does not identify
+this" rather than as an estimate.
+
+Both default to searching `[-1, 2]`, matching R. **`scipy.stats.boxcox`
+is unbounded**, so where the unconstrained optimum falls outside that
+interval the two disagree and `boxcox_lambda` returns the boundary —
+widen `bounds` to reproduce scipy. A lambda of `-1.8` is a
+reciprocal-squared transform few people intend, which is why both R and
+this package bound it.
 
 Apply it with [`boxcox`](@ref), and reverse with [`boxcox_inv`](@ref):
 

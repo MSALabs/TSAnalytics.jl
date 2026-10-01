@@ -67,7 +67,6 @@ Stated plainly, because finding out by hitting it is worse:
 - **No VAR, VECM, or multivariate models.**
 - **No `forecast`/`predict` for the regression-with-ARIMA-errors
   models** (`ArimaxModel`, `SarimaxModel`), though they fit fine.
-- **`pacf` has no `:burg` method** — `:yw`, `:ywm` and `:ols` only.
 
 `development-sequence.md` in the repository is the full roadmap, and
 the last chapter of the Introduction,

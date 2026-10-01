@@ -157,7 +157,7 @@ objective would give plausible-looking numbers that are quietly wrong.
 | Missing | Note |
 |---|---|
 | Seasonal unit-root test | So `D` must be passed explicitly to `auto_arima`. R uses Canova-Hansen, `pmdarima` uses OCSB. |
-| `pacf(method=:burg)` | `:yw`, `:ywm`, `:ols` only; the error message names `:burg` explicitly. |
+| A Burg PACF in **R** | Not a gap here — `pacf(method=:burg)` exists and matches `statsmodels`. **R's `pacf()` silently ignores its `method` argument**; all four of its options return the same numbers. |
 | `dist=:t` for GARCH | Normal innovations only. |
 | `forecast` for `model=:tvss` | `model=:mle` forecasts; `:tvss` does not — `beta` is a latent state there, so it needs a projected path and a second variance term. |
 | Robust SE for ARIMA in R | Not a gap here — `sandwich::vcovHC` **cannot consume an `arima` object at all**. `se_type=:robust` has no R counterpart to compare against. |

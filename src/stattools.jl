@@ -266,6 +266,58 @@ function _pacf_ols(y::AbstractVector{<:Real}, maxlag::Integer)
 end
 
 """
+    _pacf_burg(y, maxlag) -> Vector{Float64}
+
+Burg's (1967) maximum-entropy recursion, implemented from the standard
+textbook statement of it rather than translated from any package: at
+order `m` the reflection coefficient is
+
+    k_m = 2*sum_t ef[t]*eb[t-1] / sum_t (ef[t]^2 + eb[t-1]^2)
+
+over `t = m+1:n`, with the forward (`ef`) and backward (`eb`) prediction
+errors updated in step and `k_m` itself being the order-`m` partial
+autocorrelation.
+
+Unlike Yule-Walker, this minimises the forward *and* backward prediction
+error jointly, which is why it is better behaved near a unit root and why
+it is a genuinely different estimator rather than a different denominator
+on the same one.
+
+Validated against real `statsmodels.tsa.stattools.pacf_burg` to 5e-09 --
+its own printed precision -- on `test/verification/stattools/burg_y.csv`.
+"""
+function _pacf_burg(y::AbstractVector{<:Real}, maxlag::Integer)
+    n = length(y)
+    z = collect(Float64, y)
+    z .-= sum(z) / n
+    ef = copy(z)
+    eb = copy(z)
+    k = Vector{Float64}(undef, maxlag)
+    @inbounds for m in 1:maxlag
+        num = 0.0
+        den = 0.0
+        for t in (m+1):n
+            num += ef[t] * eb[t-1]
+            den += ef[t]^2 + eb[t-1]^2
+        end
+        den > 0 || throw(ArgumentError(
+            "pacf(method=:burg): the prediction error collapsed to zero at lag $m " *
+            "-- the series is (numerically) perfectly predictable at that order"))
+        km = 2 * num / den
+        k[m] = km
+        # walk down so each step reads the previous order's values, not this
+        # order's partially-written ones
+        for t in n:-1:(m+1)
+            f_old = ef[t]
+            b_old = eb[t-1]
+            ef[t] = f_old - km * b_old
+            eb[t] = b_old - km * f_old
+        end
+    end
+    return k
+end
+
+"""
     pacf(x, lags=nothing; alpha=0.05, method=:yw)
 
 Full-fledged sample partial autocorrelation function, natively
@@ -280,9 +332,24 @@ implemented (no `StatsBase` dependency). `method`:
   a bug in either) -- pass `method=:ywm` for a direct R match.
 - `:ols`: successive regression on a common sample -- matches
   statsmodels' `"ols"`/`"ols-inefficient"`.
-- `:burg` is **not implemented** (a genuinely different algorithm, not
-  just a different denominator/sample-size choice) -- a documented gap
-  rather than a silent omission.
+- `:burg`: Burg's (1967) maximum-entropy recursion -- matches
+  statsmodels' `pacf_burg`. A genuinely different estimator rather than
+  another denominator on the same one: it minimises the forward *and*
+  backward prediction error jointly, which makes it better behaved near
+  a unit root.
+
+!!! note "`:burg` necessarily follows Python, because R has none"
+    **R's `pacf()` silently ignores its own `method` argument** --
+    verified by direct execution: `"yule-walker"`, `"burg"`, `"ols"` and
+    `"mle"` all return bit-identical output. Burg in R lives in
+    `ar.burg()`, which estimates AR coefficients rather than partial
+    autocorrelations. So R is not a reference for this option, and
+    `:burg` is validated against `statsmodels` alone.
+
+    The other three each have a reference: `:ywm` matches R's `pacf()`
+    exactly, while `:yw` and `:ols` match statsmodels' `pacf_yw` and
+    `pacf_ols` exactly. All four were confirmed numerically this
+    session.
 
 The confidence band is always the simple constant `z/sqrt(n)` (no
 Bartlett-style widening) at every lag, matching both R and statsmodels'
@@ -310,14 +377,17 @@ false
 julia> length(pacf(y, 1:5).values)
 5
 
-julia> pacf(y, 1:5; method=:burg)
-ERROR: ArgumentError: method must be :yw, :ywm, or :ols (:burg not yet implemented)
+julia> length(pacf(y, 1:5; method=:burg).values)
+5
+
+julia> pacf(y, 1:5; method=:mle)
+ERROR: ArgumentError: method must be :yw, :ywm, :ols, or :burg
 ```
 """
 function pacf(x, lags::Union{Nothing,AbstractVector{<:Integer}}=nothing;
               alpha::Real=0.05, method::Symbol=:yw)
-    method in (:yw, :ywm, :ols) ||
-        throw(ArgumentError("method must be :yw, :ywm, or :ols (:burg not yet implemented)"))
+    method in (:yw, :ywm, :ols, :burg) ||
+        throw(ArgumentError("method must be :yw, :ywm, :ols, or :burg"))
     y = tsvalues(x)
     n = length(y)
     ls = lags === nothing ? _default_lags(n, 1) : lags
@@ -325,6 +395,8 @@ function pacf(x, lags::Union{Nothing,AbstractVector{<:Integer}}=nothing;
 
     vals_full = if method == :ols
         _pacf_ols(y, maxlag)
+    elseif method == :burg
+        _pacf_burg(y, maxlag)
     else
         acov = _acovf(y, maxlag; demean=true, adjusted=(method == :yw))
         _durbin_levinson(acov, maxlag)
