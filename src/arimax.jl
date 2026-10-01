@@ -597,13 +597,13 @@ function _fit_arimax_core(y, order::Tuple{Int,Int,Int}, seasonal_order::Tuple{In
 
         arma_fields = if seasonal_order == (0, 0, 0, 1) || constructor === ArimaxModel
             ArmaModel(phi_hat, theta_hat, nothing, se[(k + 1):end], loglik, sigma2, aic, bic, nd,
-                      (p, q), method, se_type, result.converged)
+                      (p, q), method, se_type, result.converged, yd)
         else
             nothing
         end
         arma_seasonal = constructor === SarimaxModel ?
             SarimaModel(phi_hat, theta_hat, Phi_hat, Theta_hat, nothing, se[(k + 1):end], loglik, sigma2,
-                        aic, bic, nd, order, seasonal_order, method, se_type, result.converged) : nothing
+                        aic, bic, nd, order, seasonal_order, method, se_type, result.converged, yd) : nothing
 
         arma_result = constructor === ArimaxModel ? arma_fields : arma_seasonal
         common = (model=:mle, method=method, beta=beta_hat, beta_filtered=nothing, Q_beta=nothing,
@@ -710,10 +710,10 @@ function _fit_arimax_core(y, order::Tuple{Int,Int,Int}, seasonal_order::Tuple{In
         arma_placeholder_se = se_full[1:(p + q + P + Q)]
         arma_result = constructor === ArimaxModel ?
             ArmaModel(phi_hat, theta_hat, nothing, arma_placeholder_se, loglik, sigma2_hat, aic, bic,
-                      nd, (p, q), method, se_type, result.converged) :
+                      nd, (p, q), method, se_type, result.converged, yd) :
             SarimaModel(phi_hat, theta_hat, Phi_hat, Theta_hat, nothing, arma_placeholder_se, loglik,
                         sigma2_hat, aic, bic, nd, order, seasonal_order, method, se_type,
-                        result.converged)
+                        result.converged, yd)
 
         return constructor === ArimaxModel ?
                ArimaxModel(:tvss, method, nothing, beta_filtered, Qbeta_hat, arma_result, d, yv, Xmat,

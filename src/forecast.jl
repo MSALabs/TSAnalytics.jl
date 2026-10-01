@@ -421,6 +421,26 @@ function _forecast_arma_diffed(w::Vector{Float64}, v::Vector{Float64},
 end
 
 """
+    predict(m::ArmaModel, horizon; level=[80.0, 95.0]) -> Forecast
+    forecast(m::ArmaModel, horizon; level=[80.0, 95.0]) -> Forecast
+
+Forecast `horizon` steps ahead from a fitted [`fit_arma`](@ref) model.
+
+An ARMA(p,q) is an ARIMA(p,0,q), so this delegates to the `ArimaModel`
+path with `d = 0` rather than duplicating the recursion -- the same
+reduction [`fit_arima`](@ref) itself relies on, and the reason the two
+cannot drift apart.
+
+`forecast` and `predict` are exact aliases here as everywhere else;
+neither is deprecated.
+"""
+StatsAPI.predict(model::ArmaModel, horizon::Integer; level::Vector{<:Real}=[80.0, 95.0]) =
+    StatsAPI.predict(ArimaModel(model, 0, model.original_y), horizon; level=level)
+
+forecast(model::ArmaModel, horizon::Integer; level::Vector{<:Real}=[80.0, 95.0]) =
+    StatsAPI.predict(model, horizon; level=level)
+
+"""
     StatsAPI.predict(model::ArimaModel, horizon; level=[80.0, 95.0]) -> Forecast
 
 Extends `StatsAPI.predict`; see [`forecast`](@ref) for the full
@@ -612,3 +632,162 @@ julia> f.horizon
 """
 forecast(model::SarimaModel, y, horizon::Integer; level::Vector{<:Real}=[80.0, 95.0]) =
     StatsAPI.predict(model, y, horizon; level=level)
+
+# Uniform signature: every forecastable type answers predict(model, horizon).
+# SarimaModel and ArmaModel retain `original_y` as of Stage 9B Tier 1.2, so the
+# series argument is no longer required -- the three-argument form stays for
+# callers that want to assert which series they mean.
+StatsAPI.predict(model::SarimaModel, horizon::Integer; level::Vector{<:Real}=[80.0, 95.0]) =
+    StatsAPI.predict(model, model.original_y, horizon; level=level)
+
+forecast(model::SarimaModel, horizon::Integer; level::Vector{<:Real}=[80.0, 95.0]) =
+    StatsAPI.predict(model, horizon; level=level)
+"""
+    predict(m::ArimaxModel,  newexog, horizon; level=[80.0, 95.0]) -> Forecast
+    predict(m::SarimaxModel, newexog, horizon; level=[80.0, 95.0]) -> Forecast
+    forecast(m, newexog, horizon; level=[80.0, 95.0]) -> Forecast
+
+Forecast `horizon` steps ahead from a fitted [`fit_arimax`](@ref) /
+[`fit_sarimax`](@ref) model, given the regressor values over the
+forecast period.
+
+`newexog` has one row per forecast step and **one column per regressor
+you originally passed** -- not per fitted coefficient. When
+`include_mean=true` was in force the model carries an extra intercept
+column internally; it is reconstructed here rather than expected from
+the caller, so `newexog` keeps the same shape as the `exog` argument
+`fit_arimax` was given.
+
+The regression and the ARMA error are forecast separately and added, on
+the differenced scale, before the result is integrated back up -- the
+same decomposition the fit itself uses, so the two cannot drift apart.
+Prediction intervals come from the ARMA part alone: the regressors are
+treated as **known**, matching R's `predict.Arima(newxreg=)` and
+`statsmodels`' `get_forecast(exog=)`. Neither reference propagates
+uncertainty in the supplied future regressors, and neither does this.
+
+`model=:tvss` is rejected: there `beta` is a latent time-varying state
+rather than a fixed coefficient, so a forecast needs its projected path
+and a second variance term. That is genuinely unbuilt rather than
+omitted, and the error says so.
+"""
+function _arimax_predict(model, newexog, horizon::Integer, level::Vector{<:Real},
+                          d::Integer, D::Integer, s::Integer, ar, ma, ar_full,
+                          model_name::AbstractString)
+    horizon >= 1 || throw(ArgumentError("horizon must be >= 1"))
+    isempty(level) && throw(ArgumentError("level must be non-empty"))
+    all(0 .< level .< 100) || throw(ArgumentError("level entries must be in (0, 100)"))
+    model.model === :tvss && throw(ArgumentError(
+        "predict: forecasting is not implemented for model=:tvss -- `beta` there is a latent " *
+        "time-varying state, not a fixed coefficient, so a forecast needs its projected path " *
+        "and an extra variance term. Refit with model=:mle to forecast."))
+
+    k = length(model.beta)
+    has_intercept = size(model.exog, 2) == k && all(==(1.0), view(model.exog, :, k))
+    k_user = has_intercept ? k - 1 : k
+
+    Xf0 = newexog isa AbstractMatrix ? Float64.(newexog) :
+                                        reshape(Float64.(collect(newexog)), :, 1)
+    size(Xf0, 1) == horizon || throw(ArgumentError(
+        "predict: newexog must have one row per forecast step -- got $(size(Xf0, 1)) rows for horizon=$horizon"))
+    size(Xf0, 2) == k_user || throw(ArgumentError(
+        "predict: newexog must have $k_user column(s), matching the `exog` the model was fitted with " *
+        "-- got $(size(Xf0, 2))" *
+        (has_intercept ? " (the intercept column is reconstructed here, do not supply it)" : "")))
+
+    Xf = has_intercept ? hcat(Xf0, ones(horizon)) : Xf0
+
+    y = model.original_y
+    X = model.exog
+    difference(v) = begin
+        vd = v
+        D > 0 && (vd = diff(vd, s; differences=D))
+        d > 0 && (vd = diff(vd, 1; differences=d))
+        vd
+    end
+
+    # Differencing the stacked in-sample+future regressors keeps the leading
+    # future rows correct -- differencing Xf alone would silently drop the
+    # link back to the end of the sample.
+    Xall = vcat(X, Xf)
+    Xall_d = reduce(hcat, [difference(view(Xall, :, j)) for j in 1:k])
+    Xd_future = Xall_d[(end-horizon+1):end, :]
+
+    yd = difference(y)
+    Xd = reduce(hcat, [difference(view(X, :, j)) for j in 1:k])
+    w = yd .- Xd * model.beta
+
+    ssm = build_statespace(ar, ma)
+    _, sigma2, v, _, converged = kalman_filter(ssm, w)
+    converged || throw(ArgumentError(
+        "predict: the fitted model's Kalman filter did not converge on its own data"))
+
+    arma_future = _forecast_arma_diffed(w, v, ar, ma, 0.0, horizon)
+    point_diff = arma_future .+ Xd_future * model.beta
+
+    point = if d > 0 || D > 0
+        acc = point_diff
+        if d > 0
+            seed = (D > 0 ? diff(y, s; differences=D) : y)[(end-d+1):end]
+            acc = tsundiff(acc; differences=d, xi=seed)[(d+1):end]
+        end
+        if D > 0
+            seed = y[(end - D*s + 1):end]
+            acc = tsundiff(acc; lag=s, differences=D, xi=seed)[(D*s+1):end]
+        end
+        acc
+    else
+        point_diff
+    end
+
+    psi = psi_weights(ar_full, ma, horizon)
+    se = [sqrt(sigma2 * sum(abs2, view(psi, 1:h))) for h in 1:horizon]
+
+    z = [_confidence_z(1 - l/100) for l in level]
+    lower = reduce(hcat, [point .- zi .* se for zi in z])
+    upper = reduce(hcat, [point .+ zi .* se for zi in z])
+    return Forecast(point, se, Float64.(level), lower, upper, horizon, model_name)
+end
+
+function StatsAPI.predict(model::ArimaxModel, newexog, horizon::Integer;
+                           level::Vector{<:Real}=[80.0, 95.0])
+    p, q = model.arma.order
+    ar_full = _undifferenced_ar(model.arma.ar, model.d)
+    return _arimax_predict(model, newexog, horizon, level, model.d, 0, 1,
+                            model.arma.ar, model.arma.ma, ar_full,
+                            "ARIMAX($p,$(model.d),$q)")
+end
+
+function StatsAPI.predict(model::SarimaxModel, newexog, horizon::Integer;
+                           level::Vector{<:Real}=[80.0, 95.0])
+    p, d, q = model.arma.order
+    P, D, Q, s = model.seasonal_order
+    ar, ma = combined_ar_ma(model.arma.phi, model.arma.Phi,
+                             model.arma.theta, model.arma.Theta, s)
+
+    # The psi weights need the AR polynomial with BOTH differencing operators
+    # multiplied back in, exactly as predict(::SarimaModel, ...) builds it --
+    # _undifferenced_ar only knows about the non-seasonal one.
+    ar_reg_natural = vcat([1.0], -model.arma.phi)
+    ar_seas_natural = seasonal_poly(model.arma.Phi, s; sign=-1.0)
+    diff_reg = [1.0]
+    for _ in 1:d
+        diff_reg = polymul(diff_reg, [1.0, -1.0])
+    end
+    diff_seas = [1.0]
+    for _ in 1:D
+        diff_seas = polymul(diff_seas, seasonal_poly([1.0], s; sign=-1.0))
+    end
+    ar_full_natural = polymul(polymul(ar_reg_natural, ar_seas_natural),
+                               polymul(diff_reg, diff_seas))
+    ar_full = -ar_full_natural[2:end]
+
+    return _arimax_predict(model, newexog, horizon, level, d, D, s, ar, ma, ar_full,
+                            "SARIMAX($p,$d,$q)($P,$D,$Q)[$s]")
+end
+
+forecast(model::ArimaxModel, newexog, horizon::Integer; level::Vector{<:Real}=[80.0, 95.0]) =
+    StatsAPI.predict(model, newexog, horizon; level=level)
+
+forecast(model::SarimaxModel, newexog, horizon::Integer; level::Vector{<:Real}=[80.0, 95.0]) =
+    StatsAPI.predict(model, newexog, horizon; level=level)

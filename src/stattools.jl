@@ -1,4 +1,4 @@
-export acf, pacf, ACFResult
+export acf, pacf, ccf, ACFResult
 
 """
     ACFResult
@@ -337,4 +337,105 @@ function pacf(x, lags::Union{Nothing,AbstractVector{<:Integer}}=nothing;
     upper = fill(bound, length(ls))
 
     return ACFResult(collect(ls), vals, lower, upper, n, nothing, nothing, :pacf)
+end
+
+"""
+    ccf(x, y, lag_max::Integer; alpha=0.05, demean=true) -> ACFResult
+
+Cross-correlation function between two series of equal length, over lags
+`-lag_max:lag_max`.
+
+**The lag `k` value estimates the correlation between `x[t+k]` and
+`y[t]`** -- R's `stats::ccf` convention, which all six of this project's
+reference books use. A peak at a *negative* lag therefore says `x`
+leads `y`: `x` from `|k|` steps ago lines up with `y` now.
+
+```jldoctest
+julia> using TSAnalytics
+
+julia> x = Float64[1, 3, 2, 5, 4, 6, 5, 8, 7, 9];
+
+julia> r = ccf(x, x, 3);
+
+julia> r.lags
+7-element Vector{Int64}:
+ -3
+ -2
+ -1
+  0
+  1
+  2
+  3
+
+julia> r.values[r.lags .== 0]
+1-element Vector{Float64}:
+ 1.0
+```
+
+!!! warning "Python returns only non-negative lags"
+    `statsmodels.tsa.stattools.ccf(x, y)` returns lags `0:n-1` and
+    **nothing below zero**, so on a series where `x` leads `y` it does
+    not contain the peak at all -- you have to call `ccf(y, x)` to find
+    it. Values agree exactly where the two overlap: R's lag `-k` equals
+    `statsmodels`' `ccf(y, x)` at lag `+k`.
+
+    A reader porting from Python and looking for `argmax` will get a
+    different answer here. That is the intended difference, not a
+    divergence to work around.
+
+The normalisation is `c_xy(k) / sqrt(c_xx(0) * c_yy(0))` with the `1/n`
+denominator throughout, matching both references and [`acf`](@ref)'s own
+`adjusted=false` default -- so `ccf(x, x, k)` reproduces `acf(x, 0:k)`
+exactly on its non-negative half.
+
+The band is the constant `±z/sqrt(n)`, as R's `ccf` plot draws; there is
+no Bartlett analogue for a cross-correlation without assuming which
+series is white.
+
+See also [`acf`](@ref), [`pacf`](@ref).
+"""
+function ccf(x, y, lag_max::Integer; alpha::Real=0.05, demean::Bool=true)
+    xv = tsvalues(x)
+    yv = tsvalues(y)
+    length(xv) == length(yv) || throw(DimensionMismatch(
+        "ccf: x and y must have the same length (got $(length(xv)) and $(length(yv)))"))
+    any(isnan, xv) && throw(ArgumentError("ccf: NaN present in x (no missing-data policy implemented yet)"))
+    any(isnan, yv) && throw(ArgumentError("ccf: NaN present in y (no missing-data policy implemented yet)"))
+
+    n = length(xv)
+    n >= 2 || throw(ArgumentError("ccf: need at least 2 observations, got $n"))
+    lag_max >= 1 || throw(ArgumentError("ccf: lag_max must be >= 1, got $lag_max"))
+    lag_max < n || throw(ArgumentError(
+        "ccf: lag_max must be < the series length (got lag_max=$lag_max for n=$n)"))
+
+    # Demean once, outside the lag loop -- doing it inside is the obvious
+    # way to make this O(n*k) with a large constant for no reason.
+    xc = demean ? xv .- (sum(xv)/n) : collect(Float64, xv)
+    yc = demean ? yv .- (sum(yv)/n) : collect(Float64, yv)
+
+    c0x = sum(abs2, xc) / n
+    c0y = sum(abs2, yc) / n
+    denom = sqrt(c0x * c0y)
+    denom > 0 || throw(ArgumentError("ccf: a series has zero variance, correlation is undefined"))
+
+    lags = collect(-lag_max:lag_max)
+    vals = Vector{Float64}(undef, length(lags))
+    @inbounds for (i, k) in enumerate(lags)
+        s = 0.0
+        if k >= 0
+            for t in 1:(n-k)
+                s += xc[t+k] * yc[t]
+            end
+        else
+            for t in 1:(n+k)
+                s += xc[t] * yc[t-k]
+            end
+        end
+        vals[i] = (s / n) / denom
+    end
+
+    bound = _confidence_z(alpha) / sqrt(n)
+    lower = fill(-bound, length(lags))
+    upper = fill(bound, length(lags))
+    return ACFResult(lags, vals, lower, upper, n, nothing, nothing, :ccf)
 end

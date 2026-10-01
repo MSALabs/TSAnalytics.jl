@@ -16,7 +16,7 @@ nothing # hide
 
 ```@example fc
 m = fit_sarima(train, (1,1,1), (0,1,1,12))
-f = forecast(m, train, 12)
+f = forecast(m, 12)
 
 println("model     : ", f.model_name)
 println("horizon   : ", f.horizon)
@@ -24,12 +24,28 @@ println("levels    : ", f.levels)
 println("point[1:3]: ", round.(f.point[1:3], digits=3))
 ```
 
-`forecast(m, y, h)` takes the series back because `SarimaModel` does not
-retain it — the same reason `residuals` does. `ArimaModel` and
-`ARXModel` do, so `forecast(m, h)` works for those.
+**`forecast(m, h)` is the signature on every forecastable type** —
+`ArmaModel`, `ArimaModel`, `SarimaModel` and `ARXModel` all retain the
+series they were fitted to. `SarimaModel` also accepts
+`forecast(m, y, h)` if you want to state which series you mean.
 
-`StatsAPI.predict(m, y, h; level=level)` is exactly equivalent. `forecast` exists as a
-direct alias for people arriving from R's `forecast()`.
+`StatsAPI.predict(m, h; level=level)` is exactly equivalent — the two are
+mechanical aliases and neither is deprecated. `forecast` exists for
+people arriving from R's `forecast()`; `predict` for people arriving
+from the Julia statistics ecosystem.
+
+Models with exogenous regressors take the future regressor values
+instead of a horizon alone:
+
+```julia
+forecast(m::ArimaxModel,  newexog, horizon)
+forecast(m::SarimaxModel, newexog, horizon)
+```
+
+`newexog` has one row per step and one column per regressor you
+originally passed — the intercept column is reconstructed internally,
+not expected from you. See [ARIMAX and
+Regression](08-arimax-and-regression.md).
 
 ### Intervals
 
@@ -120,7 +136,7 @@ twelve months. [`tscv`](@ref) runs a rolling origin instead — refit,
 forecast, step forward, repeat:
 
 ```@example fc
-e_sarima = tscv(train, (yt, h) -> forecast(fit_sarima(yt, (0,1,1), (0,1,1,12)), yt, h).point;
+e_sarima = tscv(train, (yt, h) -> forecast(fit_sarima(yt, (0,1,1), (0,1,1,12)), h).point;
                 h=1, initial=200)
 e_snaive = tscv(train, (yt, h) -> seasonal_naive(yt, h, 12); h=1, initial=200)
 
@@ -171,9 +187,11 @@ correction and when it is worth applying.
 
 ## What does not forecast yet
 
-`ArimaxModel` and `SarimaxModel` fit but have no `forecast` method —
-producing one needs future values of the regressors. GARCH models
-forecast **variance**, not level, through
+`model=:tvss` fits but does not forecast — there `beta` is a latent
+time-varying state rather than a fixed coefficient, so a forecast needs
+its projected path and a second variance term. `model=:mle` (the
+default) forecasts normally. GARCH models forecast **variance**, not
+level, through
 [`forecast_volatility`](@ref); see
 [GARCH and Volatility](06-garch-and-volatility.md).
 

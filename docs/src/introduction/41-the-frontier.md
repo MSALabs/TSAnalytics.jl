@@ -122,7 +122,7 @@ support.
 |---|---|---|
 | Seasonal unit-root test | `D` must be passed explicitly to [`auto_arima`](@ref) | Canova-Hansen (R), OCSB (`pmdarima`) |
 | `pacf(method=:burg)` | Three methods, not four | R, `statsmodels` |
-| `forecast` for `ArimaxModel`/`SarimaxModel` | They fit but do not forecast — future regressor values are needed | R's `forecast(xreg=)` |
+| `forecast` for `model=:tvss` | `model=:mle` forecasts with future regressors; the drifting-coefficient variant needs a projected `beta` path | R has no direct analogue |
 | Intermittent-demand methods (Croston, SBA, TSB) | Series that are mostly zeros are not served | `forecast::croston`, `statsforecast` |
 | Change-point detection | A break has to be found by eye | `changepoint` (R), `ruptures` (Python) |
 | Missing-data policy beyond the state-space path | `NaN` handling is per-function rather than uniform | — |

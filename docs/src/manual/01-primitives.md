@@ -115,6 +115,46 @@ result.
     ERROR: ArgumentError: method must be :yw, :ywm, or :ols (:burg not yet implemented)
     ```
 
+## Two series at a time
+
+```@example primitives
+rec = dataset("rec").value
+soi = dataset("soi").value
+c = ccf(soi, rec, 16)
+println("peak at lag ", c.lags[argmax(abs.(c.values))],
+        "   value ", round(c.values[argmax(abs.(c.values))], digits=4))
+plot(c; title="SOI against Recruitment")
+```
+
+[`ccf`](@ref) is the cross-correlation function: everything above asks
+what a series says about its own past, and this asks what one series
+says about another's.
+
+**Lag `k` estimates the correlation between `x[t+k]` and `y[t]`**, which
+is R's convention and the one all six reference books use. A peak at a
+*negative* lag says the first series **leads** the second.
+
+Here the strongest relationship is at lag `-6` and it is `-0.60`: the
+Southern Oscillation Index leads fish recruitment by about six months,
+and the sign is negative, so warmer water now means fewer fish half a
+year later. Note that finding it needs `argmax(abs.(...))` rather than
+`argmax` — a lead relationship can perfectly well be an inverse one,
+and this is the kind of structure an ACF cannot see at all.
+
+!!! warning "Python returns only non-negative lags"
+    `statsmodels`' `ccf(x, y)` returns lags `0:n-1` and nothing below
+    zero, so on a pair where `x` leads `y` **it does not contain the
+    peak at all** — you have to call `ccf(y, x)` to find it. The values
+    agree exactly where they overlap: R's lag `-k` is `statsmodels`'
+    `ccf(y, x)` at `+k`.
+
+    Reaching for `argmax` after porting from Python will give a
+    different answer here. That is the intended difference.
+
+`ccf(x, x, k)` reproduces `acf(x, 0:k)` exactly on its non-negative
+half — same `1/n` denominator — which is the cheapest check that you
+have the normalisation you expect.
+
 ## Find a period you did not already know
 
 ```@example primitives

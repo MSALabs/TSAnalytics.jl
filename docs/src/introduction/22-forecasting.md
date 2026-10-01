@@ -19,7 +19,7 @@ train = y[1:n-h]
 test = y[n-h+1:end]
 
 m = fit_sarima(train, (0,1,1), (0,1,1,4))
-f = forecast(m, train, h)
+f = forecast(m, h)
 plot(train; label="observed", size=(700,350))
 plot!((n-h+1):n, f.point; label="forecast", color=:red, linewidth=2)
 ```
@@ -140,7 +140,7 @@ where an honest interval matters most, it does not.
 using Random
 logtrain = log.(train)
 m_log = fit_sarima(logtrain, (0,1,1), (0,1,1,4))
-f_log = forecast(m_log, logtrain, h)
+f_log = forecast(m_log, h)
 
 naive_bt = exp.(f_log.point)
 bias_bt = exp.(f_log.point .+ (f_log.se .^ 2) ./ 2)

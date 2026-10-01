@@ -1,0 +1,5 @@
+options(digits=12)
+x <- scan("ccf_x.csv", quiet=TRUE); y <- scan("ccf_y.csv", quiet=TRUE)
+r <- ccf(x, y, lag.max=6, plot=FALSE)
+cat("R ccf(x, y, lag.max=6)  -- lag then value\n")
+for (i in seq_along(r$lag)) cat(sprintf("  %+3d  %+.10f\n", r$lag[i], r$acf[i]))

@@ -32,6 +32,7 @@ struct SarimaModel <: UnivariateModel
     method::Symbol
     se_type::Symbol
     converged::Bool
+    original_y::Vector{Float64}
 end
 
 StatsAPI.loglikelihood(m::SarimaModel) = m.loglik
@@ -297,7 +298,7 @@ function fit_sarima(y, order::Tuple{Int,Int,Int}, seasonal_order::Tuple{Int,Int,
 
     return SarimaModel(phi_hat, theta_hat, Phi_hat, Theta_hat, mu_hat, se,
                         loglik, sigma2, aic, bic, n, order, seasonal_order,
-                        method, se_type, result.converged && isfinite(loglik))
+                        method, se_type, result.converged && isfinite(loglik), yv)
 end
 
 function Base.show(io::IO, m::SarimaModel)
@@ -321,16 +322,17 @@ function Base.show(io::IO, m::SarimaModel)
 end
 
 """
+    residuals(m::SarimaModel) -> Vector{Float64}
     residuals(m::SarimaModel, y) -> Vector{Float64}
 
 One-step-ahead prediction errors from a fitted [`fit_sarima`](@ref)
 model, on the scale of the differenced series, matching what R's
 `stats::arima` returns in its own `\$residuals` field.
 
-`y` is passed explicitly because `SarimaModel` does not retain the
-series it was fitted to — the same convention
-[`forecast`](@ref)`(::SarimaModel, y, horizon)` already uses, for the
-same reason.
+`SarimaModel` retains the series it was fitted to, so the one-argument
+form is the one to reach for. The two-argument form computes the same
+residuals against a series you supply, and throws if the fitted
+parameters cannot filter it.
 
 The returned vector has `n - d - D*s` entries, not `length(y)`: the
 differencing consumes the leading observations, and this package
@@ -359,3 +361,5 @@ function StatsAPI.residuals(m::SarimaModel, y)
         "parameters -- this usually means `y` is not the series the model was fitted to"))
     return v ./ sqrt.(F)
 end
+
+StatsAPI.residuals(m::SarimaModel) = StatsAPI.residuals(m, m.original_y)

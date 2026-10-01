@@ -157,7 +157,7 @@ applies to it unchanged:
 
 ```@example auto
 using StatsAPI: residuals
-r = residuals(ms, y)
+r = residuals(ms)
 println("Ljung-Box(24) p = ", round(ljungbox_test(r, 24; fitdf=3).pvalue, digits=4))
 ```
 

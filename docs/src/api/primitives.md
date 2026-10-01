@@ -38,6 +38,7 @@ moving_average
 ```@docs
 acf
 pacf
+ccf
 ACFResult
 ```
 

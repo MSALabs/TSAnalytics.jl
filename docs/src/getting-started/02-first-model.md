@@ -93,7 +93,7 @@ println("coefficients: ", round.(coef(m), digits=4))
 ## Forecast
 
 ```@example first-model
-f = forecast(m, y, 12)
+f = forecast(m, 12)
 println("next 3 months : ", round.(f.point[1:3], digits=2))
 println("95% interval, first month: [", round(f.lower[1,2], digits=2), ", ",
         round(f.upper[1,2], digits=2), "]")

@@ -19,7 +19,7 @@ and concluding something is broken.
 | `arima(y, order=, seasonal=)` | [`fit_sarima`](@ref)`(y, (p,d,q), (P,D,Q,s))` |
 | `arima(y, xreg=X)` | [`fit_arimax`](@ref)`(y, (p,d,q), X)` |
 | `forecast::auto.arima(y)` | [`auto_arima`](@ref)`(y)` |
-| `forecast::forecast(m, h=12)` | [`forecast`](@ref)`(m, y, 12)` |
+| `forecast::forecast(m, h=12)` | [`forecast`](@ref)`(m, 12)` |
 | `forecast::accuracy(f, test)` | [`accuracy`](@ref) |
 | `stl(y, s.window=)` | [`stl_decompose`](@ref)`(y, period)` |
 | `decompose(y)` | [`classical_decompose`](@ref)`(y, period)` |
@@ -106,7 +106,7 @@ once you have differenced.
 
 ### Residual length
 
-`residuals(m, y)` returns `n - d - D*s` values. R pads its own back to
+`residuals(m)` returns `n - d - D*s` values. R pads its own back to
 the full length of the input. Same residuals, different framing of what
 the leading observations mean.
 
@@ -159,7 +159,7 @@ objective would give plausible-looking numbers that are quietly wrong.
 | Seasonal unit-root test | So `D` must be passed explicitly to `auto_arima`. R uses Canova-Hansen, `pmdarima` uses OCSB. |
 | `pacf(method=:burg)` | `:yw`, `:ywm`, `:ols` only; the error message names `:burg` explicitly. |
 | `dist=:t` for GARCH | Normal innovations only. |
-| `forecast` for `ArimaxModel`/`SarimaxModel` | They fit, but have no forecast method yet. |
+| `forecast` for `model=:tvss` | `model=:mle` forecasts; `:tvss` does not — `beta` is a latent state there, so it needs a projected path and a second variance term. |
 | Robust SE for ARIMA in R | Not a gap here — `sandwich::vcovHC` **cannot consume an `arima` object at all**. `se_type=:robust` has no R counterpart to compare against. |
 
 ## Further reading

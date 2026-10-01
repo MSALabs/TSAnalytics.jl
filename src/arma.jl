@@ -34,6 +34,7 @@ struct ArmaModel <: UnivariateModel
     method::Symbol
     se_type::Symbol
     converged::Bool
+    original_y::Vector{Float64}
 end
 
 "_arma_demeaned(params, yv, p, q, include_mean) -> (phi, theta, yc), all in
@@ -432,7 +433,7 @@ function fit_arma(y, order::Tuple{Int,Int};
 
     return ArmaModel(phi_hat, theta_hat, mu_hat, se,
                       loglik, sigma2, aic, bic, n, order, method, se_type,
-                      result.converged && isfinite(loglik))
+                      result.converged && isfinite(loglik), yv)
 end
 
 function Base.show(io::IO, m::ArmaModel)
@@ -453,13 +454,20 @@ function Base.show(io::IO, m::ArmaModel)
 end
 
 """
+    residuals(m::ArmaModel) -> Vector{Float64}
     residuals(m::ArmaModel, y) -> Vector{Float64}
 
 One-step-ahead prediction errors from a fitted [`fit_arma`](@ref)
-model. `y` is passed explicitly because `ArmaModel` does not retain
-the series it was fitted to — see
-[`residuals`](@ref)`(::SarimaModel, y)` for the reasoning and the
-computation, which is the same one with no differencing.
+model.
+
+`ArmaModel` retains the series it was fitted to, so the one-argument
+form is the one to reach for. The two-argument form computes the same
+residuals against a series you supply, and throws if that series is not
+one the fitted parameters can filter — useful for checking you have the
+pairing right, not for scoring a different series.
+
+See [`residuals`](@ref)`(::SarimaModel)` for the computation, which is
+the same one with no differencing.
 """
 function StatsAPI.residuals(m::ArmaModel, y)
     yv = Float64.(collect(tsvalues(y)))
@@ -471,3 +479,5 @@ function StatsAPI.residuals(m::ArmaModel, y)
         "parameters -- this usually means `y` is not the series the model was fitted to"))
     return v ./ sqrt.(F)
 end
+
+StatsAPI.residuals(m::ArmaModel) = StatsAPI.residuals(m, m.original_y)

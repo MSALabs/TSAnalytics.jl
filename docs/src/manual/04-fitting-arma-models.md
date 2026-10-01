@@ -113,13 +113,15 @@ objective gives plausible-looking numbers that are quietly wrong.
 
 ```@example fitting
 using StatsAPI: residuals
-r = residuals(ms, y)
+r = residuals(ms)
 println("residuals: ", length(r), "   model nobs: ", ms.nobs)
 ```
 
-`y` is passed explicitly because `ArmaModel` and `SarimaModel` do not
-retain the series they were fitted to. `ArimaModel` does, so
-`residuals(m)` works without it.
+Every fitted type retains the series it was fitted to, so `residuals(m)`
+needs nothing else. The two-argument form `residuals(m, y)` computes the
+same residuals against a series you supply and throws if the fitted
+parameters cannot filter it — useful for checking you have the pairing
+right, not for scoring a different series.
 
 The length is `nobs`, not `length(y)` — R pads its own back to the full
 input length. Feed these straight to

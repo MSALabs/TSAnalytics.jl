@@ -20,7 +20,7 @@ for o in origins
     train = y[1:o]
     test = y[o+1:o+h]
     m = fit_sarima(train, (0,1,1), (0,1,1,4))
-    f = forecast(m, train, h)
+    f = forecast(m, h)
     f_sn = seasonal_naive(train, h, 4)
     r_m, r_sn = rmse(test, f.point), rmse(test, f_sn.point)
     push!(results, (o, r_m, r_sn))
@@ -51,7 +51,7 @@ applied forecasting, and it is entirely invisible if only one split is
 ever run.
 
 ```@example ch23
-sarima_fc(train, hmax) = forecast(fit_sarima(train, (0,1,1), (0,1,1,4)), train, hmax)
+sarima_fc(train, hmax) = forecast(fit_sarima(train, (0,1,1), (0,1,1,4)), hmax)
 sn_fc(train, hmax) = seasonal_naive(train, hmax, 4)
 e_sarima = tscv(y, sarima_fc; h=1, initial=100, step_length=2)
 e_sn = tscv(y, sn_fc; h=1, initial=100, step_length=2)
@@ -155,7 +155,7 @@ empirical question, and precisely the one this scheme can answer by
 trying both, exactly as done above.
 
 ```julia
-sarima_fc(train, hmax) = forecast(fit_sarima(train, (0,1,1), (0,1,1,4)), train, hmax)
+sarima_fc(train, hmax) = forecast(fit_sarima(train, (0,1,1), (0,1,1,4)), hmax)
 naive_fc(train, hmax) = naive(train, hmax)
 sn_fc(train, hmax) = seasonal_naive(train, hmax, 4)
 drift_fc(train, hmax) = drift(train, hmax)

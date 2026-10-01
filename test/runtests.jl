@@ -3,6 +3,10 @@ using TSAnalytics
 using Random
 using LinearAlgebra: norm
 using Statistics: mean, std
+# StatsAPI does not export these; importing them once here keeps a test from
+# passing in isolation (where the author imported them) and erroring under the
+# full suite, which is exactly how the missing `std` import slipped through.
+using StatsAPI: coef, vcov, residuals, predict, loglikelihood, aic, bic, nobs, stderror
 using Dates: Date
 
 @testset "TSAnalytics.jl" begin
@@ -15,6 +19,7 @@ using Dates: Date
     include("test_timevaryingssm_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally; reuses test_gaussianssm_bulk.jl's 364 cases
     include("test_diffuseinit.jl")
     include("test_stattools.jl")
+    include("test_ccf.jl")
     include("test_unitroot.jl")
     include("test_diagnostics.jl")
     include("test_datasets.jl")
@@ -37,6 +42,7 @@ using Dates: Date
     include("test_autoarima.jl")
     include("test_autoarima_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally
     include("test_arimax.jl")
+    include("test_arimaxforecast.jl")
     include("test_autoarimax.jl")
     include("test_forecast.jl")
     include("test_accuracy.jl")

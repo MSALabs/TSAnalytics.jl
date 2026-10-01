@@ -86,7 +86,8 @@ and a zero reference line -- the standard ACF/PACF display.
 @recipe function f(r::ACFResult)
     legend --> false
     xlabel --> "Lag"
-    ylabel --> (r.kind == :pacf ? "Partial Autocorrelation" : "Autocorrelation")
+    ylabel --> (r.kind == :pacf ? "Partial Autocorrelation" :
+                 r.kind == :ccf  ? "Cross-Correlation" : "Autocorrelation")
 
     @series begin
         seriestype := :line

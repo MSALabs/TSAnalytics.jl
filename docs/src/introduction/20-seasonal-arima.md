@@ -70,7 +70,7 @@ println("θ (regular MA) = ", round(m.theta[1], digits=4))
 println("Θ (seasonal MA) = ", round(m.Theta[1], digits=4))
 println("log-likelihood = ", round(m.loglik, digits=3), "   nobs = ", m.nobs)
 
-f = forecast(m, logy, 24)
+f = forecast(m, 24)
 plot(1:length(logy), logy; label="log(passengers)", size=(700,350))
 plot!((length(logy)+1):(length(logy)+24), f.point; ribbon=1.96 .* f.se, label="forecast", color=:red)
 ```

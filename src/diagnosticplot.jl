@@ -169,6 +169,13 @@ end
 
 diagnostic_plot(resid, m::ArimaModel; kwargs...) = diagnostic_plot(resid, m.arma; kwargs...)
 
+# Model-alone forms. Every fitted type now retains its own series, so the
+# caller no longer has to compute the residuals first and hand them back.
+diagnostic_plot(m::ArmaModel; kwargs...) =
+    diagnostic_plot(StatsAPI.residuals(m), m; kwargs...)
+diagnostic_plot(m::ArimaModel; kwargs...) =
+    diagnostic_plot(StatsAPI.residuals(m), m.arma; kwargs...)
+
 function diagnostic_plot(resid, m::SarimaModel; fitdf::Union{Nothing,Integer}=nothing,
                           lags::Union{Nothing,Integer}=nothing)
     p, _, q = m.order
@@ -176,6 +183,9 @@ function diagnostic_plot(resid, m::SarimaModel; fitdf::Union{Nothing,Integer}=no
     fd = fitdf === nothing ? 0 : fitdf
     return diagnostic_plot(resid; fitdf=fd, ppq=p + q + P + Q, period=s, lags=lags)
 end
+
+diagnostic_plot(m::SarimaModel; kwargs...) =
+    diagnostic_plot(StatsAPI.residuals(m), m; kwargs...)
 
 # ---------------------------------------------------------------------------
 # GARCH-specific diagnostic panels

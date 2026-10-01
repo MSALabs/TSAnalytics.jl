@@ -76,7 +76,7 @@ hand `fit_garch` its residuals.
 
 ```julia
 ma = fit_arma(y, (1, 1))
-mg = fit_garch(residuals(ma, y), 1, 1)
+mg = fit_garch(residuals(ma), 1, 1)
 ```
 
 Pass `mean_spec=:constant` for parity with Python's default. When you
