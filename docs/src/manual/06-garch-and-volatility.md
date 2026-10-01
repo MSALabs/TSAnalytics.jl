@@ -260,20 +260,40 @@ likelihood evaluation to parallelise.
 |---|---|
 | `dist=:t` | Accepted in the signature, throws a clear error. Normal innovations only. |
 | `gamma` order | Fixed at 1 for `:gjr`/`:egarch`. |
-| `rugarch` comparison | Do not compare likelihoods directly — see below. |
+| `rugarch` comparison | Align its `rec.init` first — see below. |
 
-!!! warning "`rugarch` seeds the variance recursion differently"
+!!! warning "`rugarch` seeds the variance recursion differently — pass `rec.init=0.94`"
     This package backcasts the first variance with an
     exponentially-weighted average of the first 75 squared residuals
-    (decay `0.94`), matching `arch` exactly. `rugarch` assigns the
-    whole-sample mean of squared residuals instead.
+    (decay `0.94`), matching `arch` exactly. `rugarch` defaults to
+    `rec.init='all'`, which seeds from the whole-sample mean of squared
+    residuals.
 
-    That single number was worth `1.05` log-likelihood units on a
-    1,260-point series. Holding parameters fixed and changing only the
-    seed reproduces `rugarch`'s likelihood to `1.58e-09` — so the
-    formulas are otherwise identical and the entire gap is the seed.
-    `rugarch` figures cannot be used as targets for anything
-    likelihood-based without aligning it first. See
+    Verified directly against `rugarch` 1.5.6 on a 1,260-point series:
+    its default seeds `sigma2[1] = 1.9016916513`, exactly `mean(e²)`,
+    and its log-likelihood at this package's own fitted parameters is
+    `-2079.60906763` against the `-2078.55638045` reported here. The
+    formulas are otherwise identical; the whole `1.05` gap is the seed.
+
+    **It is configurable away.** `rugarch`'s `rec.init` takes an EWMA
+    decay when given a value below `1`, so `rec.init=0.94` asks for this
+    package's own convention:
+
+    | `rugarch` setting | log-likelihood | gap |
+    |---|---|---|
+    | `rec.init='all'` (default) | `-2079.60250` | `1.046` |
+    | `rec.init=0.94` | `-2078.54247` | **`0.014`** |
+    | this package | `-2078.55638` | — |
+
+    Coefficients close to `~1.5e-04` as well. The residual is that
+    `rugarch`'s EWMA runs over the whole sample where this package and
+    `arch` use the first 75 observations.
+
+    Two traps in that argument. A value **at or above `1` is read as a
+    count of observations**, not as a variance — so passing a variance
+    like `1.9016` silently means "use 1 data point". And
+    `ugarchfilter` ignores `rec.init` entirely, so alignment only works
+    at fit time. See
     [Coming from R or Python](11-coming-from-r-python.md).
 
 ## See also

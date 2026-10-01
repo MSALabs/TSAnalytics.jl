@@ -131,12 +131,20 @@ backcast of the first 75 squared residuals (decay `0.94`), matching
 Python's `arch` exactly. R's `rugarch` instead assigns the whole-sample
 mean of squared residuals directly.
 
-On a 1,260-point series this was worth `1.05` log-likelihood units.
-Holding parameters fixed and changing only that seed reproduces
-`rugarch`'s likelihood to `1.58e-09`, so the formulas are otherwise
-identical — the entire gap is one number. `rugarch` figures therefore
-cannot be used as targets for anything likelihood-based without
-aligning the seed first.
+On a 1,260-point series this was worth `1.05` log-likelihood units, and
+the diagnosis is verified directly against `rugarch` 1.5.6: its default
+seeds `sigma2[1] = 1.9016916513`, exactly `mean(e²)`, and its
+log-likelihood at this package's fitted parameters is `-2079.60906763`
+against the `-2078.55638045` reported here. The formulas are otherwise
+identical; the entire gap is one number.
+
+**Align it with `rec.init=0.94`**, which asks `rugarch` for this
+package's own EWMA convention and closes the gap from `1.046` to
+`0.014` log-likelihood units, with coefficients to `1.5e-04`. Two
+traps: a `rec.init` value at or above `1` is read as a **count of
+observations** rather than a variance, so passing `1.9016` silently
+means "use one data point"; and `ugarchfilter` ignores the argument, so
+alignment works only at fit time.
 
 ### `sign_bias_test` follows `rugarch`, not the paper
 
