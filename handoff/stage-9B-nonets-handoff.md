@@ -1,6 +1,23 @@
 # Handoff: Stage 9B — Everything Else
 
-## Status: TIER 1 COMPLETE (2026-10-01)
+## Status: TIER 1 COMPLETE, 2.1 COMPLETE (2026-10-01)
+
+**§2.1 (seasonal unit-root test) is done**, and two of its premises were
+wrong:
+
+- **R's `nsdiffs` does not default to Canova-Hansen.** It defaults to
+  `test="seas"`, an STL seasonal-strength heuristic with a `0.64`
+  threshold. CH and HEGY need the separate `uroot` package and are not
+  reachable by default. Implemented R's real default plus OCSB.
+- **CRAN being unreachable did not make this single-verified.** R's
+  `forecast` 9.0.2 was already installed here, so everything was read
+  from R's source and executed. `ocsb_test` follows **R**, not
+  `pmdarima`, which differs from R on three counts with measured gaps up
+  to `1.25`.
+
+`auto_arima(y; seasonal=true, m=12)` is now fully automatic. Tier 2
+continues at 2.2 (`vcov` coverage).
+
 
 1.1, 1.2, 1.3 and 1.4 are all implemented, tested and documented. Every
 reference value in this document was **re-executed** against real R

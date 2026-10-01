@@ -120,15 +120,15 @@ support.
 
 | Missing | Consequence | Reference |
 |---|---|---|
-| Seasonal unit-root test | `D` must be passed explicitly to [`auto_arima`](@ref) | Canova-Hansen (R), OCSB (`pmdarima`) |
+| HEGY and Canova-Hansen seasonal unit-root tests | [`nsdiffs`](@ref) offers the seasonal-strength heuristic and OCSB, which is what R and `pmdarima` actually default to; `uroot`-style HEGY/CH are not built | R's `uroot` package |
 | `forecast` for `model=:tvss` | `model=:mle` forecasts with future regressors; the drifting-coefficient variant needs a projected `beta` path | R has no direct analogue |
 | Intermittent-demand methods (Croston, SBA, TSB) | Series that are mostly zeros are not served | `forecast::croston`, `statsforecast` |
 | Change-point detection | A break has to be found by eye | `changepoint` (R), `ruptures` (Python) |
 | Missing-data policy beyond the state-space path | `NaN` handling is per-function rather than uniform | — |
 
-The seasonal unit-root test is the one that shows up most often in
-practice, because it is the difference between `auto_arima(y)` being
-fully automatic and being nearly automatic.
+These are genuine gaps but narrow ones: R reaches HEGY and
+Canova-Hansen only through the separate `uroot` package, and neither is
+its default.
 
 ## The neighbouring package
 
@@ -168,10 +168,9 @@ an error you can read.
 ## Where to start
 
 If you want to contribute, the ordering that makes sense is roughly the
-order of this chapter: the seasonal unit-root test is small and
-unblocks automatic selection; full ETS is large but needs no new
-theory; VAR is the biggest single addition and opens the whole
-multivariate track behind it.
+order of this chapter: full ETS is large but needs no new theory, and
+VAR is the biggest single addition, opening the whole multivariate
+track behind it.
 
 `development-sequence.md` in the repository carries the full staged
 roadmap with dependencies — what is built, what is next, and what each

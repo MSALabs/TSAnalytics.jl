@@ -283,6 +283,7 @@ julia> m.d  # differencing order auto-selected via repeated kpss_test
 ```
 """
 function auto_arima(y; d::Union{Nothing,Integer}=nothing, D::Union{Nothing,Integer}=nothing,
+                     seasonal_test::Symbol=:seas,
                      max_p::Integer=5, max_q::Integer=5, max_P::Integer=2, max_Q::Integer=2,
                      max_order::Integer=5, max_d::Integer=2, max_D::Integer=1,
                      seasonal::Bool=false, m::Integer=1,
@@ -302,14 +303,16 @@ function auto_arima(y; d::Union{Nothing,Integer}=nothing, D::Union{Nothing,Integ
     s = 1
     if seasonal
         m >= 2 || throw(ArgumentError("seasonal=true requires m >= 2, got m=$m"))
-        D === nothing && throw(ArgumentError(
-            "auto_arima: automatic seasonal-differencing-order (D) detection is not yet " *
-            "implemented -- no Canova-Hansen/OCSB seasonal unit-root test exists in this " *
-            "project yet (handoff/stage-6.8-autoarima-handoff.md §3). Pass D explicitly " *
-            "for seasonal=true."))
-        D >= 0 || throw(ArgumentError("D must be non-negative"))
-        D <= max_D || throw(ArgumentError("D=$D exceeds max_D=$max_D"))
-        Dsel = D
+        # D is now detected when not given, by nsdiffs -- Stage 9B Tier 2.1.
+        # Default test=:seas matches R's own nsdiffs default; pass
+        # seasonal_test=:ocsb for pmdarima's convention.
+        Dsel = if D === nothing
+            nsdiffs(y, m; test=seasonal_test, max_D=max_D)
+        else
+            D >= 0 || throw(ArgumentError("D must be non-negative"))
+            D <= max_D || throw(ArgumentError("D=$D exceeds max_D=$max_D"))
+            Int(D)
+        end
         s = m
     end
 

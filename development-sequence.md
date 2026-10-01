@@ -498,6 +498,62 @@ turned up).
 
 ---
 
+## Stage 9B Tier 2.1 — seasonal unit root detection (cross-cutting)
+
+**✅ built (2026-10-01)** as `nsdiffs`/`ocsb_test`/`seasonal_strength`
+(`handoff/stage-9B-nonets-handoff.md` §2.1). `auto_arima(y; seasonal=true,
+m=12)` is now **fully automatic** -- `D` is detected when omitted, closing
+the limitation Stage 6.8 recorded and the docs described in five places.
+
+**Dual-verified, which the handoff believed impossible.** It assumed CRAN
+was unreachable and the stage would be single-verified against `pmdarima`.
+R's `forecast` 9.0.2 turned out to be *already installed* on this machine
+(the same pattern as Stage 5.2 and 7.4: a reference assumed unavailable
+that was reachable when actually tried), so `ocsb.test`, `seas.heuristic`
+and `nsdiffs` were all read from R's own source and executed directly.
+
+**The handoff's premise was wrong about which test R uses.** It said
+"Canova-Hansen (R's `forecast::nsdiffs`)". R's `nsdiffs` actually defaults
+to **`test="seas"`** -- an STL seasonal-strength heuristic with a `0.64`
+threshold -- and offers `"ocsb"`, `"hegy"` and `"ch"`, the last two
+requiring the separate `uroot` package. Canova-Hansen is not R's default
+and is not reachable without another dependency. Implemented R's actual
+default plus OCSB, and documented HEGY/CH as the remaining gap.
+
+- **`seasonal_strength(y, period)`** -- fpp3's `Fs` measure,
+  `1 - var(remainder)/var(remainder + seasonal)` clamped to `[0, 1]`, on
+  the STL settings `forecast::mstl` passes through for a single period
+  (`s.window=11`, `s.degree=0`, `inner=2`), read from R's source.
+  **Matches R to all ten printed digits** on four series once R's Loess
+  *jump* shortcut is disabled; against R's defaults it differs by
+  `1e-4`..`8e-3`, which is entirely R's interpolation and never enough to
+  move the threshold. A constant series returns `0.0` directly, since
+  decomposing one leaves floating-point noise in both components whose
+  ratio measured `0.08` and would read as a real finding.
+- **`ocsb_test(y, period; lag_method, maxlag)`** -- Osborn, Chui, Smith &
+  Birchenhall (1988), following **R's `forecast::ocsb.test`**. Matches R's
+  statistic, critical value and selected lag order exactly on five series.
+  Reports critical values rather than a p-value, since the null
+  distribution is tabulated at 5% only -- the same honesty as
+  `nyblom_test`. **`pmdarima`'s `OCSBTest` genuinely differs from R** on
+  three points (it adds a constant to the auxiliary regression, does not
+  lag `Z4`/`Z5`, and indexes lag selection differently); measured gaps run
+  to `1.25` on `AirPassengers`, so it is not usable as a cross-check. All
+  four figures recorded in the docstring.
+- **`nsdiffs(y, period; test=:seas|:ocsb, max_D)`** -- matches R's answer
+  under both tests on every fixture. `auto_arima` gained
+  `seasonal_test=:seas` and calls it when `D === nothing`.
+
+**The two tests can disagree, and that is now a worked example rather than
+a footnote.** On `log(AirPassengers)` seasonal strength is `0.96` (so
+`:seas` differences) while OCSB's statistic is `-1.951` against `-1.803`
+(so `:ocsb` does not). **R reaches both of those answers too**, so it is a
+real disagreement between accepted tests on the field's most-studied
+seasonal series, not an implementation artefact. Chapter 20 works it
+through.
+
+---
+
 ## Documentation restructuring (cross-cutting, not a numbered stage)
 
 **Skeleton ✅ built** (`handoff/docs-restructure-skeleton-handoff.md`) —

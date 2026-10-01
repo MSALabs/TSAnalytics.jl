@@ -61,8 +61,6 @@ deliberate improvements rather than incompatibilities.
 
 Stated plainly, because finding out by hitting it is worse:
 
-- **No seasonal unit-root test**, so `D` must be passed explicitly for
-  seasonal data ([Beyond the Defaults](04-beyond-defaults.md)).
 - **No `dist=:t`** for GARCH models — normal innovations only.
 - **No VAR, VECM, or multivariate models.**
 - **No `forecast`/`predict` for the regression-with-ARIMA-errors

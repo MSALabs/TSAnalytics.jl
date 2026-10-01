@@ -21,6 +21,7 @@ using Dates: Date
     include("test_stattools.jl")
     include("test_ccf.jl")
     include("test_unitroot.jl")
+    include("test_seasonalunitroot.jl")
     include("test_diagnostics.jl")
     include("test_datasets.jl")
     include("test_differencing.jl")  # after test_datasets.jl: reuses its _load_column helper

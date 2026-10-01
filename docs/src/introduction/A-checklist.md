@@ -42,7 +42,7 @@ accordingly.
 | Check | Call | Want | If not |
 |---|---|---|---|
 | How many differences? | [`kpss_test`](@ref) repeatedly, or let [`auto_arima`](@ref) do it | `d ≤ 2` | `d = 3` almost always means a transformation was skipped |
-| Seasonal differences? | Look at the series and the ACF at the seasonal lag | `D ∈ {0, 1}` | **Must be passed explicitly** — no seasonal unit-root test here yet |
+| Seasonal differences? | [`nsdiffs`](@ref), then look at the ACF at the seasonal lag | `D ∈ {0, 1}` | `auto_arima` detects it if you leave `D` out. Check it anyway — the two available tests can disagree |
 | Which `(p,q)`? | [`pacf`](@ref) and [`acf`](@ref), or `auto_arima` | A readable cutoff | Use `method=:ols` for `pacf` on a near-unit-root series; `:yw` is badly biased there |
 | Did the search find the best model? | `auto_arima(...; trace=true)` | The model you expected appears in the trace | If it never appears, the hill-climb stopped early — try `stepwise=false` |
 

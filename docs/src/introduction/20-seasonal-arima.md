@@ -141,14 +141,46 @@ chosen in practice on a real series: by looking, mostly, because the
 formal tests for a seasonal unit root are less standard and less
 trusted than the ordinary unit-root tests of Chapter 9.
 
-**This is a real limitation of this package, worth stating outright.**
-There is no Canova–Hansen or OCSB test implemented here — `D` must be
-supplied explicitly, based on exactly the kind of visual comparison
-above. R's `auto.arima` selects `D` automatically using a
-seasonal-strength test; this package does not, and a reader relying on
-automatic seasonal-order selection (Chapter 21 covers the
-non-seasonal side of that automation) needs to choose `D` by hand
-first.
+**That visual comparison is still the best way to choose `D`**, and it
+is now not the only way. [`nsdiffs`](@ref) will decide for you, and
+[`auto_arima`](@ref) calls it when `D` is left out:
+
+```@example ch20
+println("seasonal strength : ", round(seasonal_strength(logy, 12), digits=4))
+println("nsdiffs (seas)    : ", nsdiffs(logy, 12))
+println("nsdiffs (ocsb)    : ", nsdiffs(logy, 12; test=:ocsb))
+```
+
+Two tests, because the two references disagree about which to use. R's
+`nsdiffs` defaults to a **seasonal-strength heuristic** — decompose with
+STL, measure what share of the non-trend variation the seasonal
+component carries, and difference if it exceeds `0.64`. Python's
+`pmdarima` defaults to **OCSB**, a regression-based unit-root test in
+the Dickey-Fuller tradition. This package follows R by default and
+offers OCSB as `test=:ocsb`.
+
+**And on this series they disagree.** Seasonal strength is `0.96`, far
+above the threshold, so `:seas` says difference. OCSB's statistic is
+`-1.951` against a critical value of `-1.803`, below it, so `:ocsb` says
+do not. R reaches both of those answers too — this is not a quirk of
+this implementation but a real disagreement between two accepted tests
+on the most-studied seasonal series in the field.
+
+Look at the correlogram above and the answer is not in much doubt. That
+is the lesson: a seasonal unit-root test is weaker evidence than the
+ordinary kind, which is why both references treat `D` as something to
+check rather than something to trust.
+
+The seasonal-strength number is also worth reading on its own terms: it
+is a *measure*, not just a decision, and it says how seasonal this
+series is rather than only whether to difference it.
+
+A reader relying on automatic seasonal-order selection (Chapter 21
+covers the non-seasonal side of that automation) can now leave `D`
+alone. Looking at the correlogram first is still the better habit —
+a test tells you whether to difference, the plot tells you whether
+differencing *worked*, and only the second question catches the mistake
+below.
 
 ```@example ch20
 d2 = diff(diff(diff(logy), 12), 12)   # D = 2: one seasonal difference too many

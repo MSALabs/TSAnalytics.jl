@@ -29,8 +29,14 @@ using TSAnalytics, DelimitedFiles, StatsAPI
         @test m_par.arma.aic == m_ser.arma.aic
     end
 
-    @testset "seasonal requires D explicit (handoff §3 scope limitation)" begin
-        @test_throws ArgumentError auto_arima(y2; seasonal=true, m=12)
+    @testset "seasonal: D detected when omitted, honoured when given" begin
+        # Stage 9B Tier 2.1 closed the handoff's §3 scope limitation: D used to
+        # throw when omitted and is now detected by nsdiffs. The explicit-D
+        # result below is unchanged, which is the point of keeping it here.
+        m_auto = auto_arima(y2; seasonal=true, m=12, max_p=1, max_q=1)
+        @test m_auto isa SarimaModel
+        @test m_auto.seasonal_order[2] == nsdiffs(y2, 12)
+
         m = auto_arima(y2; seasonal=true, m=12, D=1, max_p=3, max_q=3, max_P=2, max_Q=2)
         @test m isa SarimaModel
         @test m.seasonal_order == (0, 1, 1, 12)

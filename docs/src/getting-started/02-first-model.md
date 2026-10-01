@@ -48,13 +48,11 @@ That is the whole fit. [`auto_arima`](@ref) searched a space of
 candidate models and returned the one that scored best, and printing it
 gives the standard coefficient table.
 
-`m=12` says the seasonal period is twelve months. `D=1` says to take one
-seasonal difference — and **you have to pass that explicitly**. The
-package does not yet have a seasonal unit-root test to decide it for
-you, which is a real gap rather than an oversight; both R and Python use
-one (Canova-Hansen, OCSB) and this package has neither yet.
-[Beyond the Defaults](04-beyond-defaults.md) says more about what to do
-meanwhile.
+`m=12` says the seasonal period is twelve months, and `D=1` takes one
+seasonal difference. **`D` is optional** — leave it out and
+`auto_arima` chooses it for you, the same way it already chooses `d`.
+It is passed here to keep this first fit explicit about what it is
+doing. [Beyond the Defaults](04-beyond-defaults.md) shows both.
 
 ## What came back
 

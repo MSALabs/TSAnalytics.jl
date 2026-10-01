@@ -36,21 +36,29 @@ ms = auto_arima(y; seasonal=true, m=12, D=1, max_p=3, max_q=3)
 println(ms.order, ms.seasonal_order, "   AIC: ", round(ms.aic, digits=3))
 ```
 
-Three keywords rather than one. `seasonal=true` turns the seasonal
-search on, `m=12` says what a season is, and **`D` must be passed
-explicitly** — which is the one place this differs from both references.
+Two keywords are enough: `seasonal=true` turns the seasonal search on
+and `m=12` says what a season is. `D` is detected if you leave it out.
 
-!!! warning "`D` cannot be auto-detected"
-    R's `auto.arima` detects `D` with the Canova-Hansen test and
-    `pmdarima` uses OCSB. Neither seasonal unit-root test exists in this
-    package yet, and defaulting `D` to an unverified guess would be
-    worse than asking. Pass it explicitly: `1` for a series with a
-    seasonal pattern that persists, `0` for one where it does not.
+```@example auto
+md = auto_arima(y; seasonal=true, m=12, max_p=2, max_q=2)   # no D
+println(md.order, md.seasonal_order, "   D found: ", md.seasonal_order[2])
+```
 
-    A seasonal plot or a [`qs_test`](@ref) on the once-differenced
-    series will usually settle it in a few seconds.
+!!! note "Which seasonal test, and why it matters"
+    `D` comes from [`nsdiffs`](@ref), whose default `test=:seas` is R's
+    own: an STL seasonal-strength measure with a `0.64` threshold.
+    `pmdarima` defaults to OCSB instead — pass `seasonal_test=:ocsb`.
 
-Ordinary `d`, by contrast, *is* detected — by repeated
+    **The two can disagree.** On `log(AirPassengers)` the strength
+    heuristic says difference and OCSB says do not, and R reaches both
+    of those answers too. A seasonal unit-root test is weaker evidence
+    than the ordinary kind, so check the result rather than trusting
+    it: a seasonal plot, or [`qs_test`](@ref) on the once-differenced
+    series, settles it in a few seconds.
+
+    Passing `D` explicitly still overrides detection.
+
+Ordinary `d` is detected the same way it always was — by repeated
 [`kpss_test`](@ref), differencing while the null of stationarity is
 rejected, up to `max_d`. Both references do the same:
 

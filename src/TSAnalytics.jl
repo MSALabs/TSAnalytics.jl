@@ -28,6 +28,7 @@ include("transforms.jl")
 include("spectral.jl")
 include("stl.jl")
 include("mstl.jl")
+include("seasonalunitroot.jl")   # after stl/mstl: seasonal_strength decomposes
 include("optim.jl")
 include("monahan.jl")
 include("arma.jl")

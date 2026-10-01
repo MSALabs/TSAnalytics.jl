@@ -6,6 +6,10 @@
 adf_test
 kpss_test
 pp_test
+nsdiffs
+ocsb_test
+OCSBTest
+seasonal_strength
 ADFTest
 KPSSTest
 PPTest

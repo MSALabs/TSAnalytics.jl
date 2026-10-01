@@ -19,6 +19,8 @@ and concluding something is broken.
 | `arima(y, order=, seasonal=)` | [`fit_sarima`](@ref)`(y, (p,d,q), (P,D,Q,s))` |
 | `arima(y, xreg=X)` | [`fit_arimax`](@ref)`(y, (p,d,q), X)` |
 | `forecast::auto.arima(y)` | [`auto_arima`](@ref)`(y)` |
+| `forecast::nsdiffs(y)` | [`nsdiffs`](@ref)`(y, m)` |
+| `forecast::ocsb.test(y)` | [`ocsb_test`](@ref) |
 | `forecast::forecast(m, h=12)` | [`forecast`](@ref)`(m, 12)` |
 | `forecast::accuracy(f, test)` | [`accuracy`](@ref) |
 | `stl(y, s.window=)` | [`stl_decompose`](@ref)`(y, period)` |
@@ -46,6 +48,8 @@ and concluding something is broken.
 | `tsa.arima.ARIMA(y, order=)` | [`fit_arima`](@ref) |
 | `tsa.statespace.SARIMAX(y, order=, seasonal_order=)` | [`fit_sarima`](@ref) / [`fit_sarimax`](@ref) |
 | `pmdarima.auto_arima(y)` | [`auto_arima`](@ref) |
+| `pmdarima.arima.nsdiffs(y, m)` | [`nsdiffs`](@ref)`(y, m; test=:ocsb)` |
+| `pmdarima.arima.OCSBTest` | [`ocsb_test`](@ref) |
 | `tsa.ar_model.AutoReg` | [`arx`](@ref) |
 | `tsa.seasonal.seasonal_decompose` | [`classical_decompose`](@ref) |
 | `tsa.seasonal.STL` | [`stl_decompose`](@ref) |
@@ -144,6 +148,30 @@ agrees with it to all eight printed digits.
 `nyblom_test` is the same situation — `rugarch` uses the outer product
 `G'G` where the paper says Hessian.
 
+### The seasonal differencing test, and which default
+
+`nsdiffs` defaults to **`test=:seas`**, R's own default: decompose with
+STL, measure the share of non-trend variation the seasonal component
+carries, difference if it exceeds `0.64`. `pmdarima` defaults to
+**OCSB**, a regression-based unit-root test. Pass `test=:ocsb` for that.
+
+**The two can reach different answers.** On `log(AirPassengers)`,
+seasonal strength is `0.96` so `:seas` says difference, while OCSB's
+statistic is `-1.951` against a critical value of `-1.803` so `:ocsb`
+says do not. R reaches both of those too, so this is a real
+disagreement between accepted tests rather than an implementation
+difference.
+
+`ocsb_test` follows **R's `forecast::ocsb.test`**, not `pmdarima`'s
+`OCSBTest`, which departs from R in three ways: it adds a constant to
+the auxiliary regression, it does not lag the `Z4`/`Z5` regressors, and
+its lag-selection index is off by one. The statistics differ by up to
+`1.25` in measured cases, so `pmdarima` figures are not a cross-check.
+Full numbers in [`ocsb_test`](@ref)'s own docstring.
+
+Neither HEGY nor Canova-Hansen is implemented. Both are reachable in R
+only through the separate `uroot` package, and neither is its default.
+
 ### `partrans` parameterisation
 
 The optimiser searches a transformed parameter space (Monahan's
@@ -156,7 +184,7 @@ objective would give plausible-looking numbers that are quietly wrong.
 
 | Missing | Note |
 |---|---|
-| Seasonal unit-root test | So `D` must be passed explicitly to `auto_arima`. R uses Canova-Hansen, `pmdarima` uses OCSB. |
+| HEGY / Canova-Hansen | [`nsdiffs`](@ref) covers R's default seasonal-strength heuristic and OCSB. HEGY and CH need R's separate `uroot` package and are not built here. |
 | A Burg PACF in **R** | Not a gap here — `pacf(method=:burg)` exists and matches `statsmodels`. **R's `pacf()` silently ignores its `method` argument**; all four of its options return the same numbers. |
 | `dist=:t` for GARCH | Normal innovations only. |
 | `forecast` for `model=:tvss` | `model=:mle` forecasts; `:tvss` does not — `beta` is a latent state there, so it needs a projected path and a second variance term. |

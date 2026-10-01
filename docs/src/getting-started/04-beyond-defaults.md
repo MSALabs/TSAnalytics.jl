@@ -42,15 +42,22 @@ julia> m_auto.order, m_auto.seasonal_order
 ((1, 1, 1), (0, 1, 1, 12))
 ```
 
-`m=12` gives the period. `D=1` takes one seasonal difference — and
-**you must supply `D` yourself.**
+`m=12` gives the period. `D=1` takes one seasonal difference — though
+**you no longer have to supply it.**
 
-!!! warning "There is no seasonal unit-root test yet"
-    `auto_arima` chooses the ordinary differencing order `d` for you,
-    by running a KPSS test repeatedly. It cannot choose `D` the same
-    way, because the seasonal equivalent is not implemented. R's
-    `auto.arima` uses the Canova-Hansen test for this and Python's
-    `pmdarima` uses OCSB; this package has neither yet.
+!!! note "`D` is detected if you leave it out"
+    `auto_arima` chooses the ordinary differencing order `d` by running
+    a KPSS test repeatedly, and now chooses `D` the same way, through
+    [`nsdiffs`](@ref).
+
+    The default test is the STL seasonal-strength heuristic R's
+    `nsdiffs` uses, with its `0.64` threshold. Pass
+    `seasonal_test=:ocsb` for the Osborn-Chui-Smith-Birchenhall test,
+    which is what `pmdarima` defaults to and what R offers as
+    `test="ocsb"`.
+
+    Supplying `D` explicitly still overrides detection, which is worth
+    doing when you have a view.
 
     Left alone, `D` defaults to `0` — so a seasonal series fitted
     without an explicit `D` will quietly get no seasonal differencing
