@@ -468,12 +468,25 @@ turned up).
   serves it. `statsmodels`' one-sided output genuinely omits the peak
   when `x` leads `y`; documented rather than worked around.
 - **`pacf(method=:burg)`** -- Burg's (1967) recursion implemented from
-  the textbook statement, validated against real `statsmodels pacf_burg`
-  to `5e-09`. **R is not a reference here**: its `pacf()` silently
-  ignores its own `method` argument, all four options returning
-  bit-identical output equal to this package's `:ywm`. Confirmed by
-  execution. (`:yw` and `:ols` equal `statsmodels`' own, so all four
-  methods now have a named reference.)
+  the textbook statement, **dual-verified**. R's `pacf()` does silently
+  ignore its own `method` argument -- all four options return
+  bit-identical output equal to this package's `:ywm`, confirmed by
+  execution -- but that does **not** mean R offers no reference, which is
+  what the first version of these notes claimed. R's real Burg estimator
+  is `ar.burg()`, and the last AR coefficient of an order-`k` Burg fit
+  *is* the lag-`k` partial autocorrelation:
+
+      sapply(1:6, function(k) tail(ar.burg(y, order.max=k, aic=FALSE)[["ar"]], 1))
+
+  R and `statsmodels.pacf_burg` agree on that to `4e-11`, and so does
+  this package, so the test tolerance is `1e-9` rather than the `1e-7`
+  first used. All four `pacf` methods have two references each.
+
+  **Found by re-running the shipped script.** `verification/stattools/burg.R`
+  did not execute as committed -- it still referenced `ets_y.csv` after the
+  fixture was renamed `burg_y.csv` on the way into the test tree. A
+  reference script that cannot be run is worth little; fixed, and running
+  it is what surfaced the `ar.burg` reference.
 - **`stl_decompose(seasonal_window=:periodic)`** -- R's `s.window="periodic"`,
   which is not a separate algorithm: R sets `s.window=10n+1`,
   `s.degree=0`, decomposes, then averages each cycle position and
@@ -571,6 +584,18 @@ variance actually needs.
 `AutoregGarchModel` all gained a `vcov` field, and `StatsAPI.vcov`/
 `stderror` are defined for all of them plus `ArimaModel`. `GarchModel`
 already *computed* its covariance matrix and threw it away.
+
+**The off-diagonals are externally verified too.** The first version of
+this testset checked only self-consistency invariants (`se == sqrt(diag)`,
+symmetry, exact reductions), which cannot detect a wrong off-diagonal
+term -- the very part retaining the matrix exists for. R's `arima`
+returns the whole thing in `var.coef`, so it is directly comparable:
+on cardox, ARMA(2,0) and SARIMA(1,1,1)(0,1,1)[12] both match R's full
+matrix to `1e-3` absolute, with `corr(ar1, ar2) = -0.98163` against R's
+`-0.98169` and `corr(ar1, ma1) = -0.92585` against `-0.92590`. The ~0.8%
+relative gap is the two optimisers' slightly different estimates plus
+R differencing its Hessian numerically where this uses ForwardDiff --
+the same tolerance the pre-existing `se`-only tests already use.
 
 Two things surfaced that were not in the handoff's scope:
 

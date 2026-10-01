@@ -283,8 +283,10 @@ error jointly, which is why it is better behaved near a unit root and why
 it is a genuinely different estimator rather than a different denominator
 on the same one.
 
-Validated against real `statsmodels.tsa.stattools.pacf_burg` to 5e-09 --
-its own printed precision -- on `test/verification/stattools/burg_y.csv`.
+Validated on `test/verification/stattools/burg_y.csv` against **both**
+references, which agree with each other to `4e-11`: R's `ar.burg()`
+(whose order-`k` final coefficient is the lag-`k` partial
+autocorrelation) and `statsmodels.tsa.stattools.pacf_burg`.
 """
 function _pacf_burg(y::AbstractVector{<:Real}, maxlag::Integer)
     n = length(y)
@@ -338,18 +340,21 @@ implemented (no `StatsBase` dependency). `method`:
   backward prediction error jointly, which makes it better behaved near
   a unit root.
 
-!!! note "`:burg` necessarily follows Python, because R has none"
-    **R's `pacf()` silently ignores its own `method` argument** --
-    verified by direct execution: `"yule-walker"`, `"burg"`, `"ols"` and
-    `"mle"` all return bit-identical output. Burg in R lives in
-    `ar.burg()`, which estimates AR coefficients rather than partial
-    autocorrelations. So R is not a reference for this option, and
-    `:burg` is validated against `statsmodels` alone.
+!!! note "R's `pacf()` ignores its own `method` argument"
+    Verified by direct execution: `"yule-walker"`, `"burg"`, `"ols"` and
+    `"mle"` all return bit-identical output from R's `pacf()`, equal to
+    this package's `:ywm`. Passing `method="burg"` there does nothing.
 
-    The other three each have a reference: `:ywm` matches R's `pacf()`
-    exactly, while `:yw` and `:ols` match statsmodels' `pacf_yw` and
-    `pacf_ols` exactly. All four were confirmed numerically this
-    session.
+    **R's actual Burg estimator is `ar.burg()`**, and it does give a
+    reference: the last AR coefficient of an order-`k` Burg fit *is* the
+    partial autocorrelation at lag `k`, so
+    `sapply(1:6, function(k) tail(ar.burg(y, order.max=k, aic=FALSE)[["ar"]], 1))`
+    yields exactly what `pacf(y, 1:6; method=:burg)` returns here. R and
+    `statsmodels` agree with each other to `4e-11` on it.
+
+    So all four methods are dual-verified: `:ywm` against R's `pacf()`,
+    `:yw` and `:ols` against statsmodels' `pacf_yw`/`pacf_ols`, and
+    `:burg` against R's `ar.burg()` and statsmodels' `pacf_burg` both.
 
 The confidence band is always the simple constant `z/sqrt(n)` (no
 Bartlett-style widening) at every lag, matching both R and statsmodels'

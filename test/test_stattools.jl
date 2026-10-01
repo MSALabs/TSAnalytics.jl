@@ -150,14 +150,19 @@ end
     # real statsmodels pacf_burg (the only available reference -- see below).
     y = vec(readdlm(joinpath(@__DIR__, "verification", "stattools", "burg_y.csv")))
 
-    SM_BURG = [0.94515892, 0.08367719, 0.73939568, 0.68095041, -0.83492890, -0.38198286]
+    # R 4.6.0 ar.burg() and statsmodels pacf_burg, both executed this session
+    # (verification/stattools/burg.R). They agree with each other to 4e-11.
+    SM_BURG = [0.9451589150, 0.0836771886, 0.7393956788,
+               0.6809504114, -0.8349288978, -0.3819828567]
     SM_YW   = [0.92801420, 0.08932240, 0.53211610, 0.29004921, -0.52704150, 0.00687497]
     SM_OLS  = [0.97182246, 0.09673555, 0.78073061, 0.87902996, -0.63856087, -0.32056007]
     R_PACF  = [0.9202807457, 0.0792418029, 0.4684062110,
                0.2150550916, -0.4616234266, 0.0163384787]
 
-    @testset "matches statsmodels pacf_burg" begin
-        @test isapprox(pacf(y, 1:6; method=:burg).values, SM_BURG; atol=1e-7)
+    @testset "matches R's ar.burg and statsmodels pacf_burg" begin
+        # tighter than the other methods' tolerance because both references
+        # agree to 4e-11 here, so there is no slack to allow for
+        @test isapprox(pacf(y, 1:6; method=:burg).values, SM_BURG; atol=1e-9)
     end
 
     @testset "the other three still match their own references" begin
@@ -168,13 +173,16 @@ end
         @test isapprox(pacf(y, 1:6; method=:ywm).values, R_PACF; atol=1e-9)
     end
 
-    @testset "R is not a reference for :burg, because R has none" begin
-        # R's pacf() silently ignores its own `method` argument -- all four of
-        # "yule-walker"/"burg"/"ols"/"mle" return bit-identical output, equal
-        # to this package's :ywm. Verified by direct execution; see
-        # verification/stattools/burg.R. So :burg follows statsmodels, and
-        # must NOT be expected to match R's single answer.
+    @testset "R's pacf() ignores its method argument; ar.burg() is the reference" begin
+        # R's pacf() returns bit-identical output for "yule-walker", "burg",
+        # "ols" and "mle" -- equal to this package's :ywm. So :burg must NOT
+        # be expected to match R's pacf() output...
         @test !isapprox(pacf(y, 1:6; method=:burg).values, R_PACF; atol=1e-3)
+        @test isapprox(pacf(y, 1:6; method=:ywm).values, R_PACF; atol=1e-9)
+        # ...while it DOES match R's real Burg estimator, ar.burg(), whose
+        # order-k final coefficient is the lag-k partial autocorrelation.
+        # Same numbers as SM_BURG above, which is the point.
+        @test isapprox(pacf(y, 1:6; method=:burg).values, SM_BURG; atol=1e-9)
     end
 
     @testset "genuinely a fourth estimator" begin

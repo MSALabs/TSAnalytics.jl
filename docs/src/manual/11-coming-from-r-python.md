@@ -185,7 +185,7 @@ objective would give plausible-looking numbers that are quietly wrong.
 | Missing | Note |
 |---|---|
 | HEGY / Canova-Hansen | [`nsdiffs`](@ref) covers R's default seasonal-strength heuristic and OCSB. HEGY and CH need R's separate `uroot` package and are not built here. |
-| A Burg PACF in **R** | Not a gap here — `pacf(method=:burg)` exists and matches `statsmodels`. **R's `pacf()` silently ignores its `method` argument**; all four of its options return the same numbers. |
+| A Burg PACF via R's `pacf()` | **R's `pacf()` silently ignores its `method` argument** — all four options return the same numbers. R's real Burg estimator is `ar.burg()`, and `pacf(method=:burg)` here matches it (and `statsmodels`' `pacf_burg`) to `4e-11`. |
 | `dist=:t` for GARCH | Normal innovations only. |
 | `forecast` for `model=:tvss` | `model=:mle` forecasts; `:tvss` does not — `beta` is a latent state there, so it needs a projected path and a second variance term. |
 | Robust SE for ARIMA in R | Not a gap here — `sandwich::vcovHC` **cannot consume an `arima` object at all**. `se_type=:robust` has no R counterpart to compare against. |

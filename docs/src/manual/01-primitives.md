@@ -111,12 +111,14 @@ result.
 !!! note "R's `pacf()` ignores its own `method` argument"
     Verified by direct execution: R's `"yule-walker"`, `"burg"`,
     `"ols"` and `"mle"` all return **bit-identical** output, equal to
-    this package's `:ywm`. Burg in R lives in `ar.burg()`, which
-    estimates AR coefficients rather than partial autocorrelations.
+    this package's `:ywm`. Passing `method="burg"` to R's `pacf()` does
+    nothing at all.
 
-    So R is not a reference for this option, and `:burg` is validated
-    against `statsmodels` alone — the one place in the package where a
-    `pacf` method has a single reference rather than two.
+    R's real Burg estimator is `ar.burg()`, and it *is* a reference —
+    the last AR coefficient of an order-`k` Burg fit is the partial
+    autocorrelation at lag `k`. R and `statsmodels` agree on it to
+    `4e-11`, and so does this package. All four methods here are
+    checked against two references, not one.
 
 Burg is a genuinely different estimator, not another denominator on the
 same one: it minimises the forward **and** backward prediction error

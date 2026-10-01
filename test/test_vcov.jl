@@ -84,6 +84,41 @@ using LinearAlgebra: diag, issymmetric
         @test -1.0 <= r <= 1.0
     end
 
+    @testset "the FULL matrix matches R's var.coef, off-diagonals included" begin
+        # Closing the one real gap in this testset's original coverage: every
+        # other check here is a self-consistency invariant, which cannot
+        # detect a wrong off-diagonal. R's `arima` returns the whole
+        # covariance matrix in `var.coef`, so it can be compared directly.
+        # Executed this session; see verification/vcov/vcov.R.
+        cx = vec(readdlm(joinpath(V, "vcov", "cardox240.csv"), ',', skipstart=1))
+
+        # R: arima(y, order=c(2,0,0))$var.coef   [ar1, ar2, intercept]
+        R_ARMA = [ 0.002064135265 -0.002045098235 -0.001386173853
+                  -0.002045098235  0.002102522498  0.001449605438
+                  -0.001386173853  0.001449605438  3.074533595118]
+        Va = vcov(fit_arma(cx, (2, 0)))
+        @test size(Va) == (3, 3)
+        @test isapprox(Va, R_ARMA; atol=1e-3)
+        # the off-diagonal specifically -- the part `se` throws away
+        @test isapprox(Va[1, 2], -0.002045098235; atol=1e-5)
+        @test isapprox(Va[1, 2] / sqrt(Va[1, 1] * Va[2, 2]), -0.9816909136; atol=1e-4)
+
+        # R: arima(y, order=c(1,1,1), seasonal=list(order=c(0,1,1), period=12))
+        R_SAR = [ 0.027776677070 -0.020965162257 -0.000064391783
+                 -0.020965162257  0.018458074817 -0.000932585043
+                 -0.000064391783 -0.000932585043  0.015758510131]
+        Vs = vcov(fit_sarima(cx, (1, 1, 1), (0, 1, 1, 12)))
+        @test size(Vs) == (3, 3)
+        @test isapprox(Vs, R_SAR; atol=1e-3)
+        @test isapprox(Vs[1, 2], -0.020965162257; atol=1e-4)
+        @test isapprox(Vs[1, 2] / sqrt(Vs[1, 1] * Vs[2, 2]), -0.9259017012; atol=1e-4)
+
+        # The ~0.8% relative gap is the two optimisers landing on slightly
+        # different estimates plus R differencing its Hessian numerically
+        # where this uses ForwardDiff -- the same tolerance the existing
+        # se-only tests already use against R.
+    end
+
     @testset "ARIMAX vcov diagonal matches the verified R standard errors" begin
         # R: arima(y, order=c(1,0,0), xreg=x) -> sqrt(diag(var.coef))
         #    ar1 0.0686772108  intercept 0.3269969227  x 0.1110204142
