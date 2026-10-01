@@ -672,6 +672,113 @@ coverage figure quoted alone is not evidence of a good interval.
 
 ---
 
+## Stage 9B Tier 2.4 — partial (cross-cutting)
+
+**Three of six items built (2026-10-02)**
+(`handoff/stage-9B-nonets-handoff.md` §2.4). Every reference was executed
+directly; `forecast::InvBoxCox`, `forecast::fourier`, `stats::ar` and
+`stats::spec.ar` all turned out reachable, so all three are dual- or
+R-verified rather than definition-only.
+
+### Bias-corrected back-transformation
+
+`boxcox_inv` gained `fvar`: pass the forecast variance on the
+*transformed* scale and it returns the **mean** of the forecast
+distribution instead of the median. Matches
+`forecast::InvBoxCox(biasadj=TRUE, fvar=)` to `4e-11` across five lambda
+values, including the two instructive degenerate cases -- `lambda = 1`
+gives a correction of exactly zero (no transform, no bias), and
+`lambda = -0.5` with `sd = 0.3` turns `100.0` into `775.0`, a 7.75x
+factor.
+
+One formula covers both branches, as R's does: at `lambda = 0` it
+collapses to the log-normal `exp(y)*(1 + fvar/2)`. R's separate
+`biasadj` flag is deliberately *not* mirrored -- R errors if it is set
+without `fvar`, so it carries no information, and supplying `fvar` is
+the request here.
+
+Chapter 7 previously demonstrated the correction by hand and stated that
+`boxcox_inv` "performs the plain, uncorrected inverse only"; it now uses
+the keyword and prints both the Taylor form and the exact log-normal
+`exp(mu + s2/2)` side by side -- they differ by `1e-4` relative at
+`s2 = 0.0248`, an order of magnitude below the `1.24%` correction, and
+the Taylor form is the one every reference implements.
+
+### `fourier_terms`
+
+`K` sine/cosine pairs at the harmonics of a period, matching
+`forecast::fourier` **column for column** on `K=2`/`m=12`,
+`K=6`/`m=12`, `K=1`/`m=4` and the `h` (future-rows) form. Several
+periods at once, with frequencies shared between them kept only once.
+
+The point is cost: seasonal dummies need `period - 1` parameters, which
+is 51 for weekly data and 47 for a daily cycle in half-hourly data,
+while these need `2K` for whatever `K` you choose. They are also
+deterministic, so the `h` form extrapolates exactly -- which is what
+makes them usable as `fit_arimax` `newexog`, verified end to end.
+
+**At `K = period/2` the sine column is dropped**: `sin(pi*t) = 0` for
+every integer `t`, so it is a zero column that would make the design
+singular. `K=6` on monthly data gives **11 columns, not 12**, and R does
+the same for the same reason. It is the one case where the count is not
+`2K`, which is why `names` is worth reading rather than assuming
+positions.
+
+### `ar_yw` and `spec_ar`
+
+`ar_yw` fits an autoregression by **Yule-Walker** with AIC order
+selection, matching R's `ar()` on *every* reported quantity: the
+selected order, the coefficients, `var.pred` (including R's
+`n/(n-(m+1))` small-sample adjustment), the whole shifted AIC sweep, the
+partial autocorrelations, and R's `floor(10*log10(n))` default
+`order.max`. `spec_ar` reads the spectral density off that fit, matching
+`stats::spec.ar` to `5e-11`.
+
+This required exposing what `_durbin_levinson` had been computing and
+discarding -- the coefficients at every order and the prediction
+variance at every order -- so it is now `_durbin_levinson_full` with the
+old pacf-only version as a thin view. `pacf` is bit-identical.
+
+Yule-Walker is the right estimator here because it **always returns a
+stationary fit**, and a non-stationary AR has no spectrum. The price is
+bias: on the 400-point AR(2) fixture a true `phi_2 = -0.4` is estimated
+at `-0.509`, enough to move the spectral peak from `0.136` to `0.159`.
+Tested against the theoretical peak at the *fitted* coefficients, since
+asserting against the true ones would be testing the estimator's bias
+under the guise of testing the spectrum.
+
+`df`/`bandwidth` are `NaN`, since both are Daniell-smoothing quantities
+with no analogue when the smoothness comes from an AR assumption; R's
+`spec.ar` does not return them either.
+
+**A real trap documented while writing this up**: `periodogram` starts
+at `1/n` and **excludes `f = 0`** while `spec_ar` includes it. On
+undifferenced cardox `spec_ar`'s global maximum is at `f = 0` with
+**eighteen times** the power of the seasonal peak -- a near-unit-root AR
+putting its mass at zero frequency, correctly -- while `periodogram`'s
+`argmax` is `1/12` only because it never looks there. Comparing `argmax`
+across the two on a trending series therefore says nothing about the
+estimators. Differenced, they agree to `0.0006`.
+
+### Found and fixed in passing
+
+`scoring.jl` (Tier 2.3) defined `_std_normal_cdf`, which `diagnostics.jl`
+already defined -- Julia was reporting *"Method definition ...
+overwritten ... incremental compilation may be fatally broken"* on every
+load. The two were algebraically identical (both route through the same
+regularized incomplete gamma), so no number was ever wrong, but a
+duplicate method in one module is a defect regardless. Removed; CRPS is
+unchanged at `0.233694977255`.
+
+### Remaining in 2.4
+
+GARCH `dist=:t` (needs a fat-tailed fixture -- the Student-t shape
+optimises to `99.998`, its upper bound, on the Gaussian
+`garch_shared.csv`), forecast combination, and the classical AutoReg
+tier. `ar_yw` is most of AutoReg's Yule-Walker half already.
+
+---
+
 ## Documentation restructuring (cross-cutting, not a numbered stage)
 
 **Skeleton ✅ built** (`handoff/docs-restructure-skeleton-handoff.md`) —

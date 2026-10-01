@@ -47,6 +47,9 @@ ACFResult
 ```@docs
 periodogram
 spectral_density
+spec_ar
+ar_yw
+ARYWFit
 PeriodogramResult
 ```
 

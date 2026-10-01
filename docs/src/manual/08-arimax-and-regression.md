@@ -136,6 +136,72 @@ Heteroskedasticity is the norm on a series that spans a lockdown.
     routine would use. The two differ by `sqrt(n/(n-k))` — about 1 %
     at typical sample sizes. Small, but not nothing.
 
+## Fourier terms, for a period too long for dummies
+
+Seasonal dummies cost `period - 1` parameters. Eleven for monthly data is
+fine. **Fifty-one for weekly data is not**, and a daily cycle in
+half-hourly data costs forty-seven. [`fourier_terms`](@ref) replaces them
+with `K` sine/cosine pairs at the harmonics of the period:
+
+```@example arimax
+f = fourier_terms(length(y), 12, 2)
+println("columns : ", f.names)
+println("size    : ", size(f.terms))
+
+mf = fit_arimax(y, (1, 1, 0), f.terms; include_mean=false)
+println("converged: ", mf.converged, "   beta: ", round.(mf.beta, digits=4))
+```
+
+Four parameters instead of eleven, and the cost scales with `K` rather
+than with the period — so a long seasonal cycle stops being a reason to
+give up on modelling the season at all.
+
+The trade is that the seasonal shape is **smooth**. `K` controls how
+wiggly: `K=1` is one sine wave, higher `K` admits sharper features, and
+at `K = period/2` the two parameterisations span the same space and cost
+the same. Pick `K` by information criterion:
+
+```@example arimax
+for K in 1:4
+    mk = fit_arimax(y, (1, 1, 0), fourier_terms(length(y), 12, K).terms; include_mean=false)
+    println("K = ", K, "   params = ", length(mk.beta),
+            "   AIC = ", round(mk.aic, digits=2))
+end
+```
+
+### They forecast, which dummies you built by hand may not
+
+Fourier terms are deterministic, so next January's value is known
+exactly — no uncertainty to propagate. That is what makes them usable
+with `forecast`, which needs future regressor values:
+
+```@example arimax
+fh = fourier_terms(length(y), 12, 2; h=12)
+fc = forecast(mf, fh.terms, 12)
+println("forecast: ", round.(fc.point[1:3], digits=4), " ...")
+```
+
+Pass `h` for the forecast period. The columns repeat with the period, so
+`fourier_terms(n, m, K; h=k)` continues exactly where `1:n` left off.
+
+!!! note "At `K = period/2` you get `2K - 1` columns, not `2K`"
+    The highest resolvable harmonic has `sin(π t) = 0` for every integer
+    `t` — a zero column that carries nothing and makes the design
+    singular. It is dropped.
+
+    ```@example arimax
+    println("K=6, m=12: ", size(fourier_terms(240, 12, 6).terms, 2), " columns")
+    println("names end: ", fourier_terms(240, 12, 6).names[end])
+    ```
+
+    R does the same for the same reason. It is the one case where the
+    column count is not `2K`, which is why `names` is worth reading
+    rather than assuming positions.
+
+`period` and `K` both accept vectors, for several periods at once —
+hourly data with daily *and* weekly cycles, say. Frequencies shared
+between periods are kept only once.
+
 ## Coefficients that drift
 
 `fit_arimax` takes `model=:tvss`, which makes `beta` a **latent

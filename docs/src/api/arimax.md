@@ -8,4 +8,5 @@ ArimaxModel
 fit_sarimax
 SarimaxModel
 auto_arimax
+fourier_terms
 ```

@@ -34,13 +34,56 @@ function boxcox(x, lambda::Real)
 end
 
 """
-    boxcox_inv(y, lambda) -> Vector{Float64}
+    boxcox_inv(y, lambda; fvar=nothing) -> Vector{Float64}
 
-Exact inverse of [`boxcox`](@ref):
+Inverse of [`boxcox`](@ref):
 ```
-x_t = exp(y_t)                  if lambda == 0
+x_t = exp(y_t)                     if lambda == 0
 x_t = (lambda*y_t + 1)^(1/lambda)  if lambda != 0
 ```
+
+Exact on *data*. On a **forecast** it is not what most people want, and
+`fvar` is the fix.
+
+## Why a back-transformed forecast needs correcting
+
+Back-transforming a point forecast gives the **median** of the forecast
+distribution on the original scale, not its mean. Box-Cox is a
+non-linear transform, so `E[g(Y)] != g(E[Y])` -- the transform does not
+commute with taking an expectation, and what survives it is the
+quantile, because quantiles *are* preserved by any monotone map.
+
+For a right-skewed back-transform (which log and any `lambda < 1` are)
+the median sits **below** the mean, so an uncorrected back-transformed
+forecast is biased low. The bias grows with the forecast variance, so it
+is worst exactly where it matters most: far out.
+
+Pass `fvar` -- the forecast variance on the **transformed** scale, i.e.
+`f.se.^2` from a [`Forecast`](@ref) of the transformed series -- to get
+the mean instead:
+
+    x_t * (1 + 0.5 * fvar_t * (1 - lambda) / x_t^(2*lambda))
+
+fpp3 §5.6. This is a second-order Taylor correction, not an exact
+expectation; it is the standard one and the same formula R's
+`forecast::InvBoxCox(biasadj=TRUE, fvar=)` applies, verified against it
+directly.
+
+At `lambda = 0` the formula reduces to `exp(y)*(1 + fvar/2)`, the
+familiar log-normal mean correction, since `x^0 = 1`.
+
+!!! note "R's `biasadj` flag has no counterpart here"
+    R takes `biasadj=TRUE` *and* `fvar=`, and errors if the flag is set
+    without the variance -- so the flag carries no information its own
+    source does not already have. Supplying `fvar` is the request here;
+    there is no separate switch to forget to set.
+
+**Whether to correct is a real choice, not an oversight to fix.** If you
+want the value the series is equally likely to fall above or below --
+and for a skewed quantity that is often the more useful summary -- the
+uncorrected median is the right answer. Correct when you need a mean:
+when the forecasts will be **summed or aggregated**, since medians do
+not add, or when feeding a calculation that assumes an expectation.
 
 # Examples
 ```jldoctest
@@ -51,10 +94,38 @@ julia> x = [1.0, 2.0, 4.0];
 julia> isapprox(boxcox_inv(boxcox(x, 0.5), 0.5), x; atol=1e-10)
 true
 ```
+
+```jldoctest
+julia> using TSAnalytics
+
+julia> round.(boxcox_inv([1.0, 1.5], 0.3), digits=8)
+2-element Vector{Float64}:
+ 2.39779016
+ 3.45058985
+
+julia> round.(boxcox_inv([1.0, 1.5], 0.3; fvar=[0.04, 0.09]), digits=8)
+2-element Vector{Float64}:
+ 2.41765351
+ 3.50228716
+```
+
+See also [`boxcox`](@ref), [`boxcox_lambda`](@ref), [`guerrero_lambda`](@ref).
 """
-function boxcox_inv(y, lambda::Real)
+function boxcox_inv(y, lambda::Real; fvar=nothing)
     yv = Float64.(collect(tsvalues(y)))
-    return lambda == 0 ? exp.(yv) : (lambda .* yv .+ 1) .^ (1 / lambda)
+    out = lambda == 0 ? exp.(yv) : (lambda .* yv .+ 1) .^ (1 / lambda)
+    fvar === nothing && return out
+
+    v = fvar isa Real ? fill(Float64(fvar), length(out)) :
+                        Float64.(collect(tsvalues(fvar)))
+    length(v) == length(out) || throw(DimensionMismatch(
+        "boxcox_inv: fvar must be a scalar or have the same length as y " *
+        "(got $(length(v)) for $(length(out)))"))
+    all(>=(0), v) || throw(ArgumentError("boxcox_inv: fvar is a variance, so it must be non-negative"))
+
+    # one formula covers both cases: at lambda=0, out^(2*lambda) is 1 and this
+    # collapses to the log-normal mean correction exp(y)*(1 + fvar/2)
+    return out .* (1 .+ 0.5 .* v .* (1 - lambda) ./ out .^ (2 * lambda))
 end
 
 "_boxcox_cv(lambda, subseries) -- Guerrero's (1993) coefficient of

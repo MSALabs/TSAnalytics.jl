@@ -119,12 +119,12 @@ end
 
 _std_normal_pdf(z::Real) = exp(-z^2 / 2) / sqrt(2pi)
 
-# Standard normal CDF from the chi-squared tail already in diagnostics.jl:
-# Z^2 ~ ChiSq(1), so _chisq_ccdf(z^2, 1) is the two-sided tail P(|Z| > |z|)
-# and half of it is the one-sided tail. The same identity arx.jl already uses
-# for its two-sided p-values -- reusing verified machinery rather than taking
-# a SpecialFunctions dependency for one `erf` call.
-_std_normal_cdf(z::Real) = z >= 0 ? 1 - _chisq_ccdf(z^2, 1) / 2 : _chisq_ccdf(z^2, 1) / 2
+# `_std_normal_cdf` is NOT redefined here. diagnostics.jl already defines it,
+# via the same regularized incomplete gamma, and an earlier version of this
+# file shadowed it -- which Julia reports as "Method definition ...
+# overwritten ... incremental compilation may be fatally broken". The two were
+# algebraically identical, so nothing was wrong with the numbers, but a
+# duplicate method in one module is a real defect regardless.
 
 """
     crps_ensemble(actual, paths) -> Float64

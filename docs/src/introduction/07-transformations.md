@@ -142,10 +142,11 @@ resid = log.(jj.value) .- X * beta_log
 sigma2 = var(resid)
 next_t = length(jj.value) + 1
 logmean_forecast = beta_log[1]*next_t + beta_log[2]
-naive_back = exp(logmean_forecast)
-corrected_back = exp(logmean_forecast + sigma2/2)
-println("naive back-transform:      ", round(naive_back, digits=3))
+naive_back = boxcox_inv([logmean_forecast], 0.0)[1]
+corrected_back = boxcox_inv([logmean_forecast], 0.0; fvar=[sigma2])[1]
+println("naive back-transform:          ", round(naive_back, digits=3))
 println("bias-corrected back-transform: ", round(corrected_back, digits=3))
+println("by hand, exp(mu + s2/2):       ", round(exp(logmean_forecast + sigma2/2), digits=3))
 ```
 
 This catches almost everyone at least once. Exponentiating the mean of
@@ -158,10 +159,29 @@ the same effect can be substantial. Whether the gap matters depends
 entirely on what was actually asked for. A median forecast is exactly
 what the naive back-transformation gives, correctly. A mean forecast —
 and most people who say "forecast" mean the mean — needs the
-correction added back in. **Checking directly**, [`boxcox_inv`](@ref)
-performs the plain, uncorrected inverse only, with no bias term applied
-automatically; a caller who wants the corrected version has to add it,
-as done above, rather than assuming the function already has.
+correction added back in.
+
+[`boxcox_inv`](@ref) does the plain inverse by default and the corrected
+one when you pass `fvar`, the forecast variance on the transformed
+scale. It is never applied automatically, because which one you want is
+a real choice rather than a default: correct when the forecasts will be
+**summed or aggregated**, since medians do not add, and leave it alone
+when you want the value the series is equally likely to fall above or
+below.
+
+The two expressions above differ, and both are printed because the
+difference is instructive. `exp(mu + s2/2)` is the **exact** log-normal
+mean. `boxcox_inv`'s `fvar` applies the second-order Taylor form
+`exp(mu)*(1 + s2/2)`, which is what R's
+`forecast::InvBoxCox(biasadj=TRUE)` uses and what generalises to any
+`lambda` — the exact form exists only for `lambda = 0`.
+
+Here `s2 = 0.0248` and they give `17.975` against `17.977`: a relative
+gap of about `1e-4`, an order of magnitude smaller than the `1.24 %`
+correction itself, so the approximation costs nothing worth having at
+this variance. It would cost more on a volatile series — but the Taylor
+form is what every reference implements, so it is also what a
+cross-language comparison will be against.
 
 ```@example ch7
 varve = dataset("varve")

@@ -218,13 +218,16 @@ autocovariances `acov[1:maxlag+1]` (index 1 = lag 0) -- "fitting
 autoregressive models of successively higher orders", per R's own
 description of `pacf()`'s algorithm.
 """
-function _durbin_levinson(acov::AbstractVector{<:Real}, maxlag::Integer)
+function _durbin_levinson_full(acov::AbstractVector{<:Real}, maxlag::Integer)
     phi = zeros(maxlag, maxlag)
     pacf_vals = zeros(maxlag)
+    vs = zeros(maxlag + 1)       # vs[m+1] = prediction error variance at order m
     v = acov[1]
+    vs[1] = v
     phi[1,1] = acov[2] / acov[1]
     pacf_vals[1] = phi[1,1]
     v *= (1 - phi[1,1]^2)
+    vs[2] = v
     for k in 2:maxlag
         s = acov[k+1]
         for j in 1:k-1
@@ -236,9 +239,17 @@ function _durbin_levinson(acov::AbstractVector{<:Real}, maxlag::Integer)
         end
         pacf_vals[k] = phi[k,k]
         v *= (1 - phi[k,k]^2)
+        vs[k+1] = v
     end
-    return pacf_vals
+    return (pacf=pacf_vals, phi=phi, v=vs)
 end
+
+# The recursion already produces the AR coefficients at every order and the
+# prediction error variance at every order; it used to return only the pacf
+# diagonal and throw both away. `_ar_yw` and `spec_ar` need them, so the full
+# version is the primitive now and this is the thin view onto it.
+_durbin_levinson(acov::AbstractVector{<:Real}, maxlag::Integer) =
+    _durbin_levinson_full(acov, maxlag).pacf
 
 """
     _pacf_ols(y, maxlag)

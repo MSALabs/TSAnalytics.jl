@@ -174,7 +174,7 @@ underlying computation, verified directly against base R's `spec.pgram`
     legend --> false
     title --> (r.kind == :spectral_density ?
                "Smoothed periodogram (df=$(round(r.df, digits=2)), bandwidth=$(round(r.bandwidth, digits=5)))" :
-               "Periodogram")
+               r.kind == :spec_ar ? "AR spectrum" : "Periodogram")
     freq, spec
 end
 

@@ -41,6 +41,8 @@ include("autoarimax.jl")
 include("forecast.jl")
 include("accuracy.jl")
 include("scoring.jl")       # after accuracy.jl and forecast.jl: uses Forecast
+include("fourier.jl")
+include("arspectral.jl")   # after spectral.jl (PeriodogramResult) and stattools.jl
 include("tscv.jl")
 include("holtwinters.jl")
 include("garch.jl")

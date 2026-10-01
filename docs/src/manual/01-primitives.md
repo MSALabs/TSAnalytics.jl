@@ -193,6 +193,79 @@ estimate with more degrees of freedom and less resolution. Base R's
 [Chapter 6](../introduction/06-the-frequency-domain.md) for why that
 matters when comparing output.
 
+## A spectrum without choosing a span
+
+```@example primitives
+dy_s = diff(y)                      # differenced: not trend-dominated
+sa = spec_ar(dy_s; n_freq=400)
+f = ar_yw(dy_s)
+println("AR order chosen by AIC: ", f.order)
+println("spec_ar peak    : ", round(sa.freq[argmax(sa.spec)], digits=5))
+println("periodogram peak: ", round(periodogram(dy_s).freq[argmax(periodogram(dy_s).spec)], digits=5))
+println("1/12            : ", round(1/12, digits=5))
+plot(sa)
+```
+
+[`spec_ar`](@ref) estimates the spectral density **parametrically** —
+fit an autoregression, then read the spectrum off the fitted model. It
+is smooth by construction, so there is no span to choose. Both methods
+land on the annual cycle here, to within `0.0006`.
+
+!!! warning "The two do not span the same frequencies"
+    `periodogram` starts at `1/n` and **excludes `f = 0`**; `spec_ar`
+    includes it. On a trending series that is the whole difference
+    between them:
+
+    ```@example primitives
+    sa_raw = spec_ar(y; n_freq=200)
+    println("spec_ar at f=0   : ", round(sa_raw.spec[1], sigdigits=4))
+    println("spec_ar at f=1/12: ", round(sa_raw.spec[argmin(abs.(sa_raw.freq .- 1/12))], sigdigits=4))
+    println("spec_ar argmax at: ", round(sa_raw.freq[argmax(sa_raw.spec)], digits=5))
+    ```
+
+    Undifferenced, `spec_ar`'s global maximum is at `f = 0` with
+    eighteen times the power of the seasonal peak — a near-unit-root AR
+    putting its mass at zero frequency, correctly. `periodogram`'s
+    `argmax` is `1/12` only because it never looks at `f = 0`.
+
+    So **comparing `argmax` across the two on a trending series tells
+    you nothing about the estimators.** Difference first, or compare
+    away from zero.
+
+That is the whole trade against [`spectral_density`](@ref):
+
+| | [`spectral_density`](@ref) | [`spec_ar`](@ref) |
+|---|---|---|
+| Smoothness from | A Daniell kernel you size | The AR assumption |
+| You choose | `spans` | `K`, or let AIC choose the order |
+| Sharper when | — | The AR assumption is close to right |
+| Risk | Over- or under-smoothing | Confidently showing a peak the chosen order invented |
+
+Neither dominates. Read both: they should agree about where the peak is,
+and a disagreement is informative rather than an error to resolve.
+
+[`ar_yw`](@ref) is the fit underneath, and useful on its own. It
+estimates an autoregression by **Yule-Walker** — solving the sample
+autocovariances rather than least squares — and selects the order by
+AIC, matching R's `ar()`:
+
+```@example primitives
+println("coefficients : ", round.(f.ar, digits=5))
+println("var_pred     : ", round(f.var_pred, digits=6))
+println("AIC is 0 at the chosen order: ", f.aic_by_order[f.order + 1] == 0.0)
+```
+
+**Yule-Walker always returns a stationary fit**, which is why it is the
+right estimator for a spectrum — a non-stationary AR has no spectrum to
+compute, and least squares will happily hand you one. The price is bias,
+appreciable near a unit root: on the 400-point AR(2) in the test suite a
+true `phi_2 = -0.4` is estimated at `-0.509`, enough to move the
+spectral peak from `0.136` to `0.159`.
+
+[`arx`](@ref) is the least-squares alternative: it takes exogenous
+regressors and an arbitrary lag subset, but makes no stationarity
+guarantee and selects no order for you.
+
 ## Stabilise a variance
 
 ```@example primitives
@@ -245,9 +318,17 @@ println("round-trips: ", isapprox(boxcox_inv(yt, lambda), y; atol=1e-8))
 ```
 
 Reversing a *forecast* needs more care than reversing the data — the
-naive back-transform gives a median rather than a mean. See
-[Chapter 7](../introduction/07-transformations.md) for the bias
-correction.
+naive back-transform gives a median rather than a mean. Pass `fvar`,
+the forecast variance on the transformed scale, for the mean:
+
+```@example primitives
+println("median : ", round(boxcox_inv([1.5], 0.3)[1], digits=6))
+println("mean   : ", round(boxcox_inv([1.5], 0.3; fvar=[0.09])[1], digits=6))
+```
+
+See [Chapter 7](../introduction/07-transformations.md) for why, and
+[Forecasting](09-forecasting-and-accuracy.md) for it applied to a real
+forecast.
 
 ## See also
 

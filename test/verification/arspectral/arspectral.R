@@ -1,0 +1,23 @@
+options(digits=12)
+suppressWarnings(suppressMessages(library(stats)))
+z <- scan("ar2.csv", quiet=TRUE)
+cat("n =", length(z), "\n\n")
+
+cat("=== ar(z) -- Yule-Walker, AIC order selection ===\n")
+a <- ar(z)
+cat("order    :", a$order, "\n")
+cat("ar       :", format(round(a$ar,10)), "\n")
+cat("var.pred :", format(round(a$var.pred,10)), "\n")
+cat("aic[1:6] :", format(round(as.numeric(a$aic)[1:6],8)), "\n")
+cat("pacf[1:4]:", format(round(as.numeric(a$partialacf)[1:4],10)), "\n")
+cat("order.max:", a$order.max, "\n\n")
+
+cat("=== ar(z, aic=FALSE, order.max=4) ===\n")
+a4 <- ar(z, aic=FALSE, order.max=4)
+cat("ar       :", format(round(a4$ar,10)), "\n")
+cat("var.pred :", format(round(a4$var.pred,10)), "\n\n")
+
+cat("=== spec.ar(z, n.freq=9) ===\n")
+s <- spec.ar(z, n.freq=9, plot=FALSE)
+cat("freq :", format(round(s$freq,8)), "\n")
+cat("spec :", format(round(s$spec,10)), "\n")

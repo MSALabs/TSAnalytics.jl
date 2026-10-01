@@ -96,3 +96,100 @@ end
         @test_throws ArgumentError boxcox_lambda(yp; bounds=(2.0, -1.0))
     end
 end
+
+@testset "boxcox_inv bias correction (Stage 9B Tier 2.4)" begin
+    # R 4.6.0 forecast::InvBoxCox(fc, lambda=, biasadj=TRUE, fvar=se^2),
+    # executed this session across five lambda values -- see
+    # verification/boxcoxbias/invboxcox.R. Agreement to 4e-11.
+    CASES = [
+        (0.3,  [1.0, 1.5, 2.0], [0.2, 0.3, 0.4],
+         [2.3977901641, 3.4505898523, 4.7907106623],
+         [2.4176535146, 3.5022871557, 4.8955074580]),
+        (0.0,  [2.0, 2.5], [0.5, 0.5],
+         [7.3890560989, 12.1824939607],
+         [8.3126881113, 13.7053057058]),
+        (1.0,  [3.0, 4.0], [0.1, 0.2],
+         [4.0, 5.0],
+         [4.0, 5.0]),
+        (-0.5, [1.2, 1.8], [0.3, 0.3],
+         [6.25, 100.0],
+         [8.88671875, 775.0]),
+        (0.75, [5.0, 6.0], [0.4, 0.6],
+         [7.9846915911, 9.7084579221],
+         [7.9917694341, 9.7229002562]),
+    ]
+
+    @testset "matches R's InvBoxCox at lambda = $lam" for (lam, fc, se, rn, ra) in CASES
+        @test isapprox(boxcox_inv(fc, lam), rn; atol=1e-8)
+        @test isapprox(boxcox_inv(fc, lam; fvar=se .^ 2), ra; atol=1e-8)
+    end
+
+    @testset "lambda = 1 means no transform, so no bias to correct" begin
+        # the (1 - lambda) factor vanishes; this is the degenerate case that
+        # catches a sign or placement error in the formula
+        fc = [3.0, 4.0]
+        @test boxcox_inv(fc, 1.0; fvar=[0.1, 0.2]) == boxcox_inv(fc, 1.0)
+        @test isapprox(boxcox_inv(fc, 1.0), [4.0, 5.0]; atol=1e-12)
+    end
+
+    @testset "lambda = 0 reduces to the log-normal mean correction" begin
+        # exp(y) * (1 + fvar/2), the familiar closed form
+        for (y, v) in ((2.0, 0.5), (0.0, 0.25), (-1.0, 1.0))
+            @test isapprox(boxcox_inv([y], 0; fvar=v)[1], exp(y) * (1 + v / 2); rtol=1e-12)
+        end
+    end
+
+    @testset "the correction is upward, and grows with the variance" begin
+        # the median of a right-skewed back-transform sits below the mean, so
+        # correcting can only raise the forecast for lambda < 1
+        fc = [1.0, 1.5, 2.0]
+        plain = boxcox_inv(fc, 0.3)
+        small = boxcox_inv(fc, 0.3; fvar=fill(0.01, 3))
+        large = boxcox_inv(fc, 0.3; fvar=fill(0.25, 3))
+        @test all(small .> plain)
+        @test all(large .> small)
+        # zero variance is no correction at all
+        @test boxcox_inv(fc, 0.3; fvar=zeros(3)) == plain
+    end
+
+    @testset "a negative lambda makes the correction large, not subtle" begin
+        # lambda = -0.5 with sd 0.3 turns 100.0 into 775.0 -- a 7.75x factor.
+        # Worth pinning: it is the case where quoting a corrected mean without
+        # looking at it would be most misleading.
+        @test isapprox(boxcox_inv([1.8], -0.5; fvar=[0.09])[1], 775.0; atol=1e-8)
+        @test boxcox_inv([1.8], -0.5; fvar=[0.09])[1] / boxcox_inv([1.8], -0.5)[1] > 7.0
+    end
+
+    @testset "fvar accepts a scalar or a vector" begin
+        fc = [1.0, 1.5, 2.0]
+        @test boxcox_inv(fc, 0.3; fvar=0.09) == boxcox_inv(fc, 0.3; fvar=fill(0.09, 3))
+    end
+
+    @testset "round-trip on data is unaffected" begin
+        x = [1.0, 2.0, 4.0, 8.0]
+        for lam in (-0.5, 0.0, 0.3, 1.0, 1.5)
+            @test isapprox(boxcox_inv(boxcox(x, lam), lam), x; atol=1e-9)
+        end
+    end
+
+    @testset "error paths" begin
+        @test_throws DimensionMismatch boxcox_inv([1.0, 2.0], 0.3; fvar=[0.1])
+        @test_throws ArgumentError boxcox_inv([1.0], 0.3; fvar=[-0.1])   # a variance
+        @test_throws ArgumentError boxcox_inv([1.0], 0.3; fvar=-1.0)
+    end
+
+    @testset "end to end: log-forecast a real series and correct it" begin
+        y = dataset("cardox").value
+        train = log.(y[1:240])
+        f = forecast(fit_sarima(train, (0, 1, 1), (0, 1, 1, 12)), 12)
+        med = boxcox_inv(f.point, 0.0)                  # median
+        mu = boxcox_inv(f.point, 0.0; fvar=f.se .^ 2)   # mean
+        @test all(mu .>= med)
+        @test all(isfinite, mu)
+        # the gap widens with the horizon, because the forecast variance does
+        @test (mu[12] - med[12]) > (mu[1] - med[1])
+        # on a tight fit the correction is small -- it is not always material,
+        # and saying so is the point
+        @test maximum((mu .- med) ./ med) < 0.01
+    end
+end

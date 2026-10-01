@@ -256,9 +256,30 @@ afternoon.
 
 If you forecast a transformed series, reversing it takes care — the
 naive back-transform gives the **median** of the forecast distribution,
-not the mean. [`boxcox_inv`](@ref) does the plain inverse;
-[Chapter 7](../introduction/07-transformations.md) has the bias
-correction and when it is worth applying.
+not the mean. Box-Cox is non-linear, so it does not commute with taking
+an expectation; what survives it is the quantile.
+
+```@example fc
+ylog = log.(train)
+flog = forecast(fit_sarima(ylog, (0,1,1), (0,1,1,12)), 12)
+med = boxcox_inv(flog.point, 0.0)                     # median
+mu  = boxcox_inv(flog.point, 0.0; fvar=flog.se .^ 2)  # mean
+println("median h=1 : ", round(med[1], digits=4), "   h=12: ", round(med[12], digits=4))
+println("mean   h=1 : ", round(mu[1],  digits=4), "   h=12: ", round(mu[12],  digits=4))
+println("gap grows with horizon: ", round(mu[12]-med[12], digits=5),
+        " vs ", round(mu[1]-med[1], digits=5))
+```
+
+`fvar` is the forecast variance on the **transformed** scale, so
+`flog.se .^ 2`. The gap widens with the horizon because the forecast
+variance does — the correction matters most exactly where forecasts are
+least certain.
+
+**Which one you want is a choice.** Correct when the forecasts will be
+**summed or aggregated**, since medians do not add, or when feeding
+something that assumes an expectation. Leave it alone when you want the
+value the series is equally likely to fall above or below.
+[Chapter 7](../introduction/07-transformations.md) works it through.
 
 ## What does not forecast yet
 
