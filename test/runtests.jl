@@ -48,6 +48,7 @@ using Dates: Date
     include("test_autoarimax.jl")
     include("test_forecast.jl")
     include("test_accuracy.jl")
+    include("test_scoring.jl")
     include("test_tscv.jl")
     include("test_holtwinters.jl")
     include("test_garch.jl")

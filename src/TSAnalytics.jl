@@ -40,6 +40,7 @@ include("arimax.jl")
 include("autoarimax.jl")
 include("forecast.jl")
 include("accuracy.jl")
+include("scoring.jl")       # after accuracy.jl and forecast.jl: uses Forecast
 include("tscv.jl")
 include("holtwinters.jl")
 include("garch.jl")

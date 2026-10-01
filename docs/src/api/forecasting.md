@@ -26,6 +26,12 @@ mape
 smape
 mase
 accuracy
+pinball_loss
+crps_normal
+crps_ensemble
+winkler_score
+interval_coverage
+interval_accuracy
 ```
 
 ## Cross-validation

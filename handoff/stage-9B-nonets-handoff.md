@@ -1,6 +1,18 @@
 # Handoff: Stage 9B — Everything Else
 
-## Status: TIER 1 COMPLETE, 2.1 + 2.2 COMPLETE (2026-10-01)
+## Status: TIER 1 COMPLETE, 2.1 + 2.2 + 2.3 COMPLETE (2026-10-01)
+
+**§2.3 (distributional forecast accuracy) is done.** Note its
+verification standard differs from the rest of the project: no reachable
+package implements these rules (`scoringRules` and `properscoring` both
+absent, R's `forecast` has none of them), so each is checked against its
+own definition -- `crps_normal` against numerical integration of the
+CRPS integral to `5e-13`, `pinball_loss` against the half-MAE identity
+and the minimised-at-the-true-quantile property, `winkler_score` against
+hand computation. Stated plainly in the manual and Appendix B rather
+than implied to be the usual dual standard.
+
+Tier 2 continues at 2.4.
 
 **§2.2 (`vcov` coverage) is done**, and its diagnosis was correct: a
 fit-path change, not an accessor. Beyond the written scope it turned up

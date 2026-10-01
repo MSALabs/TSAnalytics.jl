@@ -600,6 +600,53 @@ an exactness guard means.
 
 ---
 
+## Stage 9B Tier 2.3 — distributional forecast accuracy (cross-cutting)
+
+**✅ built (2026-10-01)** as `pinball_loss`/`crps_normal`/`crps_ensemble`/
+`winkler_score`/`interval_coverage`/`interval_accuracy` in `src/scoring.jl`
+(`handoff/stage-9B-nonets-handoff.md` §2.3, fpp3 §5.9). Before this,
+`accuracy` covered point forecasts only, so **every prediction interval
+the package emitted was unfalsifiable** -- you could see an interval was
+wide but not whether it was wide in the right places.
+
+**The verification standard here is different, and is stated as such in
+the docs.** Neither R's `scoringRules` nor Python's `properscoring` is
+reachable in this environment -- checked, not assumed -- and R's
+`forecast` has no Winkler, pinball or CRPS function, so there is no
+package output to match. Each rule is checked against its own definition
+instead:
+
+- `crps_normal`'s closed form (Gneiting & Raftery 2007) against
+  **numerical integration** of `CRPS(F,y) = int (F(x) - 1{x>=y})^2 dx`
+  via `scipy.integrate.quad`, at seven `(y, mu, sigma)` combinations.
+  Agreement to `5e-13`, which is `_chisq_ccdf`'s own tolerance rather
+  than any limit of the formula.
+- `pinball_loss` against the identity that `tau=0.5` is exactly half the
+  MAE, plus the defining property that it is minimised at the true
+  quantile (checked at three levels on 20,000 draws).
+- `winkler_score` against hand computation at two levels and both sides.
+- `crps_ensemble` against `crps_normal`, which it must converge to as the
+  draw count rises -- and against `|y - mu|` for a degenerate ensemble.
+
+Arguably a stronger check than reproducing another implementation, but a
+different one.
+
+**No new dependency.** `crps_normal` needs a standard normal CDF, which
+is derived from the `_chisq_ccdf` already in `diagnostics.jl` via
+`Z^2 ~ ChiSq(1)` -- the same identity `arx.jl` already uses for its
+two-sided p-values -- rather than taking `SpecialFunctions` for one
+`erf` call.
+
+**The worked example earns its place.** On cardox the SARIMA fit's 95%
+interval covers `0.917` of the held-out year with a Winkler score of
+`2.158`, while seasonal naive covers `1.000` with a Winkler of `4.577`:
+the benchmark has *better coverage* and is far worse, because it achieves
+it by being wide enough to contain anything. That is precisely why
+`interval_accuracy` reports coverage and Winkler together and why a
+coverage figure quoted alone is not evidence of a good interval.
+
+---
+
 ## Documentation restructuring (cross-cutting, not a numbered stage)
 
 **Skeleton ✅ built** (`handoff/docs-restructure-skeleton-handoff.md`) —

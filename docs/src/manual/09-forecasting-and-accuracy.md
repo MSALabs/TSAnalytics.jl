@@ -129,6 +129,81 @@ beat tells you a great deal.
 All four return a [`Forecast`](@ref), with intervals, so they drop into
 anything that consumes one.
 
+## Scoring the interval, not just the point
+
+Everything above scores the **point** forecast. The interval is a
+separate claim, and until you score it separately it is unfalsifiable —
+you can see that an interval is wide, but not whether it was wide in the
+right places.
+
+```@example fc
+ia = interval_accuracy(test, f)
+println("levels   : ", ia.level)
+println("coverage : ", round.(ia.coverage, digits=4))
+println("winkler  : ", round.(ia.winkler, digits=4))
+println("crps     : ", round(ia.crps, digits=6))
+```
+
+Coverage `0.83` and `0.92` against nominal `0.80` and `0.95` — close,
+on twelve points, which is as much as twelve points can tell you.
+
+| Measure | Scores | Lower is better |
+|---|---|---|
+| [`interval_coverage`](@ref) | How often the actual fell inside | No — compare to nominal |
+| [`winkler_score`](@ref) | Width, plus a steep penalty for missing | Yes |
+| [`crps_normal`](@ref) | The whole predictive distribution, in data units | Yes |
+| [`pinball_loss`](@ref) | A single quantile | Yes |
+
+### Coverage alone will mislead you
+
+```@example fc
+bad = interval_accuracy(test, seasonal_naive(train, 12, 12))
+println("model  : coverage ", round(ia.coverage[2], digits=3),
+        "   winkler ", round(ia.winkler[2], digits=3))
+println("snaive : coverage ", round(bad.coverage[2], digits=3),
+        "   winkler ", round(bad.winkler[2], digits=3))
+```
+
+**The benchmark has better 95 % coverage than the model and is far
+worse.** It achieves `1.00` by being wide enough to contain anything,
+and the Winkler score says so — it charges for width as well as for
+misses, which is exactly the trade coverage cannot see.
+
+That is why [`interval_accuracy`](@ref) reports them together, and why a
+coverage figure quoted on its own is not evidence of a good interval.
+
+### CRPS
+
+[`crps_normal`](@ref) scores the whole predictive distribution rather
+than a point or an interval, in the units of the data. It reduces to the
+absolute error as the distribution collapses to a point, which makes it
+directly comparable with MAE:
+
+```@example fc
+println("crps : ", round(ia.crps, digits=5))
+println("mae  : ", round(mae(test, f.point), digits=5))
+println("crps of a degenerate forecast: ",
+        round(crps_normal([3.0], 2.5, 1e-8), digits=6), "   |3 - 2.5| = 0.5")
+```
+
+For a simulated predictive distribution — EGARCH, where
+[`forecast_volatility`](@ref) has no closed form — use
+[`crps_ensemble`](@ref) on the draws instead. Scoring simulated paths
+with a Gaussian rule would assume away the reason they were simulated.
+
+!!! note "These are checked against their definitions, not another package"
+    Neither R's `scoringRules` nor Python's `properscoring` is reachable
+    in this project's environment, and R's `forecast` has no Winkler,
+    pinball or CRPS function. So `crps_normal`'s closed form is verified
+    against **numerical integration of the CRPS definition** instead,
+    agreeing to `5e-13`; `pinball_loss` against the identity that it is
+    half the MAE at the median; `winkler_score` against hand
+    computation.
+
+    Arguably a stronger check than reproducing another implementation,
+    but a different one — worth knowing which you have. See
+    [Appendix B](../introduction/B-verification.md).
+
 ## One split is one sample
 
 A single train/test split measures how the model did on one particular

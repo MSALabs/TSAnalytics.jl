@@ -142,6 +142,31 @@ with `JULIA_NUM_THREADS=4`, so the threaded paths are genuinely
 exercised. The numbers you read in the output blocks were produced by
 running the code immediately above them.
 
+## Where the standard is weaker, and where it is different
+
+Two places depart from the dual-reference norm, and both say so at the
+point of use rather than only here.
+
+**Single-verified.** The ETS work is validated against `statsmodels`
+alone, because `forecast::ets()` could not be obtained. Its stage notes
+state this.
+
+**Verified against the definition instead of a package.** The
+distributional scoring rules — [`crps_normal`](@ref),
+[`pinball_loss`](@ref), [`winkler_score`](@ref) — have no reachable
+reference implementation at all: neither R's `scoringRules` nor Python's
+`properscoring` is installed here, and R's `forecast` carries none of
+them. So `crps_normal`'s closed form is checked against **numerical
+integration of the CRPS integral** (agreeing to `5e-13`),
+`pinball_loss` against the identity that it is half the MAE at the
+median *and* the defining property that it is minimised at the true
+quantile, and `winkler_score` against hand computation.
+
+That is arguably a *stronger* check than reproducing another
+implementation — a package can be wrong, a definition cannot — but it is
+a different kind of check, and a reader comparing numbers across
+languages should know which one they are relying on.
+
 ## The honest limits
 
 Verification establishes agreement with a reference. It does not
