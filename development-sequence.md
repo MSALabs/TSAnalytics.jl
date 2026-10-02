@@ -770,12 +770,78 @@ regularized incomplete gamma), so no number was ever wrong, but a
 duplicate method in one module is a defect regardless. Removed; CRPS is
 unchanged at `0.233694977255`.
 
+### GARCH `dist=:t`
+
+**✅ built**, and **dual-verified** -- both references were reachable.
+Standardized Student-t innovations (`z = e/sigma` has unit variance, so
+`sigma2` stays the conditional variance and remains comparable with the
+Gaussian fit's), adding one estimated `shape` parameter carried through
+`coef`/`stderror`/`vcov`.
+
+Agreement with Python `arch` `dist='t'` is **3e-08** in log-likelihood,
+and with `rugarch` `distribution.model="std"` to `1e-4` once
+`rec.init=0.94` aligns the variance seed (the remaining gap being
+`rugarch`'s whole-sample EWMA against this package's first-75 window).
+On the purpose-built fixture `nu` comes back `5.2696` against `arch`'s
+`5.26961` where the generating process had `nu = 5`, and the Student-t
+fit beats the Gaussian one by **72.9** log-likelihood units. On real
+`sp500.gr` returns it gives `nu = 8.97` for 30 log-likelihood units.
+
+**A fixture had to be built for it.** `garch_shared.csv` is Gaussian,
+and on it the Student-t shape optimises to `99.998` -- its upper bound
+-- so it cannot exercise the code at all.
+`verification/garcht/garch_t.csv` is 2,000 points of GARCH(1,1) with
+standardized t(5) innovations, sample kurtosis `5.89`.
+
+`nu` is bounded to `[2.05, 500]` by a scaled logistic: below `2` the
+variance does not exist so standardizing is undefined, and above, the
+likelihood is monotone in `nu` on near-Gaussian data and an unbounded
+transform overflows. `arch` bounds it identically. A fitted `nu` at the
+bound is a boundary result, not an estimate.
+
+**The simulation path needed fixing too.** `_simulate_one_path` drew
+`randn` regardless of the fitted distribution, which would have left
+every quantile taken from `variance_paths` with the wrong tails while
+the mean variance forecast looked fine (`E[z^2] = 1` either way). It
+now draws through `_sim_shock`, which needed a Marsaglia-Tsang gamma
+sampler since `nu` is estimated and the chi-squared degrees of freedom
+are therefore not an integer. `_loggamma` was **reused** from
+`diagnostics.jl` rather than redefined.
+
+### Forecast combination
+
+**✅ built** as `combine_forecasts` (Bates & Granger 1969; Montgomery
+section 7.5). Equal weights by default; supplied weights are normalised.
+
+**No package reference exists, and that was checked rather than
+assumed**: R's `forecast` has no combination function, and
+`forecastHybrid::hybridModel` averages point forecasts but rebuilds
+intervals from combined *residuals*, which needs the fitted objects
+rather than their forecasts -- a different operation. Verified against
+the definition plus the properties a combination must have.
+
+**The honest result is documented rather than glossed.** On the cardox
+hold-out the equal-weight combination scores RMSE `0.965` against a best
+component of `0.431` and a component mean of `1.323`: it beats the
+average component and loses to the best one. Pairing two *comparable*
+SARIMAs does not fix it either -- `0.431` and `0.215` combine to `0.266`,
+landing between them, because forecasts from similar models on the same
+data have strongly positively correlated errors and diversify little.
+Both facts are pinned as tests. The case for combining is **robustness,
+not optimality**.
+
+The combined standard error is `sqrt(sum(w_i^2 se_i^2))`, the variance
+of a weighted mean assuming **independent** component errors -- which
+they are not, so it understates the spread. Combining a forecast with
+itself shrinks its standard error by `sqrt(2)`, which is the assumption
+showing itself, and is asserted as such. Doing better needs the
+covariance of the component errors, which needs a joint error history a
+`Forecast` does not carry.
+
 ### Remaining in 2.4
 
-GARCH `dist=:t` (needs a fat-tailed fixture -- the Student-t shape
-optimises to `99.998`, its upper bound, on the Gaussian
-`garch_shared.csv`), forecast combination, and the classical AutoReg
-tier. `ar_yw` is most of AutoReg's Yule-Walker half already.
+The classical AutoReg tier only. `ar_yw` is most of its Yule-Walker
+half already.
 
 ---
 

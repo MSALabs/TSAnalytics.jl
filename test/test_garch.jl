@@ -67,9 +67,17 @@ using DelimitedFiles, StatsAPI
         @test_throws ArgumentError fit_garch(e, 1, 1; mean_spec=:bogus)
     end
 
-    @testset "dist=:t deliberately not yet implemented" begin
-        @test_throws ArgumentError fit_garch(e, 1, 1; dist=:t)
+    @testset "dist=:t landed in Stage 9B Tier 2.4; other distributions refuse" begin
+        # This asserted that dist=:t throws. It is implemented now -- see
+        # test_garcht.jl for the dual-verified fit. On THIS fixture, which is
+        # Gaussian, the shape runs to its upper bound, which is the honest
+        # outcome and is why a separate fat-tailed fixture had to be built.
+        mt = fit_garch(e, 1, 1; dist=:t)
+        @test mt.dist == :t
+        @test mt.shape > 100                     # at the bound: no fat tails here
+        @test mt.loglik - fit_garch(e, 1, 1).loglik < 1.0
         @test_throws ArgumentError fit_garch(e, 1, 1; dist=:bogus)
+        @test_throws ArgumentError fit_garch(e, 1, 1; dist=:ged)
     end
 
     @testset "n_restarts multi-start: never worse than single start" begin

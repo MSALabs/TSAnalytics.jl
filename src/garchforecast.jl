@@ -96,10 +96,58 @@ function _egarch_analytic_forecast_h1(m::GarchModel)
     return exp(ls2)
 end
 
+"""
+_sim_shock(rng, m) -- one standardized innovation draw for a simulation
+path, matching the fitted model's own distribution.
+
+For `dist=:normal` this is `randn`. For `dist=:t` it is a **standardized**
+Student-t draw: `t_nu / sqrt(nu/(nu-2))`, so the shock has unit variance
+and the simulated variance recursion means the same thing as the fitted
+one. Drawing `randn` for a t-fitted model would simulate paths with the
+wrong tails -- the error would not show up in the mean variance forecast,
+where `E[z^2] = 1` either way, but it would corrupt every quantile taken
+from `variance_paths`, which is the main reason to simulate at all.
+
+`t_nu = Z/sqrt(V/nu)` with `V ~ chi-squared(nu)`, and `V` is built as a
+sum of squared normals for integer `nu` or via a gamma draw otherwise --
+`nu` is estimated and generally not an integer.
+"""
+function _sim_shock(rng, m::GarchModel)
+    m.dist === :t || return randn(rng)
+    nu = m.shape
+    v = 2 * _rand_gamma(rng, nu / 2)        # chi-squared(nu) = 2 * Gamma(nu/2, 1)
+    t = randn(rng) / sqrt(v / nu)
+    return t / sqrt(nu / (nu - 2))
+end
+
+"_rand_gamma(rng, a) -- one Gamma(a, 1) draw by Marsaglia & Tsang's (2000)
+squeeze method, with Johnk's boost for `a < 1`. Needed because `nu` is
+estimated and so the chi-squared degrees of freedom are not an integer,
+which rules out summing squared normals; and because this package takes
+no `Distributions.jl` dependency."
+function _rand_gamma(rng, a::Real)
+    if a < 1
+        # Johnk/Best boost: Gamma(a) = Gamma(a+1) * U^(1/a)
+        return _rand_gamma(rng, a + 1) * rand(rng)^(1 / a)
+    end
+    d = a - 1 / 3
+    c = 1 / sqrt(9d)
+    while true
+        x = randn(rng)
+        v = (1 + c * x)^3
+        v <= 0 && continue
+        u = rand(rng)
+        if log(u) < 0.5 * x^2 + d - d * v + d * log(v)
+            return d * v
+        end
+    end
+end
+
 "_simulate_one_path(m, horizon, rng) -- one Monte Carlo simulated
 variance path, `horizon` steps past the end of the fitted sample,
-standard-normal shocks (matching this project's `dist=:normal`-only
-scope -- see [`fit_garch`](@ref)). Sequential by construction *within*
+shocks drawn from the fitted model's own innovation distribution via
+[`_sim_shock`](@ref) -- standard normal for `dist=:normal`, a
+standardized Student-t for `dist=:t`. Sequential by construction *within*
 one path (each step's shock and variance depend on the previous step's),
 the same structural reason every other recursion in this module is --
 but the `simulations` independent paths themselves share no state
@@ -129,7 +177,7 @@ function _simulate_one_path(m::GarchModel, horizon::Integer, rng::Random.Abstrac
             end
             lnsigma2_ext[mlag + h] = ls2
             s2 = exp(ls2)
-            shock = randn(rng)
+            shock = _sim_shock(rng, m)
             z_ext[mlag + h] = shock
             absz_ext[mlag + h] = abs(shock)
             path[h] = s2
@@ -150,7 +198,7 @@ function _simulate_one_path(m::GarchModel, horizon::Integer, rng::Random.Abstrac
                 s2 += m.beta[k] * sigma2_ext[mlag + h - k]
             end
             sigma2_ext[mlag + h] = s2
-            shock = randn(rng)
+            shock = _sim_shock(rng, m)
             e = shock * sqrt(s2)
             e2_ext[mlag + h] = e^2
             has_g && (asym_ext[mlag + h] = e < 0 ? e^2 : 0.0)

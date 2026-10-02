@@ -51,6 +51,8 @@ struct GarchModel <: UnivariateModel
     q::Int
     cov_type::Symbol
     converged::Bool
+    dist::Symbol
+    shape::Union{Nothing,Float64}
 end
 
 StatsAPI.loglikelihood(m::GarchModel) = m.loglik
@@ -58,7 +60,8 @@ StatsAPI.aic(m::GarchModel) = m.aic
 StatsAPI.bic(m::GarchModel) = m.bic
 StatsAPI.nobs(m::GarchModel) = m.nobs
 StatsAPI.coef(m::GarchModel) = vcat(m.mu === nothing ? Float64[] : [m.mu], m.omega, m.alpha,
-                                     m.gamma === nothing ? Float64[] : m.gamma, m.beta)
+                                     m.gamma === nothing ? Float64[] : m.gamma, m.beta,
+                                     m.shape === nothing ? Float64[] : [m.shape])
 StatsAPI.residuals(m::GarchModel) = m.resid
 
 "_garch_backcast(e, tau) -- exponentially-weighted (0.94^i, normalized)
@@ -214,6 +217,44 @@ recursion produced it."
 function _neg_ll_from_sigma2(e::AbstractVector, sigma2::AbstractVector)
     return @. 0.5 * (log(2 * pi) + log(sigma2) + e^2 / sigma2)
 end
+
+"_neg_ll_t_from_sigma2(e, sigma2, nu) -- per-observation negative
+log-likelihood for **standardized** Student-t innovations with `nu`
+degrees of freedom, i.e. `z = e/sigma` having unit variance rather than
+the raw `t_nu` variance `nu/(nu-2)`:
+
+    lgamma((nu+1)/2) - lgamma(nu/2) - log(pi*(nu-2))/2
+      - log(sigma2)/2 - ((nu+1)/2)*log(1 + e^2/(sigma2*(nu-2)))
+
+negated. Matches `arch.univariate.distribution.StudentsT.loglikelihood`
+term for term (read from source) and `rugarch`'s `distribution.model='std'`.
+
+The standardization is the part worth stating: `nu/(nu-2)` is divided
+out, so `sigma2` remains the conditional *variance* and is directly
+comparable with the Gaussian fit's. Without it `sigma2` would be a
+scale parameter and the two distributions' omega/alpha/beta would not
+mean the same thing.
+
+Requires `nu > 2`, since the variance does not exist at or below that --
+which is what the fit's reparametrization enforces by construction.
+Uses this package's own `_loggamma` (diagnostics.jl), a Lanczos
+approximation in elementary functions and therefore ForwardDiff-safe,
+which matters because `nu` is an estimated parameter."
+function _neg_ll_t_from_sigma2(e::AbstractVector, sigma2::AbstractVector, nu::Real)
+    c = _loggamma((nu + 1) / 2) - _loggamma(nu / 2) - log(pi * (nu - 2)) / 2
+    return @. -(c - 0.5 * log(sigma2) - ((nu + 1) / 2) * log1p(e^2 / (sigma2 * (nu - 2))))
+end
+
+"_t_shape_from_raw(raw) / _t_shape_to_raw(nu) -- the unconstrained
+<-> (NU_LO, NU_HI) map for the Student-t shape parameter, a scaled
+logistic. Bounded rather than `2 + exp(raw)` because on near-Gaussian
+data the likelihood is monotone in `nu` and an unbounded transform runs
+to overflow; `arch` bounds it at `[2.05, 500]` for the same reason and
+those are the bounds used here."
+const NU_LO = 2.05
+const NU_HI = 500.0
+_t_shape_from_raw(raw::Real) = NU_LO + (NU_HI - NU_LO) / (1 + exp(-raw))
+_t_shape_to_raw(nu::Real) = -log((NU_HI - NU_LO) / (nu - NU_LO) - 1)
 
 "_garch_unpack(raw, p, q, has_mean) -- maps the unconstrained optimizer
 vector to `(mu, omega, alpha, beta)`. `omega = exp(raw[i])` enforces
@@ -391,12 +432,28 @@ for parity with Python's default -- when used, `mu` is estimated
 sample mean first, the same "joint, not naive pre-demean" choice already
 made for `fit_arma`'s `include_mean` (Stage 6.5).
 
-**`dist=:normal` is the only distribution currently implemented.**
-`dist=:t` is accepted in the signature (documented future extension) but
-throws a clear `ArgumentError` rather than silently falling back --
-Python's `arch_model(dist='t')` needs an additional estimated
-degrees-of-freedom shape parameter and its own log-likelihood, genuinely
-new scope no handoff so far provides verified ground truth for.
+**`dist=:normal` (default) or `dist=:t`.** `:t` fits **standardized**
+Student-t innovations -- `z = e/sigma` has unit variance, so `sigma2`
+stays the conditional variance and remains comparable with the Gaussian
+fit's -- adding one estimated degrees-of-freedom parameter, `shape`,
+reported in `m.shape` and included in `coef`, `se` and `vcov`.
+
+Matching `arch_model(dist='t')` and `rugarch`'s
+`distribution.model="std"`. On the bundled fat-tailed fixture
+(`test/verification/garcht/`, kurtosis `5.89`) this package agrees with
+`arch` to `3e-08` in log-likelihood and recovers `nu = 5.2696` against
+`arch`'s `5.26961`, where the generating process had `nu = 5`. The
+Student-t fit beats the Gaussian one by **72.9** log-likelihood units on
+that series, which is what fat tails are worth when they are really
+there.
+
+`nu` is bounded to `[2.05, 500]` by a scaled logistic. Below `2` the
+variance does not exist, so the standardization is undefined; the upper
+bound matters because on near-Gaussian data the likelihood is monotone
+in `nu` and an unbounded transform runs to overflow. `arch` bounds it
+identically, and for the same reason. **A fitted `nu` at `500` means the
+data saw no fat tails** -- a boundary result, not an estimate, and its
+standard error is not interpretable.
 
 **`cov_type` defaults to `:robust`**, matching Python's default and
 standard GARCH practice (financial returns routinely violate conditional
@@ -475,9 +532,8 @@ function fit_garch(y, p::Integer=1, q::Integer=1;
                     start_params::Union{Nothing,Vector{Float64}}=nothing)
     model in (:garch, :gjr, :egarch) || throw(ArgumentError("model must be :garch, :gjr, or :egarch"))
     mean_spec in (:zero, :constant) || throw(ArgumentError("mean_spec must be :zero or :constant"))
-    dist == :normal || throw(ArgumentError(
-        "dist=:t is not yet implemented (needs an estimated degrees-of-freedom shape " *
-        "parameter and its own log-likelihood) -- use :normal"))
+    dist in (:normal, :t) || throw(ArgumentError(
+        "dist must be :normal or :t, got :$dist"))
     cov_type in (:robust, :classic) || throw(ArgumentError("cov_type must be :robust or :classic"))
     p >= 1 || throw(ArgumentError("p (ARCH order) must be >= 1"))
     q >= 0 || throw(ArgumentError("q (GARCH order) must be >= 0"))
@@ -487,7 +543,8 @@ function fit_garch(y, p::Integer=1, q::Integer=1;
     n = length(yv)
     has_mean = mean_spec == :constant
     has_gamma = model != :garch
-    nparam = (has_mean ? 1 : 0) + 1 + p + q + (has_gamma ? 1 : 0)
+    has_shape = dist === :t
+    nparam = (has_mean ? 1 : 0) + 1 + p + q + (has_gamma ? 1 : 0) + (has_shape ? 1 : 0)
     n > nparam || throw(ArgumentError("fit_garch: not enough observations ($n) for p=$p, q=$q" *
                                        (has_mean ? " with a mean" : "")))
 
@@ -513,10 +570,16 @@ function fit_garch(y, p::Integer=1, q::Integer=1;
         model == :gjr ? _gjr_sigma2_path(e, omega, alpha, gamma[1], beta, backcast) :
         _egarch_sigma2_path(e, omega, alpha, gamma[1], beta, backcast_ln)
 
+    # The shape parameter rides on the END of the raw vector, so the three
+    # model-specific unpacks stay untouched and know nothing about `dist`.
+    neg_ll(e, sigma2, raw) = has_shape ?
+        _neg_ll_t_from_sigma2(e, sigma2, _t_shape_from_raw(raw[end])) :
+        _neg_ll_from_sigma2(e, sigma2)
+
     objective(raw::AbstractVector) = begin
         mu, omega, alpha, gamma, beta = unpack(raw)
         sigma2 = sigma2_of(yv .- mu, omega, alpha, gamma, beta)
-        s = sum(_neg_ll_from_sigma2(yv .- mu, sigma2))
+        s = sum(neg_ll(yv .- mu, sigma2, raw))
         isfinite(s) ? s : oftype(s, 1e10)
     end
 
@@ -525,10 +588,12 @@ function fit_garch(y, p::Integer=1, q::Integer=1;
             throw(ArgumentError("start_params must have length p+q+1$(has_mean ? "+1" : "")$(has_gamma ? "+1" : "") = $nparam"))
         start_params
     elseif model == :egarch
-        _egarch_start_raw(p, q, has_mean, mu0, var(e0), 0.90, 0.1, -0.05)
+        vcat(_egarch_start_raw(p, q, has_mean, mu0, var(e0), 0.90, 0.1, -0.05),
+              has_shape ? [_t_shape_to_raw(8.0)] : Float64[])
     else
-        _garch_start_raw(p, q, has_mean, mu0, var(e0), q > 0 ? 0.05 : 0.3, q > 0 ? 0.90 : 0.0;
-                          gjr=(model == :gjr))
+        vcat(_garch_start_raw(p, q, has_mean, mu0, var(e0), q > 0 ? 0.05 : 0.3,
+                               q > 0 ? 0.90 : 0.0; gjr=(model == :gjr)),
+              has_shape ? [_t_shape_to_raw(8.0)] : Float64[])
     end
 
     starts = Vector{Vector{Float64}}(undef, n_restarts)
@@ -546,6 +611,9 @@ function fit_garch(y, p::Integer=1, q::Integer=1;
             alpha0 = q > 0 ? alpha0 : persistence
             starts[i] = _garch_start_raw(p, q, has_mean, mu0, var(e0), alpha0, beta0; gjr=(model == :gjr))
         end
+        # the randomized restarts vary the shape too, or every restart would
+        # begin from the same nu and explore only the variance parameters
+        has_shape && (starts[i] = vcat(starts[i], _t_shape_to_raw(3.0 + 20 * rand(rng))))
     end
 
     results = Vector{Any}(undef, n_restarts)
@@ -580,8 +648,10 @@ function fit_garch(y, p::Integer=1, q::Integer=1;
     sigma2_hat = sigma2_of(e_hat, omega_hat, alpha_hat, gamma_hat, beta_hat)
     loglik = -best_obj
 
+    shape_hat = has_shape ? _t_shape_from_raw(n0[end]) : nothing
     params_natural = vcat(has_mean ? [mu_hat] : Float64[], omega_hat, alpha_hat,
-                           gamma_hat === nothing ? Float64[] : gamma_hat, beta_hat)
+                           gamma_hat === nothing ? Float64[] : gamma_hat, beta_hat,
+                           has_shape ? [shape_hat] : Float64[])
     natural_contributions(np::AbstractVector) = begin
         i = 1
         mu = has_mean ? np[i] : zero(eltype(np))
@@ -593,8 +663,14 @@ function fit_garch(y, p::Integer=1, q::Integer=1;
         gamma = has_gamma ? [np[i]] : nothing
         has_gamma && (i += 1)
         beta = q > 0 ? np[i:(i + q - 1)] : eltype(np)[]
+        i += q
         sigma2 = sigma2_of(yv .- mu, omega, alpha, gamma, beta)
-        _neg_ll_from_sigma2(yv .- mu, sigma2)
+        # nu is differentiated on its NATURAL scale here, like every other
+        # parameter -- the bounded transform exists for the optimizer, not for
+        # the covariance, and taking the Hessian through it would give a
+        # standard error for the raw coordinate rather than for nu itself.
+        has_shape ? _neg_ll_t_from_sigma2(yv .- mu, sigma2, np[i]) :
+                     _neg_ll_from_sigma2(yv .- mu, sigma2)
     end
 
     H = ForwardDiff.hessian(np -> sum(natural_contributions(np)), params_natural) ./ n
@@ -620,7 +696,8 @@ function fit_garch(y, p::Integer=1, q::Integer=1;
 
     return GarchModel(model, omega_hat, alpha_hat, gamma_hat, beta_hat, mean_spec,
                        has_mean ? mu_hat : nothing, sigma2_hat, e_hat, se, Matrix(covmat),
-                       loglik, aic, bic, n, p, q, cov_type, result.converged)
+                       loglik, aic, bic, n, p, q, cov_type, result.converged,
+                       dist, shape_hat)
 end
 
 """
@@ -681,14 +758,15 @@ function Base.show(io::IO, m::GarchModel)
     label = m.model == :garch ? "GARCH" : m.model == :gjr ? "GJR-GARCH" : "EGARCH"
     names = vcat(m.mu !== nothing ? ["mu"] : String[], ["omega"],
                  ["alpha$i" for i in 1:m.p], m.gamma !== nothing ? ["gamma1"] : String[],
-                 ["beta$i" for i in 1:m.q])
+                 ["beta$i" for i in 1:m.q], m.shape !== nothing ? ["nu"] : String[])
     coefs = vcat(m.mu !== nothing ? [m.mu] : Float64[], m.omega, m.alpha,
-                  m.gamma !== nothing ? m.gamma : Float64[], m.beta)
+                  m.gamma !== nothing ? m.gamma : Float64[], m.beta,
+                  m.shape !== nothing ? [m.shape] : Float64[])
     z = coefs ./ m.se
     pval = _chisq_ccdf.(z .^ 2, 1)
     ct = StatsBase.CoefTable(hcat(coefs, m.se, z, pval), ["Coef.", "Std. Error", "z", "Pr(>|z|)"], names)
     println(io, label, "(", m.p, ",", m.q, ")", m.mu !== nothing ? " with mean" : "",
-            ", n=", m.nobs, " (cov: ", m.cov_type, ")")
+            ", n=", m.nobs, " (", m.dist == :t ? "Student-t, " : "", "cov: ", m.cov_type, ")")
     println(io)
     println(io, ct)
     print(io, "Log-likelihood: ", round(m.loglik, digits=2),

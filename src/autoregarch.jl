@@ -358,7 +358,8 @@ function fit_autoreg_garch(y, m::Integer, exog;
     garch_se = se[(k + m + 1):end]
     garch_vc = vc[(k + m + 1):end, (k + m + 1):end]
     garch = GarchModel(:garch, omega_hat, alpha_hat, nothing, ggbeta_hat, :zero, nothing, h_hat, e_hat,
-                        garch_se, garch_vc, loglik, aic, bic, n0, p, q, :classic, result.converged)
+                        garch_se, garch_vc, loglik, aic, bic, n0, p, q, :classic,
+                        result.converged, :normal, nothing)
 
     return AutoregGarchModel(beta_hat, phi_hat, garch, loglik, aic, bic, n0, se, vc, result.converged)
 end

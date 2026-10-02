@@ -32,6 +32,7 @@ crps_ensemble
 winkler_score
 interval_coverage
 interval_accuracy
+combine_forecasts
 ```
 
 ## Cross-validation

@@ -1,6 +1,27 @@
 # Handoff: Stage 9B — Everything Else
 
-## Status: TIER 1 COMPLETE, 2.1 + 2.2 + 2.3 COMPLETE (2026-10-01)
+## Status: TIER 1 COMPLETE, 2.1-2.3 COMPLETE, 2.4 NEARLY (2026-10-02)
+
+**§2.4: five of six items done.** Bias-corrected back-transformation,
+`fourier_terms`, `ar_yw`/`spec_ar`, GARCH `dist=:t` and
+`combine_forecasts`. Only the classical AutoReg tier remains, and
+`ar_yw` is most of its Yule-Walker half.
+
+Every reference §2.4 needs turned out reachable -- `InvBoxCox`,
+`fourier`, `ar`, `spec.ar`, `rugarch` and `arch` -- so all but
+`combine_forecasts` are R- or dual-verified rather than
+definition-only. `combine_forecasts` has no package reference anywhere
+(R's `forecast` has none; `forecastHybrid` does a different thing), and
+that was confirmed by looking.
+
+**A process failure worth recording.** For part of this work
+`test/runtests.jl` was accidentally emptied by a bad in-place file
+edit, and was committed that way in `1b7bc2f`. The suite therefore
+reported "tests passed" while running nothing, and five regressions in
+`fit_garch`'s validation block -- deleted by another careless edit --
+went unnoticed until the runner was restored. Both are fixed; the
+runner is now checked against the test files on disk, and an assertion
+count is read rather than trusting the pass line.
 
 **§2.3 (distributional forecast accuracy) is done.** Note its
 verification standard differs from the rest of the project: no reachable

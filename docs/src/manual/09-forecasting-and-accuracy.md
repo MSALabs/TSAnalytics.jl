@@ -252,6 +252,52 @@ is changing. `initial` skips that many observations before the first
 origin, and it is usually what keeps a cross-validation from taking all
 afternoon.
 
+## Combining forecasts
+
+```@example fc
+fsn = seasonal_naive(train, 12, 12)
+fdr = drift(train, 12)
+c = combine_forecasts([f, fsn, fdr])
+
+for (lab, g) in (("sarima", f), ("snaive", fsn), ("drift", fdr), ("combined", c))
+    println(rpad(lab, 9), " RMSE = ", round(rmse(test, g.point), digits=5))
+end
+```
+
+[`combine_forecasts`](@ref) averages several forecasts of the same
+series over the same horizon. Equal weights by default, which the
+literature since Bates & Granger (1969) has found very hard to improve
+on — estimated optimal weights must themselves be estimated, and that
+error usually costs more than the optimality gains.
+
+**Read those numbers carefully.** The combination beats the *average*
+component and loses to the *best* one. Two of these three are weak
+benchmarks, and averaging a good forecast with poor ones drags it down.
+Combination is not a free improvement.
+
+Nor does using similar models fix it — two SARIMAs on this series give
+`0.431` and `0.215` and combine to `0.266`, landing between them,
+because forecasts from similar models on the same data have strongly
+**positively correlated** errors and so diversify little.
+
+The real case for it is **robustness, not optimality**: you land near
+the better component without having needed to know in advance which one
+that was, and in-sample ranking is a poor guide to out-of-sample
+ranking. Combine when you cannot confidently pick; pick when you can.
+
+!!! warning "The combined interval is optimistic"
+    The combined standard error is `sqrt(sum(w_i^2 * se_i^2))`, the
+    variance of a weighted mean **assuming the component errors are
+    independent**. They are not — same series, same data — so this
+    understates the true spread. Combining a forecast with *itself*
+    shrinks the standard error by `sqrt(2)`, which shows the assumption
+    plainly.
+
+    Doing better needs the covariance between component errors, which
+    needs a holdout history of their joint errors — not something a
+    `Forecast` carries. Treat the point forecast as the output and the
+    interval as a lower bound.
+
 ## Backing out a transformation
 
 If you forecast a transformed series, reversing it takes care — the
