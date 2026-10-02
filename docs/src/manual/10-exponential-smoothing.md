@@ -35,36 +35,43 @@ competition-winning default with almost nothing to choose, skip to
 
 ETS models are labelled `ETS(E,T,S)` for the error, trend and seasonal
 components, each additive, multiplicative or absent. Thirty
-combinations exist. **Six are implemented**, and they are exactly the
-ones that are linear:
+combinations exist; **fifteen are implemented**, the same default space
+R's `ets` searches:
 
-| `trend` | `seasonal` | Model | Also known as |
+| `error` | `trend` | `seasonal` | Models |
 |---|---|---|---|
-| `:none` | `:none` | ETS(A,N,N) | Simple exponential smoothing |
-| `:add` | `:none` | ETS(A,A,N) | Holt's linear |
-| `:damped` | `:none` | ETS(A,Ad,N) | Damped Holt |
-| `:none` | `:add` | ETS(A,N,A) | Seasonal, no trend |
-| `:add` | `:add` | ETS(A,A,A) | Additive Holt-Winters |
-| `:damped` | `:add` | ETS(A,Ad,A) | Damped additive Holt-Winters |
+| `:add` | `:none`/`:add`/`:damped` | `:none`/`:add` | six, ETS(A,·,N) and ETS(A,·,A) |
+| `:mul` | `:none`/`:add`/`:damped` | `:none`/`:add` | six, ETS(M,·,N) and ETS(M,·,A) |
+| `:mul` | `:none`/`:add`/`:damped` | `:mul` | three, ETS(M,·,M) |
 
-The other twenty-four involve a multiplicative error or a
-multiplicative seasonal. Those are not linear Gaussian state space
-models: their exact prediction intervals do not have a closed form and
-have to be simulated. They are **refused by name** rather than
-approximated silently —
+ETS(A,N,N) is simple exponential smoothing, ETS(A,A,N) is Holt's linear
+method, ETS(A,A,A) is additive Holt-Winters, and ETS(M,A,M) is the
+multiplicative Holt-Winters that most seasonal economic series want.
+
+Two groups are refused by name rather than approximated.
+**Multiplicative trend** is unstable, and R excludes it by default too
+(`allow.multiplicative.trend=FALSE`); and **ETS(A,·,M)**, an additive
+error with a multiplicative seasonal, divides the error by the seasonal
+factor in its level update, which blows up as a factor approaches
+zero — R refuses those three outright as well.
 
 ```@example ets
 using TSAnalytics
 try
-    fit_ets(randn(40), 4; seasonal=:mul)
+    fit_ets(randn(40), 4; trend=:mul)
 catch e
     println(e.msg)
 end
 ```
 
-The practical workaround is older than the taxonomy: take logs. A
-series whose seasonal swing grows with its level is additive on the log
-scale, and that is what the rest of this page does.
+One group fits but does not forecast yet — `ETS(M,·,M)`, covered in
+[Multiplicative errors](#Multiplicative-errors) below.
+
+A multiplicative component divides by a fitted value, so those models
+need a strictly positive series. For an additive-error model whose
+seasonal swing grows with its level, the older workaround still
+applies: take logs, where multiplicative seasonality becomes additive.
+That is what the rest of this section does.
 
 ## Fitting one
 
@@ -287,6 +294,122 @@ a = fit_ets(y, 4; trend=:damped, fixed=(alpha=0.3, beta=0.1, phi=1.0), initial=:
 b = fit_ets(y, 4; trend=:add,    fixed=(alpha=0.3, beta=0.1),          initial=:heuristic)
 println("sse difference: ", abs(a.sse - b.sse))
 ```
+
+## Multiplicative errors
+
+An additive-error model says the noise has the same size whatever the
+level of the series. Most economic and business series do not work that
+way: a 3% error on a series at 150 is three times the error it was at
+50. `error=:mul` says so directly — the innovation is **relative**,
+`eps = (y - yhat)/yhat`.
+
+```@example mets
+using TSAnalytics
+
+y = dataset("jj").value          # positive levels, not logs
+a = fit_ets(y, 4; trend=:add, seasonal=:add)
+b = fit_ets(y, 4; error=:mul, trend=:add, seasonal=:add)
+println("ETS(A,A,A)  aicc = ", round(a.aicc, digits=3))
+println("ETS(M,A,A)  aicc = ", round(b.aicc, digits=3))
+```
+
+A difference of 87 AICc points. Nothing subtle is going on: J&J
+earnings grew about twentyfold over the sample, so an error term that
+does not grow with them is badly misspecified.
+
+Two consequences of `error=:mul` that will look like bugs if you are
+not expecting them:
+
+```@example mets
+println("sse, additive error       = ", round(a.sse, digits=4))
+println("sse, multiplicative error = ", round(b.sse, digits=6))
+println("resid are relative: ", isapprox(b.resid, (y .- b.fitted) ./ b.fitted))
+```
+
+`sse` is in **relative** units, so it is not comparable with the
+additive-error figure — it is three orders of magnitude smaller here.
+`aic`/`aicc`/`bic` *are* comparable, because the likelihood carries the
+Jacobian term `sum(log|yhat|)` that converts between the two scales.
+Leaving that term out would not merely shift the numbers, it would break
+model selection, so it is there; R's own likelihood decomposes the same
+way, checked to `1e-13`.
+
+The point forecasts, though, are **identical** to the additive-error
+model's at the same parameters. That is not a coincidence or an
+approximation: `mu*eps == e`, so the state recursions are literally the
+same, and only the spread differs. What changes is that the interval now
+widens with the level:
+
+```@example mets
+println("A-error  se[8]/se[1] = ", round(forecast(a, 8).se[8] / forecast(a, 8).se[1], digits=2))
+println("M-error  se[8]/se[1] = ", round(forecast(b, 8).se[8] / forecast(b, 8).se[1], digits=2))
+```
+
+[`auto_ets`](@ref) searches all twelve forecastable models, so it will
+find this for you — and `additive_only=true` restricts it to the six
+additive-error ones:
+
+```@example mets
+println(notation(auto_ets(y, 4)))
+println(notation(auto_ets(y, 4; additive_only=true)))
+```
+
+Note that taking logs and using an additive-error model is a *different*
+answer to the same problem, and on this series it is the one the earlier
+sections took. Either is defensible; `error=:mul` has the advantage of
+leaving the series on its own scale, so the forecast needs no back
+transform and no bias correction.
+
+### ETS(M,·,M) fits but does not forecast
+
+The three multiplicative-*seasonal* models are the practically
+interesting ones — multiplicative Holt-Winters is what most seasonal
+economic series want — and they are also the only group here that is
+incomplete. They fit, and the fit is verified against R:
+
+```@example mets
+c = fit_ets(y, 4; error=:mul, trend=:add, seasonal=:mul)
+println(notation(c), "  aicc = ", round(c.aicc, digits=3))
+try
+    forecast(c, 8)
+catch e
+    println("
+", e.msg)
+end
+```
+
+The reason is specific. Past the first seasonal cycle the level factor
+and the seasonal factor share innovations — the seasonal factor used at
+horizon `h` was itself revised by the innovation at `n + h - m` — so
+`y` becomes a *product* of random states. Two things follow that
+propagating the state does not give you: the `h`-step **mean** picks up
+a bias term of order `alpha*gamma*sigma2`, and the **variance** needs
+fourth moments of the state rather than second. Both were measured
+against simulation before this limit was drawn, rather than assumed.
+
+R's `forecast::ets` implements this class, so use it if you need these
+forecasts. On `AirPassengers`, ETS(M,A,M) beats every model that does
+forecast here by about 50 AICc points, so the gap is a real one and not
+a corner case.
+
+### R's no-trend seasonal intervals are wrong, and these are not
+
+One finding from building this is worth stating on its own, because it
+runs the other way.
+
+For ETS(A,N,A) and ETS(M,N,A) — seasonal, no trend — R applies the
+seasonal variance increment **one period early**. The seasonal state
+used at horizon `h = m` is `s_n`, which is fixed by an in-sample
+innovation and so is *known* at the forecast origin; R treats it as
+random, which makes its intervals too wide at `h = m, 2m, ...`.
+
+This was settled by simulation, not by argument. Four million paths from
+a fitted ETS(A,N,A) give a variance of `2.5808*sigma2` at `h = 4` where
+R reports `3.0536*sigma2`. Six million paths from R's *own* fitted
+ETS(M,N,A) state agree with this package to **0.09% at every horizon**,
+while R is `+25.6%` too wide at `h = 4` and `+13.4%` at `h = 8`. R's
+*trended* seasonal models agree with this package exactly, so the
+problem is confined to that one branch.
 
 ## The Theta method
 

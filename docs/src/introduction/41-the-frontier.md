@@ -49,26 +49,26 @@ then you will need to leave.
 
 ## Exponential smoothing: the non-linear half
 
-This section used to say the whole ETS taxonomy was missing. **Six of
-the thirty forms now exist** — [`fit_ets`](@ref) and
-[`auto_ets`](@ref), with AICc selection, a damped trend and the
-likelihood that makes the selection possible. See
-[Exponential Smoothing and ETS](../manual/10-exponential-smoothing.md).
+This section used to say the whole ETS taxonomy was missing. **Fifteen
+of the thirty forms now exist** — [`fit_ets`](@ref) and
+[`auto_ets`](@ref), with AICc selection, a damped trend, multiplicative
+errors and the likelihood that makes the selection possible. That is the
+same default space R's `ets()` searches. See
+[Exponential Smoothing, ETS and Theta](../manual/10-exponential-smoothing.md).
 
-Those six are exactly the **linear** ones: additive error, with the
-trend absent, additive or damped, and the seasonal absent or additive.
-They are the subset expressible as a linear Gaussian state space model,
-which is why they could be built on machinery that already existed.
+Of the fifteen, twelve forecast. The three that do not are the
+multiplicative-**seasonal** forms, ETS(M,·,M), and the reason is
+specific rather than general: past the first seasonal cycle the level
+factor and the seasonal factor share innovations, so the observation
+becomes a *product* of random states. Its mean then picks up a bias
+term that propagating the state does not produce, and its variance needs
+fourth moments of the state rather than second. Those models fit here,
+and error rather than guess when asked to forecast.
 
-The remaining twenty-four all involve a **multiplicative error or a
-multiplicative seasonal**, and that is a different problem rather than
-more of the same one. A multiplicative error makes the observation
-equation non-linear in the state, so the exact prediction interval has
-no closed form: you have to simulate paths and take quantiles. R's
-`ets()` does precisely that, and reports it as such. Until that exists
-here, those combinations are **refused by name** rather than
-approximated silently, and the standing workaround is the old one —
-model the logarithm, where multiplicative seasonality is additive.
+The fifteen that remain unimplemented are the multiplicative-trend
+forms, which R excludes by default too for being unstable, and the
+ETS(A,·,M) trio, which R refuses outright because the level update
+divides the error by the seasonal factor.
 
 ETS's reputation is earned on exactly this family. In the M3
 competition the automatically-selected ETS was among the strongest

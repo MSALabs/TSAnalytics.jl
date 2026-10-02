@@ -28,6 +28,7 @@ and concluding something is broken.
 | `HoltWinters(y)` | [`holt_winters`](@ref) |
 | `forecast::ets(y)` | [`auto_ets`](@ref) |
 | `forecast::ets(y, model="AAA")` | [`fit_ets`](@ref)`(y, m; trend=:add, seasonal=:add)` |
+| `forecast::ets(y, model="MAM")` | [`fit_ets`](@ref)`(y, m; error=:mul, trend=:add, seasonal=:mul)` (fits; does not forecast) |
 | `forecast::thetaf(y)` | [`fit_theta`](@ref) |
 | `acf(y)` / `pacf(y)` | [`acf`](@ref) / [`pacf`](@ref) |
 | `Box.test(y, type="Ljung-Box")` | [`ljungbox_test`](@ref) |
@@ -226,6 +227,43 @@ not itself wrong — on `log(dataset("jj").value)` R returns
 simulated series where R finds an interior optimum, `statsmodels` still
 returns `0.98` with a materially worse SSE (`420.31` against R's
 `412.36`). For the damped models this package targets R.
+
+### R's no-trend seasonal ETS intervals are too wide at h = m, 2m, ...
+
+For ETS(A,N,A) and ETS(M,N,A), R's `forecast::ets` applies the seasonal
+variance increment one period early — effectively counting `floor(h/m)`
+elapsed seasonal shocks where the correct count is `floor((h-1)/m)`. The
+seasonal state used at horizon `h = m` is `s_n`, fixed by an in-sample
+innovation and therefore known at the forecast origin; R treats it as
+random.
+
+Settled by simulation rather than by argument. Four million paths from a
+fitted ETS(A,N,A) give `2.5808*sigma2` at `h = 4` where R reports
+`3.0536*sigma2`; six million paths from R's *own* fitted ETS(M,N,A)
+state agree with this package to **0.09% at every horizon** against R
+being `+25.6%` too wide at `h = 4` and `+13.4%` at `h = 8`.
+
+R's **trended** seasonal models agree with this package exactly, so this
+is one branch of R's variance code rather than a general disagreement.
+
+### `fit_ets`'s multiplicative-error `sse` is in relative units
+
+With `error=:mul` the innovation is relative, `eps = (y-yhat)/yhat`, so
+`resid` and `sse` are too — matching what R's `residuals()` returns for
+an M-error model, and three orders of magnitude smaller than the
+additive-error figure on the same series. `aic`/`aicc`/`bic` remain
+comparable across error types because the likelihood carries the
+Jacobian `sum(log|yhat|)`; R's decomposes the same way, verified to
+`1e-13`.
+
+### ETS(M,·,M) fits here but does not forecast
+
+R implements Hyndman et al.'s class 3; this package does not yet.
+[`fit_ets`](@ref) will fit those three models, and
+[`forecast`](@ref) errors on them rather than returning a number that
+looks right. [`auto_ets`](@ref) therefore searches **twelve** models
+where R searches fifteen. Both exclude multiplicative trend by default,
+and both refuse ETS(A,·,M) outright.
 
 ### `fit_theta`'s intervals differ from both references, in four ways
 

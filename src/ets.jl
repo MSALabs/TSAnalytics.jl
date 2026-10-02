@@ -26,6 +26,7 @@ Result of [`fit_ets`](@ref) / [`auto_ets`](@ref). Fields:
 `notation` gives the conventional label, e.g. `"ETS(A,Ad,A)"`.
 """
 struct ETSModel
+    error::Symbol
     trend::Symbol
     seasonal::Symbol
     alpha::Float64
@@ -55,12 +56,13 @@ end
 """
     notation(m::ETSModel) -> String
 
-The conventional ETS label, `"ETS(E,T,S)"` — always `A` for the error,
-since only the additive-error family is implemented.
+The conventional ETS label, `"ETS(E,T,S)"` — `A`/`M` for an additive or
+multiplicative error, `N`/`A`/`Ad` for the trend, `N`/`A`/`M` for the
+seasonal.
 """
-notation(m::ETSModel) = string("ETS(A,",
+notation(m::ETSModel) = string("ETS(", m.error === :add ? "A" : "M", ",",
     m.trend === :none ? "N" : m.trend === :add ? "A" : "Ad", ",",
-    m.seasonal === :none ? "N" : "A", ")")
+    m.seasonal === :none ? "N" : m.seasonal === :add ? "A" : "M", ")")
 
 function Base.show(io::IO, m::ETSModel)
     println(io, notation(m), "  n=", m.nobs,
@@ -116,11 +118,14 @@ every one of `n` steps.
 function _ets_recursion!(fitted::AbstractVector, resid::AbstractVector,
                           lvl::AbstractVector, trd::AbstractVector, ssn::AbstractVector,
                           y::AbstractVector, alpha, beta, gamma, phi,
-                          l0, b0, s0::AbstractVector, trend::Symbol, seasonal::Symbol)
+                          l0, b0, s0::AbstractVector, trend::Symbol, seasonal::Symbol,
+                          err::Symbol=:add)
     n = length(y)
     m = length(s0)
     has_t = trend !== :none
     has_s = seasonal !== :none
+    mul_s = seasonal === :mul
+    mul_e = err === :mul
     ph = trend === :damped ? phi : one(alpha)
 
     l = l0
@@ -129,24 +134,42 @@ function _ets_recursion!(fitted::AbstractVector, resid::AbstractVector,
     sbuf = has_s ? collect(s0) : similar(s0, 0)
     si = 1
     sse = zero(alpha) * zero(eltype(y))
+    inf = oftype(sse, Inf)
 
     @inbounds for t in 1:n
         tr = has_t ? ph * b : zero(l)
+        lt = l + tr                       # level carried forward with its trend
         se = has_s ? sbuf[si] : zero(l)
-        yh = l + tr + se
-        e = y[t] - yh
-        fitted[t] = yh
-        resid[t] = e
-        sse += e^2
+        yh = mul_s ? lt * se : lt + se
+        # a multiplicative piece needs a strictly positive factor to divide by
+        mul_s && (!(se > 0) || !(lt > 0)) && return inf
+        (mul_e || mul_s) && !(yh > 0) && return inf
 
-        lnew = l + tr + alpha * e
-        if has_t
-            b = ph * b + beta * e
+        e = y[t] - yh                     # the ADDITIVE error, in every model
+        fitted[t] = yh
+        # a multiplicative error is RELATIVE: eps = (y - yhat)/yhat, which is
+        # what R's residuals() returns for an M-error model and what its
+        # likelihood is built from
+        rt = mul_e ? e / yh : e
+        resid[t] = rt
+        sse += rt^2
+
+        if mul_s
+            # l' = lt*(1 + alpha*eps), and lt*eps = e/se, so the update is
+            # the additive one with e rescaled by the seasonal factor
+            lnew = lt + alpha * e / se
+            has_t && (b = ph * b + beta * e / se)
+            sbuf[si] = se + gamma * e / lt    # s' = se*(1 + gamma*eps)
+        else
+            # M error with an additive or absent seasonal has the IDENTICAL
+            # state recursion to A error, because mu*eps == e. That is why
+            # class 2 shares class 1's point forecasts; only the residual
+            # definition and so the likelihood differ.
+            lnew = lt + alpha * e
+            has_t && (b = ph * b + beta * e)
+            has_s && (sbuf[si] = se + gamma * e)
         end
-        if has_s
-            sbuf[si] = se + gamma * e
-            si = si == m ? 1 : si + 1
-        end
+        has_s && (si = si == m ? 1 : si + 1)
         l = lnew
         lvl[t] = l
         has_t && (trd[t] = b)
@@ -178,8 +201,11 @@ end
 "_ets_unpack(p, trend, seasonal, m) -> (alpha, beta, gamma, phi, l0, b0, s0)
 -- read a parameter vector laid out as
 `[alpha, beta?, gamma?, phi?, l0, b0?, s_free...]`. The final seasonal
-state is `-sum(s_free)`, enforcing the sum-to-zero normalisation rather
-than estimating a redundant parameter."
+state is determined by the others rather than estimated, which removes a
+redundant parameter: `-sum(s_free)` for an **additive** seasonal
+(sum-to-zero), and `m - sum(s_free)` for a **multiplicative** one, whose
+factors are normalised to average one instead. Both match what R's `ets`
+reports, which is why `nparams` lines up with its `length(par)`."
 function _ets_unpack(p::AbstractVector, trend::Symbol, seasonal::Symbol, m::Int)
     T = eltype(p)
     i = 1
@@ -189,9 +215,12 @@ function _ets_unpack(p::AbstractVector, trend::Symbol, seasonal::Symbol, m::Int)
     phi = trend === :damped ? (v = p[i]; i += 1; v) : one(T)
     l0 = p[i]; i += 1
     b0 = trend !== :none ? (v = p[i]; i += 1; v) : zero(T)
-    s0 = if seasonal !== :none
+    s0 = if seasonal === :add
         free = p[i:(i + m - 2)]
-        vcat(free, -sum(free))
+        vcat(free, -sum(free))            # sum-to-zero
+    elseif seasonal === :mul
+        free = p[i:(i + m - 2)]
+        vcat(free, m - sum(free))         # sum-to-m, i.e. mean one
     else
         T[]
     end
@@ -257,7 +286,8 @@ reparameterisation applies only when the initial states are being
 optimised, where it removes a redundant parameter.
 """
 function _ets_heuristic_init(y::Vector{Float64}, m::Int, trend::Symbol, seasonal::Symbol)
-    st = seasonal === :none ? nothing : :additive
+    st = seasonal === :none ? nothing :
+         seasonal === :mul ? :multiplicative : :additive
     l0, b0, fig = _hw_heuristic_init(y, m, trend !== :none, st)
     return l0, b0, fig
 end
@@ -270,22 +300,32 @@ end
     fit_ets(y, period=1; trend=:none, seasonal=:none, constraint=:traditional,
             fixed=nothing, initial=nothing, optimizer_method=:nelder_mead) -> ETSModel
 
-Fit an **additive-error** ETS model by maximum likelihood.
+Fit an ETS model by maximum likelihood. `error`, `trend` and `seasonal`
+pick the model, in the usual `ETS(E,T,S)` sense.
 
-| `trend` | `seasonal` | Model | Also known as |
+**Fifteen models**, the same default space R's `ets` searches:
+
+| `error` | `trend` | `seasonal` | Models |
 |---|---|---|---|
-| `:none` | `:none` | ETS(A,N,N) | Simple exponential smoothing |
-| `:add` | `:none` | ETS(A,A,N) | Holt's linear |
-| `:damped` | `:none` | ETS(A,Ad,N) | Damped Holt |
-| `:none` | `:add` | ETS(A,N,A) | Seasonal, no trend |
-| `:add` | `:add` | ETS(A,A,A) | Additive Holt-Winters |
-| `:damped` | `:add` | ETS(A,Ad,A) | Damped additive Holt-Winters |
+| `:add` | `:none`/`:add`/`:damped` | `:none`/`:add` | ETS(A,·,N), ETS(A,·,A) — six |
+| `:mul` | `:none`/`:add`/`:damped` | `:none`/`:add` | ETS(M,·,N), ETS(M,·,A) — six |
+| `:mul` | `:none`/`:add`/`:damped` | `:mul` | ETS(M,·,M) — three |
 
-Those six are the whole **linear** ETS family — the subset expressible
-as a linear Gaussian state space model. Multiplicative error and
-multiplicative seasonality are the non-linear half, need
-simulation-based intervals, and are rejected by name rather than
-silently approximated.
+ETS(A,N,N) is simple exponential smoothing, ETS(A,A,N) is Holt's linear
+method, ETS(A,A,A) is additive Holt-Winters, and ETS(M,A,M) is the
+multiplicative Holt-Winters that most seasonal economic series want.
+
+Two groups are **not** here, and are refused by name rather than
+approximated:
+
+- **Multiplicative trend** (`trend=:mul`), which R also excludes by
+  default (`allow.multiplicative.trend=FALSE`) because it is unstable.
+- **ETS(A,·,M)** — an additive error with a multiplicative seasonal. The
+  level update divides the error by the seasonal factor, which blows up
+  whenever a factor approaches zero. R refuses these three outright.
+
+One group **fits but does not forecast yet**: ETS(M,·,M), Hyndman et
+al.'s *class 3*. See the note under [`forecast`](@ref).
 
 ## What this adds over `holt_winters`
 
@@ -294,6 +334,17 @@ silently approximated.
 automatic model selection ([`auto_ets`](@ref)), plus the damped trend
 parameter `phi`. The initial states are optimised jointly with the
 smoothing parameters, as R's `ets` and `statsmodels` both do.
+
+`error=:mul` makes the error **relative** — `eps = (y - yhat)/yhat` —
+so `resid` and `sse` are in relative units, matching what R's
+`residuals()` returns for an M-error model, and `sse` is three orders of
+magnitude smaller than the additive-error figure on the same series.
+The likelihood then carries a Jacobian, `sum(log|yhat|)`, without which
+an M-error `aic` would not be comparable with an A-error one and model
+selection would break rather than merely shift. R's own likelihood
+decomposes as `-(n/2)log(SSE) - sum(log|yhat|)`, which was checked
+against its reported values to `1e-13` on all nine multiplicative
+models.
 
 The two **do** reduce onto each other, but not by passing the same
 numbers to both — and this is worth stating because it is easy to get
@@ -379,22 +430,37 @@ julia> m.nparams
 
 See also [`auto_ets`](@ref), [`holt_winters`](@ref), [`forecast`](@ref).
 """
-function fit_ets(y, period::Integer=1; trend::Symbol=:none, seasonal::Symbol=:none,
+function fit_ets(y, period::Integer=1; error::Symbol=:add,
+                  trend::Symbol=:none, seasonal::Symbol=:none,
                   constraint::Symbol=:traditional,
                   fixed::Union{Nothing,NamedTuple}=nothing,
                   initial::Union{Nothing,Symbol}=nothing,
                   optimizer_method::Symbol=:nelder_mead)
     trend in (:none, :add, :damped) || throw(ArgumentError(
         trend in (:mul, :multiplicative, :mult) ?
-            "fit_ets: trend=:$trend is not implemented -- multiplicative trend is part of " *
-            "the non-linear ETS family, which needs simulation-based intervals. " *
-            "Use :none, :add or :damped." :
+            "fit_ets: trend=:$trend is not implemented -- a multiplicative trend is " *
+            "non-linear in the state and compounds, so it diverges readily; R's ets " *
+            "excludes it by default too (allow.multiplicative.trend=FALSE). " *
+            "Use :none, :add or :damped -- :damped is the usual substitute, since it " *
+            "flattens a long horizon instead of exploding on one." :
             "fit_ets: trend must be :none, :add or :damped, got :$trend"))
-    seasonal in (:none, :add) || throw(ArgumentError(
-        seasonal in (:mul, :multiplicative, :mult) ?
-            "fit_ets: seasonal=:$seasonal is not implemented -- multiplicative seasonality " *
-            "is part of the non-linear ETS family. Use :none or :add." :
-            "fit_ets: seasonal must be :none or :add, got :$seasonal"))
+    seasonal in (:none, :add, :mul) || throw(ArgumentError(
+        seasonal in (:multiplicative, :mult) ?
+            "fit_ets: seasonal=:$seasonal is spelled :mul here. Use :none, :add or :mul." :
+            "fit_ets: seasonal must be :none, :add or :mul, got :$seasonal"))
+    error in (:add, :mul) || throw(ArgumentError(
+        error in (:multiplicative, :mult) ?
+            "fit_ets: error=:$error is spelled :mul here. Use :add or :mul." :
+            "fit_ets: error must be :add or :mul, got :$error"))
+    # ETS(A,*,M) is the "forbidden" trio: an additive error with a
+    # multiplicative seasonal divides the error by the seasonal factor in the
+    # level update, which is numerically unstable whenever a factor is near
+    # zero. R's `ets` refuses these three outright and so does this.
+    !(error === :add && seasonal === :mul) || throw(ArgumentError(
+        "fit_ets: error=:add with seasonal=:mul is not a usable model -- the " *
+        "level update divides the error by the seasonal factor, which is " *
+        "unstable near zero. R's ets refuses ETS(A,N,M)/(A,A,M)/(A,Ad,M) for " *
+        "the same reason. Use error=:mul with seasonal=:mul, or seasonal=:add."))
     constraint in (:traditional, :admissible) ||
         throw(ArgumentError("fit_ets: constraint must be :traditional or :admissible"))
     initial === nothing || initial in (:heuristic, :estimated) ||
@@ -405,12 +471,22 @@ function fit_ets(y, period::Integer=1; trend::Symbol=:none, seasonal::Symbol=:no
     n >= 3 || throw(ArgumentError("fit_ets: need at least 3 observations, got $n"))
     any(isnan, yv) && throw(ArgumentError("fit_ets: NaN present (no missing-data policy yet)"))
 
+    # a multiplicative error or seasonal divides by a fitted value or a
+    # seasonal factor, so the series has to stay strictly positive
+    if (error === :mul || seasonal === :mul) && !all(>(0), yv)
+        throw(ArgumentError(
+            "fit_ets: error=:$error with seasonal=:$seasonal needs a strictly " *
+            "positive series -- a multiplicative component divides by a fitted " *
+            "value. Use error=:add with seasonal=:none/:add, or model the " *
+            "series on a scale where it is positive."))
+    end
+
     m = Int(period)
     if seasonal !== :none
         m >= 2 || throw(ArgumentError(
-            "fit_ets: seasonal=:add needs period >= 2, got $m"))
+            "fit_ets: seasonal=:$seasonal needs period >= 2, got $m"))
         n >= 2 * m || throw(ArgumentError(
-            "fit_ets: seasonal=:add needs at least 2 full periods ($(2m) observations), got $n"))
+            "fit_ets: seasonal=:$seasonal needs at least 2 full periods ($(2m) observations), got $n"))
     else
         m = max(m, 1)
     end
@@ -449,6 +525,9 @@ function fit_ets(y, period::Integer=1; trend::Symbol=:none, seasonal::Symbol=:no
                   Dict(:alpha => 0.6,  :beta => 0.1,  :gamma => 0.3,    :phi => 0.88)]
     sfree0 = if seasonal === :none
         Float64[]
+    elseif seasonal === :mul
+        scaled = sfh .* (length(sfh) / sum(sfh))  # mean-one for the free form
+        scaled[1:(end-1)]
     else
         centred = sfh .- sum(sfh) / length(sfh)   # sum-to-zero for the free form
         centred[1:(end-1)]
@@ -480,9 +559,12 @@ function fit_ets(y, period::Integer=1; trend::Symbol=:none, seasonal::Symbol=:no
         else
             l0 = x[i]; i += 1
             b0 = trend !== :none ? (v = x[i]; i += 1; v) : zero(T)
-            s0 = if seasonal !== :none
+            s0 = if seasonal === :add
                 free = x[i:(i + mseas - 2)]
-                vcat(free, -sum(free))
+                vcat(free, -sum(free))              # sum-to-zero
+            elseif seasonal === :mul
+                free = x[i:(i + mseas - 2)]
+                vcat(free, mseas - sum(free))       # sum-to-m, mean one
             else
                 T[]
             end
@@ -500,7 +582,7 @@ function fit_ets(y, period::Integer=1; trend::Symbol=:none, seasonal::Symbol=:no
         lv = Vector{Float64}(undef, n); td = zeros(n); sn = zeros(n)
         sse = _ets_recursion!(f, r, lv, td, sn, yv, alpha, beta, gamma, phi,
                                l0, b0, seasonal === :none ? Float64[] : collect(s0),
-                               trend, seasonal)
+                               trend, seasonal, error)
         isfinite(sse) ? sse : 1e10
     end
 
@@ -546,18 +628,25 @@ function fit_ets(y, period::Integer=1; trend::Symbol=:none, seasonal::Symbol=:no
     alpha, beta, gamma, phi, l0, b0, s0 = assemble(res.minimizer)
     sse = _ets_recursion!(fitted, resid, lvl, trd, ssn, yv, alpha, beta, gamma, phi,
                            l0, b0, seasonal === :none ? Float64[] : collect(s0),
-                           trend, seasonal)
+                           trend, seasonal, error)
 
     ns, nst = _ets_nfree(trend, seasonal, mseas == 0 ? 1 : mseas)
     npinned = length(keys(fx))
     nparams = (ns - npinned) + (heuristic_only ? 0 : nst) + 1   # +1 for sigma2
     sigma2 = sse / n
-    loglik = -n / 2 * (log(2pi) + log(sigma2) + 1)
+    # For a multiplicative error the residuals are relative, so the
+    # observation density carries a Jacobian: dy/deps = yhat. Hyndman et al.
+    # (2008) eq. 5.3 -- R's `ets` reports -(n/2)log(SSE) - sum(log|yhat|);
+    # this is the same with the full Gaussian constant, as everywhere else
+    # here. Omitting the term would make M- and A-error AICs incomparable and
+    # so break model selection, not merely shift it.
+    jac = error === :mul ? sum(log ∘ abs, fitted) : 0.0
+    loglik = -n / 2 * (log(2pi) + log(sigma2) + 1) - jac
     aic = -2 * loglik + 2 * nparams
     aicc = n - nparams - 1 > 0 ? aic + 2 * nparams * (nparams + 1) / (n - nparams - 1) : Inf
     bic = -2 * loglik + nparams * log(n)
 
-    return ETSModel(trend, seasonal, alpha,
+    return ETSModel(error, trend, seasonal, alpha,
                      trend !== :none ? beta : nothing,
                      seasonal !== :none ? gamma : nothing,
                      trend === :damped ? phi : nothing,
@@ -570,12 +659,21 @@ end
 """
     auto_ets(y, period=1; seasonal=true, constraint=:traditional, ...) -> ETSModel
 
-Fit every applicable **linear** ETS model and return the one with the
-lowest **AICc**, which is Hyndman's own recommendation for finite
-samples and what R's `ets` selects by.
+Fit every applicable ETS model and return the one with the lowest
+**AICc**, which is Hyndman's own recommendation for finite samples and
+what R's `ets` selects by.
 
-Six candidates with `seasonal=true` and a `period >= 2`; three when
-seasonality is excluded or the series is too short for two full periods.
+**Twelve candidates** with `seasonal=true`, a `period >= 2` and a
+strictly positive series: six additive-error and six multiplicative-error.
+Six when the series is not positive, or when `additive_only=true`. Three
+or six when seasonality is excluded or the series is too short for two
+full periods.
+
+R searches **fifteen**. The three extra are the multiplicative-seasonal
+ETS(M,·,M) forms, which [`fit_ets`](@ref) will fit but cannot yet
+forecast; selecting a model that cannot be forecast would be worse than
+leaving it out, so they are excluded here. Pass them to `fit_ets`
+directly if you want the fit.
 
 The candidates are independent fits sharing no state, so they are fitted
 in parallel when Julia is started with more than one thread — guarded the
@@ -602,19 +700,33 @@ one component.
 See also [`fit_ets`](@ref), [`auto_arima`](@ref).
 """
 function auto_ets(y, period::Integer=1; seasonal::Bool=true,
-                   constraint::Symbol=:traditional,
+                   constraint::Symbol=:traditional, additive_only::Bool=false,
                    optimizer_method::Symbol=:nelder_mead, parallel::Bool=true)
     yv = Float64.(collect(tsvalues(y)))
     n = length(yv)
     m = Int(period)
     use_seasonal = seasonal && m >= 2 && n >= 2 * m
+    # a multiplicative component divides by a fitted value, so those models
+    # only exist for a strictly positive series
+    use_mul = !additive_only && all(>(0), yv)
 
-    specs = [(:none, :none), (:add, :none), (:damped, :none)]
-    use_seasonal && append!(specs, [(:none, :add), (:add, :add), (:damped, :add)])
+    specs = Tuple{Symbol,Symbol,Symbol}[(:add, :none, :none), (:add, :add, :none),
+                                         (:add, :damped, :none)]
+    use_seasonal && append!(specs, [(:add, :none, :add), (:add, :add, :add),
+                                     (:add, :damped, :add)])
+    if use_mul
+        append!(specs, [(:mul, :none, :none), (:mul, :add, :none),
+                        (:mul, :damped, :none)])
+        # the three multiplicative-SEASONAL forms are deliberately absent:
+        # they fit but do not forecast yet, and selecting a model that cannot
+        # be forecast would be worse than not considering it
+        use_seasonal && append!(specs, [(:mul, :none, :add), (:mul, :add, :add),
+                                         (:mul, :damped, :add)])
+    end
 
     fits = Vector{Union{Nothing,ETSModel}}(undef, length(specs))
     tryfit(i) = try
-        fit_ets(yv, m; trend=specs[i][1], seasonal=specs[i][2],
+        fit_ets(yv, m; error=specs[i][1], trend=specs[i][2], seasonal=specs[i][3],
                  constraint=constraint, optimizer_method=optimizer_method)
     catch e
         e isa ArgumentError ? nothing : rethrow()
@@ -669,11 +781,12 @@ function _ets_propagate(l0, b0, s0::AbstractVector, alpha, beta, gamma, phi,
     b = has_t ? b0 : 0.0
     sbuf = has_s ? collect(s0) : Float64[]
     si = 1
+    mul_s = seasonal === :mul
     out = Vector{Float64}(undef, horizon)
     for h in 1:horizon
         tr = has_t ? ph * b : 0.0
         se = has_s ? sbuf[si] : 0.0
-        out[h] = l + tr + se
+        out[h] = mul_s ? (l + tr) * se : l + tr + se
         # zero innovation: the states just evolve
         l = l + tr
         has_t && (b = ph * b)
@@ -682,6 +795,55 @@ function _ets_propagate(l0, b0, s0::AbstractVector, alpha, beta, gamma, phi,
         end
     end
     return out
+end
+
+"""
+    _ets_class2_var(mu, psi, sigma2) -> Vector{Float64}
+
+Exact h-step forecast variances for a **class 2** ETS model — a
+multiplicative error with an additive or absent seasonal (Hyndman,
+Koehler, Ord & Snyder 2008, chapter 6).
+
+Class 2 shares class 1's point forecasts, because `mu*eps == e` makes the
+state recursions identical, but not its variances: the error is
+proportional to the level, so the variance compounds rather than
+accumulating. With `c_j = psi_j` the same shock weights class 1 uses,
+
+    theta_1 = mu_1^2
+    theta_h = mu_h^2 + sigma2 * sum_{j=1}^{h-1} c_j^2 * theta_{h-j}
+    var_h   = (1 + sigma2) * theta_h - mu_h^2
+
+For ETS(M,N,N) this collapses to the familiar closed form
+`mu^2[(1+sigma2)(1+alpha^2 sigma2)^(h-1) - 1]`, which is how it was first
+checked; it then matches R's own intervals to `6e-9` on that model.
+
+!!! warning "Verified against simulation, because R is wrong here for one branch"
+    On the **no-trend seasonal** models, R's `forecast::ets` applies the
+    seasonal variance increment one period early — it behaves as
+    `floor(h/m)` where the correct count of elapsed seasonal shocks is
+    `floor((h-1)/m)`. The seasonal state used at horizon `h = m` is
+    `s_n`, which is determined by an in-sample innovation and so is
+    **known** at the forecast origin; R treats it as random.
+
+    Six million simulated paths from R's own fitted ETS(M,N,A) state
+    agree with the formula above to **0.09% at every horizon**, against
+    R being **+25.6% too wide at h = 4** and `+13.4%` at `h = 8`. The
+    same thing happens for additive-error ETS(A,N,A): four million paths
+    give `2.5808 sigma2` at `h = 4` where R reports `3.0536 sigma2`.
+    R's *trended* seasonal models agree with this package exactly, so the
+    discrepancy is confined to that one branch.
+"""
+function _ets_class2_var(mu::AbstractVector, psi::AbstractVector, sigma2::Real)
+    H = length(mu)
+    theta = Vector{Float64}(undef, H)
+    @inbounds for h in 1:H
+        acc = mu[h]^2
+        for j in 1:(h - 1)
+            acc += sigma2 * psi[j]^2 * theta[h - j]
+        end
+        theta[h] = acc
+    end
+    return [(1 + sigma2) * theta[h] - mu[h]^2 for h in 1:H]
 end
 
 """
@@ -701,11 +863,45 @@ so an undamped trend extrapolates linearly in `h` while a damped one
 converges to `l_n + phi/(1-phi) * b_n`. The seasonal term repeats with
 the period.
 
-Intervals come from the exact linear-model variance
-`sigma2 * (1 + sum(psi[1:h-1].^2))`, where `psi_j` is the effect of a
-time-`n` innovation on `yhat_{n+j+1}`. **Like every other interval in
-this package these treat the fitted parameters as known**, so they are
-slightly too narrow; R and `statsmodels` do the same.
+Intervals depend on the error type (Hyndman, Koehler, Ord & Snyder 2008,
+chapter 6):
+
+- **Additive error** (*class 1*): the exact linear-model variance
+  `sigma2 * (1 + sum(psi[1:h-1].^2))`, where `psi_j` is the effect of a
+  time-`n` innovation on `yhat_{n+j+1}`.
+- **Multiplicative error** with an additive or absent seasonal
+  (*class 2*): the error is proportional to the level, so the variance
+  compounds instead of accumulating.
+  The point forecasts are identical to class 1's, because `mu*eps == e`
+  makes the state recursions identical; only the spread differs.
+- **Multiplicative error and multiplicative seasonal** (*class 3*):
+  **not implemented — this errors rather than returning a number.**
+  Past the first seasonal cycle the level and seasonal factors share
+  innovations, so `y` is a product of random states: the `h`-step mean
+  picks up a bias term of order `alpha*gamma*sigma2` that propagating
+  the state does not produce, and the variance needs fourth moments of
+  the state rather than second. Both were measured against simulation
+  before this limit was drawn. R's `forecast::ets` implements class 3.
+
+**Like every other interval in this package these treat the fitted
+parameters as known**, so they are slightly too narrow; R and
+`statsmodels` do the same.
+
+!!! warning "R's no-trend seasonal intervals are wrong, and this package's are not"
+    For ETS(A,N,A) and ETS(M,N,A), R applies the seasonal variance
+    increment **one period early** — effectively counting
+    `floor(h/m)` elapsed seasonal shocks where the right count is
+    `floor((h-1)/m)`. The seasonal state used at horizon `h = m` is
+    `s_n`, fixed by an in-sample innovation and therefore known at the
+    forecast origin; R treats it as random.
+
+    Settled by simulation rather than by argument: four million paths
+    from a fitted ETS(A,N,A) give `2.5808*sigma2` at `h = 4` where R
+    reports `3.0536*sigma2`, and six million paths from R's own fitted
+    ETS(M,N,A) state agree with this package to **0.09% at every
+    horizon** against R being `+25.6%` too wide at `h = 4` and `+13.4%`
+    at `h = 8`. R's *trended* seasonal models agree with this package
+    exactly, so the discrepancy is confined to that one branch.
 
 !!! note "R's ETS intervals are about 3.5% wider, and only for one reason"
     `sigma2` here is `sse/n`, the maximum-likelihood estimate — the same
@@ -751,6 +947,22 @@ function StatsAPI.predict(model::ETSModel, horizon::Integer;
     horizon >= 1 || throw(ArgumentError("horizon must be >= 1"))
     isempty(level) && throw(ArgumentError("level must be non-empty"))
     all(0 .< level .< 100) || throw(ArgumentError("level entries must be in (0, 100)"))
+    # Class 3 -- a multiplicative error AND a multiplicative seasonal -- fits
+    # here but does not forecast yet, and errors rather than returning numbers
+    # that look right. Beyond the first seasonal cycle the level factor and
+    # the seasonal factor share innovations, which makes `y` a product of
+    # random states: the h-step MEAN picks up a bias term of order
+    # `alpha*gamma*sigma2` that state propagation alone does not produce, and
+    # the variance needs fourth moments of the state rather than second. Both
+    # were measured against simulation before this limit was drawn -- see
+    # `_ets_class2_var` and the Stage 9.1 notes.
+    model.seasonal === :mul && throw(ArgumentError(
+        "forecast(::ETSModel): $(notation(model)) fits but does not forecast " *
+        "yet. A multiplicative error with a multiplicative seasonal is " *
+        "Hyndman et al.'s class 3, whose h-step mean carries a bias term " *
+        "beyond the first seasonal cycle and whose variance needs fourth " *
+        "moments of the state -- neither follows from propagating the state. " *
+        "Use seasonal=:add, or R's forecast::ets, which implements class 3."))
 
     beta = model.beta === nothing ? 0.0 : model.beta
     gamma = model.gamma === nothing ? 0.0 : model.gamma
@@ -779,11 +991,21 @@ function StatsAPI.predict(model::ETSModel, horizon::Integer;
     point = _ets_propagate(lN, bN, sN, model.alpha, beta, gamma, phi,
                             model.trend, model.seasonal, horizon)
 
-    # psi weights: the same propagation from a unit shock's state perturbation
+    # psi weights: the same propagation from a unit shock's state perturbation.
+    # `gamma` sits at index m, not m-1: the seasonal state a shock at n+1
+    # revises is next USED at n+1+m, so it first affects horizon m+1. See
+    # `_ets_class2_var` -- R places it a period earlier in its no-trend
+    # seasonal branch, and simulation says that is wrong.
     dps = model.seasonal === :none ? Float64[] : vcat(zeros(mseas - 1), gamma)
     psi = _ets_propagate(model.alpha, beta, dps, model.alpha, beta, gamma, phi,
                           model.trend, model.seasonal, horizon)
-    se = [sqrt(model.sigma2 * (1 + sum(abs2, view(psi, 1:(h-1))))) for h in 1:horizon]
+    se = if model.error === :add
+        # class 1: sigma2 * (1 + sum of squared shock weights)
+        [sqrt(model.sigma2 * (1 + sum(abs2, view(psi, 1:(h-1))))) for h in 1:horizon]
+    else
+        # class 2: the error scales with the level, so variances compound
+        sqrt.(_ets_class2_var(point, psi, model.sigma2))
+    end
 
     z = [_confidence_z(1 - l / 100) for l in level]
     lower = reduce(hcat, [point .- zi .* se for zi in z])

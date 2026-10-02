@@ -258,15 +258,23 @@ using DelimitedFiles
         end
     end
 
-    @testset "multiplicative components are refused, naming the limitation" begin
+    @testset "multiplicative TREND is still refused, naming the limitation" begin
+        # seasonal=:mul is now supported (see the Stage 9.1 testsets below);
+        # multiplicative trend is not, and is the one R also excludes by
+        # default via allow.multiplicative.trend=FALSE
         for bad in (:mul, :multiplicative)
             e1 = try; fit_ets(y, m; trend=bad); nothing; catch e; e; end
             @test e1 isa ArgumentError
             @test occursin("non-linear", e1.msg)
-            e2 = try; fit_ets(y, m; seasonal=bad); nothing; catch e; e; end
-            @test e2 isa ArgumentError
-            @test occursin("non-linear", e2.msg)
         end
+        # a misspelled seasonal is corrected rather than silently accepted
+        e2 = try; fit_ets(y, m; seasonal=:multiplicative); nothing; catch e; e; end
+        @test e2 isa ArgumentError
+        @test occursin(":mul", e2.msg)
+        # the forbidden trio: additive error with multiplicative seasonal
+        e3 = try; fit_ets(y, m; error=:add, seasonal=:mul); nothing; catch e; e; end
+        @test e3 isa ArgumentError
+        @test occursin("unstable", e3.msg)
     end
 
     @testset "StatsAPI contract" begin

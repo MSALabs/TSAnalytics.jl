@@ -74,7 +74,8 @@ Full detail on all of these lives in the repository README.
     the GARCH family, state-space methods and the Kalman filter,
     regression with ARIMA errors (ARIMAX/SARIMAX, both the `:mle` and
     `:tvss` estimation paths), the linear ETS family with AICc
-    selection, and the Theta method are complete. The multiplicative ETS forms, vector
+    selection including multiplicative errors, and the Theta method are
+    complete. Multiplicative-seasonal ETS forecasting, vector
     autoregression, cointegration, structural time series, and the
     companion TSFeatures.jl package are planned but not yet started.
     See [`development-sequence.md`](https://github.com/MSALabs/TSAnalytics.jl/blob/main/development-sequence.md)
