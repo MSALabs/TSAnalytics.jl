@@ -838,10 +838,51 @@ showing itself, and is asserted as such. Doing better needs the
 covariance of the component errors, which needs a joint error history a
 `Forecast` does not carry.
 
-### Remaining in 2.4
+### Classical AutoReg
 
-The classical AutoReg tier only. `ar_yw` is most of its Yule-Walker
-half already.
+**✅ built** as `autoreg`/`AutoRegModel` -- regression with
+autoregressive **errors**, by iterated feasible GLS. SAS `PROC
+AUTOREG`'s basic tier, closing the item `CLAUDE.md` had listed as
+"unscheduled but ready". **Tier 2.4 is complete, and so is Tier 2.**
+
+Distinct from `arx`, which puts lags of `y` in the *mean* equation as
+interpretable regressors; `autoreg` leaves the mean as `X*beta` and puts
+the autoregression in the *error*, as a nuisance to correct for. Two
+models, not two estimators of one.
+
+The transform is **Prais-Winsten**, not plain Cochrane-Orcutt: the first
+`order` rows are rescaled by the stationary covariance and kept rather
+than discarded. `method=:yw` (default) takes the AR step by Yule-Walker,
+which cannot leave the stationary region and so keeps the GLS transform
+defined at every iteration; `method=:ols` is less biased but is refused
+if it wanders outside.
+
+**Verification took a different shape, since no single function matches
+it.** `orcutt` implements Cochrane-Orcutt but will not install on this R
+version (attempted, not assumed), and `nlme::gls` fits by ML/REML rather
+than feasible GLS, so its `rho` differs by construction. **At a fixed
+`phi` the two are the same estimator**, so that is the comparison:
+`autoreg(y, X; phi=[rho])` reproduces
+`nlme::gls(..., corAR1(value=rho, fixed=TRUE))`'s coefficients *and*
+standard errors to **5e-11** at three values of `rho`. The AR half is
+separately R-verified through `ar_yw`, and the OLS starting point
+against R's `lm` (`beta` and `se` to 1e-9). Both halves have a
+reference; their composition does not, and the docs say so.
+
+`phi = 0` reduces exactly to OLS, which is the cheapest check that the
+transform is right, and is asserted.
+
+**The worked example is the motivation.** On the bundled AR(1)-error
+fixture, correcting for `phi = 0.69` leaves the slope estimate almost
+unmoved (`2.321` to `2.168`) while **doubling** its standard error
+(`0.0918` to `0.1882`) and dropping its `t`-statistic from `25.3` to
+`11.5`. OLS coefficients stay unbiased under autocorrelated errors;
+their standard errors do not, and with positive autocorrelation they are
+too *small*.
+
+`se` covers `beta` only -- the AR coefficients are estimated but not
+inferred on, which is what makes this the basic rather than the full
+maximum-likelihood tier (that is Stage 8.5's `fit_autoreg_garch`).
 
 ---
 

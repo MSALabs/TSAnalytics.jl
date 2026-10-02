@@ -58,16 +58,15 @@ roadmap, dependency graph, and what's built vs. planned.
 
 ## Unscheduled but ready
 
-- **Classical AutoReg (Yule-Walker/ULS)** — SAS `PROC AUTOREG`'s basic
-  tier. Needs nothing beyond what's already built. Deliberately kept off
-  `development-sequence.md`'s numbered stages, to avoid roadmap churn —
-  a good candidate for spare-capacity filler work whenever it comes up.
-  The full ML + AR-GARCH tier *is* numbered, as Stage 8.5 (needs 8.2 and
-  Stage 7). Neither R nor Python has as clean a single equivalent as
-  `PROC AUTOREG` — R's closest analogs (`nlme::gls()` + the separate
-  `orcutt` package) are scattered, Python has nothing comparably
-  integrated — worth remembering this isn't just "catching up to
-  R/Python" the way most of this roadmap's items are.
+- ~~**Classical AutoReg (Yule-Walker/ULS)**~~ — **built 2026-10-02** as
+  `autoreg`/`AutoRegModel` (regression with AR errors by iterated
+  feasible GLS, Prais-Winsten transform), alongside `ar_yw` for the
+  plain autoregression. The note that neither R nor Python has a clean
+  single equivalent held up: `orcutt` would not install, and
+  `nlme::gls` fits by ML/REML rather than feasible GLS, so verification
+  had to pin `phi` — at a fixed `phi` the two are the same estimator,
+  and they agree to `5e-11`. The full ML + AR-GARCH tier remains Stage
+  8.5's `fit_autoreg_garch`, already built.
 
 ## Working style
 

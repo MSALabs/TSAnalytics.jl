@@ -8,9 +8,17 @@ Three functions cover it, at increasing cost:
 
 | | Estimation | Errors | Use when |
 |---|---|---|---|
-| [`arx`](@ref) | Conditional least squares | AR lags in the mean | Fast, and the lag structure is simple |
+| [`arx`](@ref) | Conditional least squares | AR lags in the **mean** | Fast, and the lag structure is simple |
+| [`autoreg`](@ref) | Feasible GLS, iterated | AR in the **errors** | You want the coefficients, and serial correlation is a nuisance |
 | [`fit_arimax`](@ref) | Joint maximum likelihood | Full ARIMA | You want the ARIMA machinery |
 | [`fit_sarimax`](@ref) | Joint maximum likelihood | Full SARIMA | Seasonal data |
+
+The distinction between the first two is worth stating: [`arx`](@ref)
+puts lags of `y` in the **mean equation**, so they are regressors with
+coefficients you interpret. [`autoreg`](@ref) leaves the mean as
+`X*beta` and puts the autoregression in the **error term**, where it is
+a nuisance to be corrected for. Those are different models, not two
+estimators of one.
 
 ```@example arimax
 using TSAnalytics, Dates, Statistics
@@ -135,6 +143,66 @@ Heteroskedasticity is the norm on a series that spans a lockdown.
     not the degrees-of-freedom-adjusted `SSR/(n-k)` an ordinary OLS
     routine would use. The two differ by `sqrt(n/(n-k))` — about 1 %
     at typical sample sizes. Small, but not nothing.
+
+## When serial correlation is a nuisance, not the model
+
+OLS coefficients stay unbiased under autocorrelated errors. **Their
+standard errors do not** — with positive autocorrelation the usual ones
+are too small, so `t`-statistics are inflated and a regressor can look
+significant when it is not.
+
+```@example arimax
+using DelimitedFiles
+d = readdlm(joinpath(pkgdir(TSAnalytics), "test", "verification", "autoreg",
+                      "ar1reg.csv"), ','; skipstart=1)
+yr = d[:, 1]; Xr = hcat(ones(size(d, 1)), d[:, 2])
+
+ar = autoreg(yr, Xr)
+ols_b, _, ols_se = TSAnalytics._ols(Xr, yr; method=:qr)
+
+println("phi            : ", round(ar.phi[1], digits=4))
+println("OLS   slope    : ", round(ols_b[2], digits=4), "  se ", round(ols_se[2], digits=4),
+        "  t ", round(ols_b[2]/ols_se[2], digits=2))
+println("autoreg slope  : ", round(ar.beta[2], digits=4), "  se ", round(ar.se[2], digits=4),
+        "  t ", round(ar.beta[2]/ar.se[2], digits=2))
+```
+
+With `phi = 0.69` the slope's standard error **doubles** and its
+`t`-statistic falls from `25.3` to `11.5`. The point estimate barely
+moves. That asymmetry is the whole reason to correct: the coefficient
+was never the problem.
+
+[`autoreg`](@ref) fits by iterated feasible GLS — OLS, estimate the AR
+structure of the residuals, transform, re-estimate, repeat. It is SAS
+`PROC AUTOREG`'s basic tier, and the classical counterpart to
+[`fit_arimax`](@ref), which fits the same model by exact maximum
+likelihood.
+
+The transform is **Prais-Winsten**, not plain Cochrane-Orcutt: the
+first `order` observations are rescaled by the stationary covariance and
+kept, rather than discarded. `method=:yw` (default) estimates the AR
+part by Yule-Walker, which cannot leave the stationary region and so
+keeps the GLS transform defined at every iteration; `method=:ols` is
+less biased but is rejected if it wanders outside.
+
+!!! note "Verified by holding `phi` fixed"
+    No single R or Python function matches this. `orcutt` implements
+    Cochrane-Orcutt but will not install on this R version, and
+    `nlme::gls` fits by ML/REML rather than feasible GLS, so its `phi`
+    differs by construction.
+
+    **At a fixed `phi` they are the same estimator**, which is what is
+    checked: `autoreg(y, X; phi=[rho])` reproduces
+    `nlme::gls(..., corAR1(value=rho, fixed=TRUE))`'s coefficients *and*
+    standard errors to `5e-11` at three values of `rho`. The AR half is
+    separately R-verified through [`ar_yw`](@ref), and the OLS starting
+    point against R's `lm`. Both halves have a reference; their
+    composition does not.
+
+`se` covers `beta` only — the AR coefficients are estimated but not
+inferred on, which is what makes this the *basic* tier. Use
+[`fit_arimax`](@ref) when you want standard errors on the error dynamics
+too.
 
 ## Fourier terms, for a period too long for dummies
 

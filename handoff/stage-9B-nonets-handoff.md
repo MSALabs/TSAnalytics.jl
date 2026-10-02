@@ -2,10 +2,15 @@
 
 ## Status: TIER 1 COMPLETE, 2.1-2.3 COMPLETE, 2.4 NEARLY (2026-10-02)
 
-**§2.4: five of six items done.** Bias-corrected back-transformation,
-`fourier_terms`, `ar_yw`/`spec_ar`, GARCH `dist=:t` and
-`combine_forecasts`. Only the classical AutoReg tier remains, and
-`ar_yw` is most of its Yule-Walker half.
+**§2.4 COMPLETE, and with it TIER 2.** Bias-corrected
+back-transformation, `fourier_terms`, `ar_yw`/`spec_ar`, GARCH
+`dist=:t`, `combine_forecasts`, and `autoreg` (the classical AutoReg
+tier, which also closes `CLAUDE.md`'s "unscheduled but ready" item).
+
+What remains of this handoff is Tier 3 only -- the VAR/cointegration
+track, state-space extensions, nonlinear models, long memory, frequency
+domain, multivariate volatility, hierarchical reconciliation. All of it
+is substantial new scope rather than finishing work.
 
 Every reference §2.4 needs turned out reachable -- `InvBoxCox`,
 `fourier`, `ar`, `spec.ar`, `rugarch` and `arch` -- so all but

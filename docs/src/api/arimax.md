@@ -3,6 +3,8 @@
 ```@docs
 arx
 ARXModel
+autoreg
+AutoRegModel
 fit_arimax
 ArimaxModel
 fit_sarimax

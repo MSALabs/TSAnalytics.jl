@@ -44,6 +44,7 @@ include("scoring.jl")       # after accuracy.jl and forecast.jl: uses Forecast
 include("combine.jl")      # after forecast.jl: returns a Forecast
 include("fourier.jl")
 include("arspectral.jl")   # after spectral.jl (PeriodogramResult) and stattools.jl
+include("autoreg.jl")      # after arspectral.jl (ar_yw) and arx.jl (_ols)
 include("tscv.jl")
 include("holtwinters.jl")
 include("garch.jl")
