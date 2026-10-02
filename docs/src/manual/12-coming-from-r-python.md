@@ -28,6 +28,7 @@ and concluding something is broken.
 | `HoltWinters(y)` | [`holt_winters`](@ref) |
 | `forecast::ets(y)` | [`auto_ets`](@ref) |
 | `forecast::ets(y, model="AAA")` | [`fit_ets`](@ref)`(y, m; trend=:add, seasonal=:add)` |
+| `forecast::thetaf(y)` | [`fit_theta`](@ref) |
 | `acf(y)` / `pacf(y)` | [`acf`](@ref) / [`pacf`](@ref) |
 | `Box.test(y, type="Ljung-Box")` | [`ljungbox_test`](@ref) |
 | `tseries::adf.test` / `urca::ur.df` | [`adf_test`](@ref) |
@@ -65,6 +66,7 @@ and concluding something is broken.
 | `arch.arch_model` | [`fit_garch`](@ref) |
 | `tsa.holtwinters.ExponentialSmoothing` | [`holt_winters`](@ref) |
 | `tsa.exponential_smoothing.ETSModel` | [`fit_ets`](@ref) |
+| `tsa.forecasting.theta.ThetaModel` | [`fit_theta`](@ref) |
 
 ## Where the defaults differ
 
@@ -224,6 +226,68 @@ not itself wrong — on `log(dataset("jj").value)` R returns
 simulated series where R finds an interior optimum, `statsmodels` still
 returns `0.98` with a materially worse SSE (`420.31` against R's
 `412.36`). For the damped models this package targets R.
+
+### `fit_theta`'s intervals differ from both references, in four ways
+
+The point forecasts agree with R's `thetaf` and `statsmodels`'
+`ThetaModel` to `2e-5`. The intervals do not, and the reasons are worth
+separating because three of the four are defects in the references
+rather than choices.
+
+1. **`statsmodels`' `sigma2` ignores its own deseasonalisation.** It fits
+   a `SARIMAX(0,1,1)` with drift to the *original* series while the point
+   forecast is built on the deseasonalised one. On `AirPassengers` that is
+   `993.23` against `104.71` for the same estimator computed consistently.
+   The giveaway is that its `sigma2` is the identical number
+   (`49.7153734174`) whether the bundled fixture is declared quarterly or
+   non-seasonal. `use_mle=True` avoids this path.
+
+2. **`statsmodels`' variance growth factor has the square misplaced.** It
+   documents the variance as following from the model's IMA(1,1) structure
+   and computes `sigma2*(1 + (h-1)*(1 + (alpha-1)^2))`; the IMA(1,1)
+   result is `sigma2*(1 + (h-1)*(1 + (alpha-1))^2)`, which simplifies to
+   `sigma2*(1 + (h-1)*alpha^2)` — R's formula, and the standard SES one.
+   The two agree only at `alpha = 1`. At `alpha = 0.68` its intervals
+   widen 2.4 times too fast. This package uses `alpha^2`.
+
+3. **Neither reference scales the standard error by the seasonal factor.**
+   With `y = x*S` and the error additive on `x`, `var(y) = S^2 var(x)`, so
+   the interval scales with the point forecast. On `AirPassengers`, where
+   the factors run `0.80` to `1.23`, R's intervals are about 23% too
+   narrow at the seasonal peak. This package scales them; dividing the
+   scaling back out reproduces R's bound.
+
+4. **`sigma2` is `sse/n` here against R's `sse/(n-2)`** — the same
+   ML-versus-adjusted choice documented above for [`fit_ets`](@ref).
+
+Undo (3) and (4) together, with `alpha` pinned to R's value, and R's 95%
+bounds come back to `3e-9`.
+
+### R's `thetaf` returns `fitted` and `residuals` on different scales
+
+Its `fitted` is reseasonalised; its `residuals` are the underlying SES
+model's, on the deseasonalised scale. So on a seasonal series
+`y - fitted` and `residuals` are different vectors — on the bundled
+fixture their sums of squares are `1209.29841334` and `1315.21211028`,
+9% apart. An in-sample RMSE taken from R's `residuals` is therefore on
+the deseasonalised scale even though the fitted values it looks paired
+with are not.
+
+[`fit_theta`](@ref) reports both, as `sse` and `sse_adjusted`, and
+`resid` is always `y - fitted`.
+
+### The Theta seasonality test detects autocorrelation, not seasonality
+
+Both references gate deseasonalisation on `|r_m|` against a standard
+error, so any series with strong autocorrelation at lag `m` trips it.
+The Nile is annual and has no seasonality whatever, yet declared
+quarterly its statistic is `1.69` against a `1.64` threshold, and
+declared half-yearly, `3.14`. A pure linear trend reaches `3.50` at
+period 4. Pass `deseasonalize=false` when you know better.
+
+`statsmodels`' version of the test is additionally **liberal**: it uses
+`1 + sum(r^2)` where Bartlett's large-lag variance has
+`1 + 2*sum(r^2)`, so it declares seasonality more often than R does.
 
 ## What is missing here that you may be looking for
 

@@ -77,8 +77,10 @@ choosing between a damped and an undamped trend than most analysts are.
 Having AICc selection over six forms gets a good deal of that benefit;
 having it over thirty would get the rest.
 
-TBATS and the Theta method sit behind the multiplicative forms in the
-same queue.
+The **Theta method** is built — [`fit_theta`](@ref), the M3 competition
+winner, which reduces exactly to simple exponential smoothing plus half
+the regression slope as drift. TBATS is the one still in the queue, and
+it sits behind the multiplicative forms because it needs them.
 
 ## Components you can name
 

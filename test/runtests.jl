@@ -6,7 +6,7 @@ using Statistics: mean, std, var
 # StatsAPI does not export these; importing them once here keeps a test from
 # passing in isolation (where the author imported them) and erroring under the
 # full suite, which is exactly how the missing `std` import slipped through.
-using StatsAPI: coef, vcov, residuals, predict, loglikelihood, aic, bic, nobs, stderror
+using StatsAPI: coef, vcov, residuals, fitted, predict, loglikelihood, aic, bic, nobs, stderror
 using Dates: Date
 
 @testset "TSAnalytics.jl" begin
@@ -56,6 +56,7 @@ using Dates: Date
     include("test_tscv.jl")
     include("test_holtwinters.jl")
     include("test_ets.jl")         # after test_holtwinters.jl: the ETS(A,A,A) reduction reuses it
+    include("test_theta.jl")       # after test_ets.jl and test_datasets.jl: SES reuse plus _load_column
     include("test_garch.jl")
     include("test_garcht.jl")      # after test_garch.jl: dist=:t
     include("test_garch_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally

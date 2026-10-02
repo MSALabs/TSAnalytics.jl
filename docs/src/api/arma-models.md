@@ -21,6 +21,8 @@ fit_ets
 auto_ets
 ETSModel
 notation
+fit_theta
+ThetaModel
 ```
 
 ## Model-fitting infrastructure

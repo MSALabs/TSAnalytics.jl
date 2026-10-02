@@ -1,4 +1,4 @@
-# Exponential Smoothing and ETS
+# Exponential Smoothing, ETS and Theta
 
 An ARIMA model says what a series is. An exponential smoothing model
 says how to update a belief about it: keep a running estimate of the
@@ -6,8 +6,14 @@ level, and maybe of the slope and the seasonal pattern, and revise each
 one by a fraction of every new forecast error. The fractions —
 `alpha`, `beta`, `gamma` — are the parameters.
 
-This package has two entry points to that family, and the difference
-between them is worth getting straight before you pick one.
+This package has three entry points to that family. Two are the
+classical recursions and the full likelihood-based ETS; the third,
+[`fit_theta`](@ref), looks like a different method entirely and turns
+out to be simple exponential smoothing with a drift term — it has its
+own section at the end.
+
+The difference between the first two is worth getting straight before
+you pick one.
 
 | | [`holt_winters`](@ref) | [`fit_ets`](@ref) |
 |---|---|---|
@@ -21,7 +27,9 @@ between them is worth getting straight before you pick one.
 If you want the textbook recursions with parameters you choose or have
 optimised against SSE, `holt_winters` is the smaller, more direct tool.
 If you want a likelihood — and therefore information criteria, and
-therefore automatic selection — you want `fit_ets`.
+therefore automatic selection — you want `fit_ets`. If you want the
+competition-winning default with almost nothing to choose, skip to
+[The Theta method](#The-Theta-method).
 
 ## The taxonomy, and which part of it is here
 
@@ -280,6 +288,119 @@ b = fit_ets(y, 4; trend=:add,    fixed=(alpha=0.3, beta=0.1),          initial=:
 println("sse difference: ", abs(a.sse - b.sse))
 ```
 
+## The Theta method
+
+[`fit_theta`](@ref) is the method that won the M3 competition
+(Assimakopoulos & Nikolopoulos 2000). Its original description — rescale
+the series' local curvature by a factor `theta`, fit a line to each of
+two rescalings, forecast both and average — sounds like something quite
+unlike exponential smoothing. Hyndman & Billah (2003) showed it is not:
+it reduces **exactly** to simple exponential smoothing plus half the
+regression slope as drift. That equivalence is what is implemented here,
+because it is exact rather than an approximation.
+
+```@example theta
+using TSAnalytics, Statistics
+
+y = dataset("jj").value       # the levels this time, not the logs
+t = fit_theta(y, 4)
+```
+
+Three numbers describe the whole model: `alpha` from the SES fit, `b0`
+the regression slope, and the drift the forecast applies, `b0/2`.
+
+```@example theta
+println("alpha      = ", round(t.alpha, digits=6))
+println("drift/step = ", round(t.b0 / 2, digits=6))
+println("level      = ", round(t.level, digits=4))
+```
+
+### Seasonality is handled by adjustment, not by a component
+
+Unlike [`fit_ets`](@ref), Theta has no seasonal state. A seasonal series
+is **divided** by a classical multiplicative seasonal figure first, SES
+and the drift are fitted to what remains, and the forecast is multiplied
+back. Whether to do that at all is decided by a test on the lag-`period`
+autocorrelation:
+
+```@example theta
+println("statistic = ", round(t.seasonal_statistic, digits=4),
+        "  vs threshold ", round(TSAnalytics._confidence_z(0.10), digits=4))
+println("adjusted  = ", t.deseasonalized)
+```
+
+!!! warning "That test detects autocorrelation, not seasonality"
+    It compares `|r_m|` against Bartlett's standard error, so **any**
+    series with strong autocorrelation at lag `m` trips it. The Nile is
+    annual data with no seasonality whatever, and declared quarterly its
+    statistic is `1.69` against the `1.64` threshold — a false positive.
+    Declared half-yearly it is `3.14`. A pure linear trend reaches `3.50`
+    at period 4.
+
+    Both references gate on the same quantity, so this is inherited
+    rather than chosen, but pass `deseasonalize=false` when you know
+    better. `seasonal_test=false` forces the adjustment the other way.
+
+Because the adjustment is multiplicative, the series has to be strictly
+positive — so the log transform that [`fit_ets`](@ref) needed for this
+same series is not available here, and is not needed:
+
+```@example theta
+try
+    fit_theta(log.(y), 4)
+catch e
+    println(e.msg)
+end
+```
+
+### Forecasting
+
+```@example theta
+f = forecast(t, 8)
+println("point : ", round.(f.point[1:4], digits=4))
+println("se    : ", round.(f.se[1:4], digits=4))
+```
+
+The drift is **never damped**, so the forecast is a straight line
+extended indefinitely, with the seasonal pattern repeating on top. There
+is no `phi` and no mechanism to flatten a long horizon — which is the
+method's main structural limitation, and shows up immediately on a
+series that does not grow linearly:
+
+```@example theta
+train, test = y[1:72], y[73:84]
+rmse(a, p) = accuracy(a, p).rmse
+println("Theta             : ", round(rmse(test, forecast(fit_theta(train, 4), 12).point), digits=4))
+println("ETS on logs       : ", round(rmse(test, exp.(forecast(auto_ets(log.(train), 4), 12).point)), digits=4))
+println("seasonal naive    : ", round(rmse(test, repeat(train[end-3:end], 3)), digits=4))
+```
+
+Theta beats the seasonal naive benchmark and loses clearly to ETS here.
+That is not a surprise and not a defect: J&J earnings grow roughly
+*exponentially*, ETS can model that on the log scale, and Theta's drift
+is additive and linear. On the M3 data — mostly short series without
+that kind of curvature — the ranking goes the other way, which is how it
+won.
+
+### Two sums of squares, because R reports two
+
+```@example theta
+println("sse          = ", round(t.sse, digits=4), "   (y - fitted, original scale)")
+println("sse_adjusted = ", round(t.sse_adjusted, digits=4), "   (the SES fit's own)")
+```
+
+R's `thetaf` returns `fitted` on the original scale but `residuals` on
+the deseasonalised one, so on a seasonal series its `y - fitted` and its
+`residuals` are two different vectors — 9% apart in sum of squares on
+the verification fixture. Both are reported here under distinct names,
+and `resid` is always `y - fitted`. If you have been computing an
+in-sample RMSE from R's `residuals` on a seasonal Theta fit, it is on the
+deseasonalised scale.
+
+The prediction intervals differ from both references in several further
+ways, three of which are defects in the references; they are enumerated
+in [Coming from R or Python](12-coming-from-r-python.md).
+
 ## What is not here
 
 - **Multiplicative error or seasonality** — the other twenty-four
@@ -288,12 +409,15 @@ println("sse difference: ", abs(a.sse - b.sse))
   everywhere else in this package, and in R and `statsmodels`, the
   fitted parameters are treated as known, so the intervals are slightly
   too narrow.
-- **TBATS, and the Theta method.** Both sit behind this in the queue;
-  see [The Frontier](../introduction/41-the-frontier.md).
+- **TBATS.** It sits behind the multiplicative forms in the queue,
+  because it needs them; see
+  [The Frontier](../introduction/41-the-frontier.md).
+- **A damped Theta.** The drift is linear and unbounded, as in both
+  references. Use a damped ETS when a long horizon has to flatten.
 
 ## See also
 
 - [Fitting ARMA Models](04-fitting-arma-models.md) — the other way to model a seasonal series
 - [Forecasting and Accuracy](09-forecasting-and-accuracy.md) — evaluating what comes out of `forecast`
 - [Coming from R or Python](12-coming-from-r-python.md) — every documented divergence in one place
-- [API: ARMA Models](../api/arma-models.md) — `fit_ets`, `auto_ets`, `ETSModel`, `holt_winters`
+- [API: ARMA Models](../api/arma-models.md) — `fit_ets`, `auto_ets`, `fit_theta`, `holt_winters`
