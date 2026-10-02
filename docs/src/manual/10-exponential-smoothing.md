@@ -64,9 +64,6 @@ catch e
 end
 ```
 
-One group fits but does not forecast yet — `ETS(M,·,M)`, covered in
-[Multiplicative errors](#Multiplicative-errors) below.
-
 A multiplicative component divides by a fitted value, so those models
 need a strictly positive series. For an additive-error model whose
 seasonal swing grows with its level, the older workaround still
@@ -345,7 +342,7 @@ println("A-error  se[8]/se[1] = ", round(forecast(a, 8).se[8] / forecast(a, 8).s
 println("M-error  se[8]/se[1] = ", round(forecast(b, 8).se[8] / forecast(b, 8).se[1], digits=2))
 ```
 
-[`auto_ets`](@ref) searches all twelve forecastable models, so it will
+[`auto_ets`](@ref) searches all fifteen models, so it will
 find this for you — and `additive_only=true` restricts it to the six
 additive-error ones:
 
@@ -360,42 +357,60 @@ sections took. Either is defensible; `error=:mul` has the advantage of
 leaving the series on its own scale, so the forecast needs no back
 transform and no bias correction.
 
-### ETS(M,·,M) fits but does not forecast
+### Multiplicative seasonality, and why its mean is not what you expect
 
-The three multiplicative-*seasonal* models are the practically
-interesting ones — multiplicative Holt-Winters is what most seasonal
-economic series want — and they are also the only group here that is
-incomplete. They fit, and the fit is verified against R:
+The three multiplicative-*seasonal* models are the practically important
+ones — multiplicative Holt-Winters is what most seasonal economic series
+want:
 
 ```@example mets
 c = fit_ets(y, 4; error=:mul, trend=:add, seasonal=:mul)
+fc = forecast(c, 8)
 println(notation(c), "  aicc = ", round(c.aicc, digits=3))
-try
-    forecast(c, 8)
-catch e
-    println("
-", e.msg)
-end
+println("point[1:4] = ", round.(fc.point[1:4], digits=4))
 ```
 
-The reason is specific. Past the first seasonal cycle the level factor
-and the seasonal factor share innovations — the seasonal factor used at
-horizon `h` was itself revised by the innovation at `n + h - m` — so
-`y` becomes a *product* of random states. Two things follow that
-propagating the state does not give you: the `h`-step **mean** picks up
-a bias term of order `alpha*gamma*sigma2`, and the **variance** needs
-fourth moments of the state rather than second. Both were measured
-against simulation before this limit was drawn, rather than assumed.
+These are Hyndman et al.'s *class 3*, and they need more than
+propagating the state forward. Past the first seasonal cycle the level
+factor and the seasonal factor **share innovations** — the seasonal
+factor used at horizon `h` was itself revised by the innovation at
+`n + h - m` — so `y` becomes a product of *dependent* random states.
 
-R's `forecast::ets` implements this class, so use it if you need these
-forecasts. On `AirPassengers`, ETS(M,A,M) beats every model that does
-forecast here by about 50 AICc points, so the gap is a real one and not
-a corner case.
+The visible consequence is that the forecast does **not** simply repeat
+with the period, even though the seasonal factor does. To see the effect
+on its own, use the model without a trend — otherwise four steps of
+trend growth sit on top of it and swamp it:
 
-### R's no-trend seasonal intervals are wrong, and these are not
+```@example mets
+c0 = fit_ets(y, 4; error=:mul, seasonal=:mul)     # ETS(M,N,M), no trend
+f0 = forecast(c0, 8)
+println("point[1] = ", round(f0.point[1], digits=6))
+println("point[5] = ", round(f0.point[5], digits=6), "   (same seasonal slot)")
+println("ratio    = ", round(f0.point[5] / f0.point[1], digits=9))
+println("1 + alpha*gamma*sigma2 = ",
+        round(1 + c0.alpha * c0.gamma * c0.sigma2, digits=9))
+```
 
-One finding from building this is worth stating on its own, because it
-runs the other way.
+The mean gains exactly one factor of `1 + alpha*gamma*sigma2` per shared
+innovation — one by horizon 5, two by horizon 9, and so on. It is a
+small effect here, but it is the difference between a forecast that is
+right and one that is merely close, and R includes it too.
+
+The variance needs fourth moments of the state rather than second. Both
+are computed exactly here by a moment recursion rather than by
+simulation — verified against R to `6e-9` on the mean and `0.0000%` on
+the standard error for the two undamped forms.
+
+For the **damped** form R disagrees with its own fitted model, and this
+package does not follow it; see below.
+
+
+### Two places where R's ETS forecasts are wrong
+
+Two findings from building this are worth stating on their own, because
+they run the other way from the usual "R is the reference" framing.
+
+The first is in the **no-trend seasonal** models.
 
 For ETS(A,N,A) and ETS(M,N,A) — seasonal, no trend — R applies the
 seasonal variance increment **one period early**. The seasonal state
@@ -410,6 +425,22 @@ ETS(M,N,A) state agree with this package to **0.09% at every horizon**,
 while R is `+25.6%` too wide at `h = 4` and `+13.4%` at `h = 8`. R's
 *trended* seasonal models agree with this package exactly, so the
 problem is confined to that one branch.
+
+The second is in **ETS(M,Ad,M)**, where R's forecast contradicts R's own
+fit. R accumulates the damped trend as `(1 + phi + ... + phi^(h-1))` in
+its forecast, while its own one-step recursion is `(l + phi*b)*s`, which
+implies `(phi + ... + phi^h)`. Both halves of that were checked
+directly: R's `ETS(A,Ad,N)` forecast matches the standard accumulation
+exactly, and R's in-sample fitted value for ETS(M,Ad,M) itself is
+`(l + phi*b)*s` to the last digit — only its forecast differs. Eight
+million simulated paths of the model's own recursion agree with this
+package at every horizon; R's mean is off by `0.04` rising to `0.27`
+over eight steps, and its standard error by `0.02%` rising to `0.8%`.
+
+Neither finding makes R unreliable in general — its trended seasonal
+intervals and its undamped class-3 forecasts match this package to
+`1e-9`. They are two specific branches, found by checking rather than
+assumed.
 
 ## The Theta method
 

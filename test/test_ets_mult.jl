@@ -151,17 +151,127 @@ using DelimitedFiles
         @test fc.se[24] / fc.se[1] > fa.se[24] / fa.se[1]
     end
 
-    @testset "class 3 fits but does not forecast, and says why" begin
+    @testset "class 3 forecasts, exactly matching R on the two undamped forms" begin
+        # _ets_class3_moments is checked at R's own parameters and final state,
+        # so this tests the formula rather than the optimiser.
+        T = TSAnalytics
+        # R: ets(y, model="MNM"); states[nrow,], par, sigma2, forecast(h=8)
+        mu, va = T._ets_class3_moments(157.6230020392, 0.0,
+            reverse([1.0888553914, 1.0389196391, 1.0814983445, 1.1182001955]),
+            0.6101331989, 0.0, 0.3898667844, 1.0, :none, 0.000527612657, 8)
+        R_MU = [176.25407169, 170.46901576, 163.75763239, 171.62865559,
+                176.27619220, 170.49041023, 163.77818456, 171.65019559]
+        R_SE = [4.04852440, 4.58725344, 4.96884845, 5.73679043,
+                7.15032318, 7.31740646, 7.39522888, 8.11614762]
+        @test maximum(abs.(mu .- R_MU)) < 1e-7
+        @test maximum(abs.(sqrt.(va) .- R_SE)) < 1e-7
+
+        # R: ets(y, model="MAM")
+        mu2, va2 = T._ets_class3_moments(165.7475910366, 1.9118741849,
+            reverse([1.0355417243, 0.9876080891, 1.0261428764, 1.0650751411]),
+            0.3107436748, 0.0945452814, 0.4899164661, 1.0, :add, 0.000401844640, 8)
+        R_MU2 = [178.56992858, 174.00442197, 169.35820889, 179.55784818,
+                 186.73930648, 181.87544629, 176.93390839, 187.50150336]
+        R_SE2 = [3.57962403, 3.75783971, 4.01640984, 4.73462240,
+                 6.53843966, 6.91928339, 7.33727201, 8.48340039]
+        @test maximum(abs.(mu2 .- R_MU2)) < 1e-7
+        @test maximum(abs.(sqrt.(va2) .- R_SE2)) < 1e-7
+    end
+
+    @testset "the class-3 MEAN is not the propagated state" begin
+        # Past the first seasonal cycle the level and seasonal factors share
+        # innovations, so E[y] picks up a bias factor of (1 + alpha*gamma*s2)
+        # per shared innovation. Without it the mean would simply repeat with
+        # the period. R includes it too.
+        T = TSAnalytics
+        f = fit_ets(y, m; error=:mul, seasonal=:mul)
+        fc = forecast(f, 8)
+        @test fc.point[5] != fc.point[1]          # same seasonal slot, different forecast
+        @test fc.point[5] > fc.point[1]
+        bias = 1 + f.alpha * f.gamma * f.sigma2
+        @test isapprox(fc.point[5] / fc.point[1], bias; rtol=1e-6)
+        @test isapprox(fc.point[6] / fc.point[2], bias; rtol=1e-6)
+        # a real effect in R's numbers too, not just this package's:
+        # R's ETS(M,N,M) mean[5]/mean[1] on this fixture
+        @test isapprox(176.27619220 / 176.25407169,
+                       1 + 0.6101331989 * 0.3898667844 * 0.000527612657; rtol=1e-6)
+        # the bias-free propagation repeats exactly, which is the contrast
+        prop = T._ets_propagate(f.level[end], 0.0, f.s0, f.alpha, 0.0,
+                                 f.gamma, 1.0, :none, :mul, 8)
+        @test isapprox(prop[5], prop[1]; rtol=1e-12)
+    end
+
+    @testset "class 3 reduces to its independently derived closed form" begin
+        # With no trend the moment recursion collapses to a product form that
+        # was derived separately: two routes to the same number.
+        T = TSAnalytics
+        al, ga, s2 = 0.597916, 0.402084, 0.00048469
+        lN = 157.0
+        sN = [1.09, 1.04, 1.08, 1.12]
+        mu, va = T._ets_class3_moments(lN, 0.0, sN, al, 0.0, ga, 1.0, :none, s2, 8)
+        fo = 1 + al^2 * s2
+        fs = 1 + s2 * ((al + ga)^2 + 2 * al * ga) + 3 * al^2 * ga^2 * s2^2
+        for h in 1:8
+            k = length(h-m : -m : 1)
+            pr = 1.0
+            for i in 1:(h-1)
+                pr *= ((h - i) % m == 0) ? fs : fo
+            end
+            base = lN * sN[mod1(h, m)]
+            @test isapprox(mu[h], base * (1 + al * ga * s2)^k; rtol=1e-12)
+            @test isapprox(va[h],
+                base^2 * ((1 + s2) * pr - (1 + al * ga * s2)^(2k)); rtol=1e-10)
+        end
+    end
+
+    @testset "DIVERGENCE: R's damped class-3 forecast contradicts its own fit" begin
+        # R accumulates the damped trend as (1 + phi + ... + phi^(h-1)) in its
+        # ETS(M,Ad,M) FORECAST, where its own one-step recursion is
+        # (l + phi*b)*s and so implies (phi + ... + phi^h). R's non-seasonal
+        # damped models use the standard accumulation -- ETS(A,Ad,N) matches
+        # l + sum(phi^(1:h))*b exactly -- and so does R's own in-sample fitted
+        # value for this very model, which is (l + phi*b)*s to the last digit.
+        # Only its forecast differs.
+        #
+        # Settled by simulating the model's own recursion: 8,000,000 paths.
+        T = TSAnalytics
+        al, be, ga = 0.3495329093, 0.0862879941, 0.4712835791
+        ph, s2 = 0.9799997120, 0.000399221104
+        lN, bN = 162.8691194485, 1.7015460206
+        sN = reverse([1.0535499504, 1.0046242656, 1.0441462653, 1.0832096744])
+        mu, va = T._ets_class3_moments(lN, bN, sN, al, be, ga, ph, :damped, s2, 8)
+        SIM_MU = [178.226965, 173.506914, 168.546152, 178.409767,
+                  185.120528, 180.018152, 174.688245, 184.721484]
+        SIM_SE = [3.56020, 3.77367, 4.04257, 4.75559,
+                  6.45197, 6.79232, 7.14566, 8.18955]
+        R_MU = [178.26453696, 173.57697488, 168.64863022, 178.54913888,
+                185.29868609, 180.22250925, 174.91538419, 184.99031874]
+        R_SE = [3.56181781, 3.77730442, 4.05302518, 4.77360173,
+                6.48550371, 6.83460178, 7.19699273, 8.25554755]
+        # this package agrees with simulation to Monte Carlo error
+        @test maximum(abs.(mu .- SIM_MU)) < 3e-3
+        @test maximum(abs.(sqrt.(va) .- SIM_SE)) < 3e-3
+        # R does not, and the gap grows with the horizon
+        @test abs(R_MU[1] - SIM_MU[1]) > 10 * abs(mu[1] - SIM_MU[1])
+        @test abs(R_MU[8] - SIM_MU[8]) > 0.2
+        @test R_SE[8] / SIM_SE[8] > 1.007          # 0.8% too wide at h=8
+        # and R's convention is exactly the undamped-first-step one
+        @test isapprox(R_MU[1], (lN + bN) * sN[1]; rtol=1e-7)
+        @test isapprox(mu[1], (lN + ph * bN) * sN[1]; rtol=1e-7)
+    end
+
+    @testset "every class-3 model now forecasts" begin
         for tr in (:none, :add, :damped)
             f = fit_ets(y, m; error=:mul, trend=tr, seasonal=:mul)
-            @test f.converged
-            @test f.seasonal === :mul
-            e = try; forecast(f, 4); nothing; catch err; err; end
-            @test e isa ArgumentError
-            @test occursin("does not forecast", e.msg)
-            @test occursin("class 3", e.msg)
-            @test occursin("forecast::ets", e.msg)      # points at the reference
-            @test_throws ArgumentError predict(f, 4)
+            fc = forecast(f, 12)
+            @test length(fc.point) == 12
+            @test all(isfinite, fc.point) && all(>(0), fc.point)
+            @test all(isfinite, fc.se) && all(>(0), fc.se)
+            @test all(fc.lower[:, 2] .< fc.lower[:, 1])
+            @test all(fc.upper[:, 2] .> fc.upper[:, 1])
+            @test predict(f, 12).point == fc.point
+            # h = 1 has no shared innovation, so the sd is just mu*sigma
+            @test isapprox(fc.se[1], fc.point[1] * sqrt(f.sigma2); rtol=1e-10)
         end
     end
 
@@ -176,12 +286,8 @@ using DelimitedFiles
         @test isapprox(sum(a.s0), 0.0; atol=1e-8)
     end
 
-    @testset "auto_ets searches the 12 forecastable models, not 15" begin
-        # R considers 15 by default. The three class-3 forms are excluded here
-        # because selecting a model that cannot be forecast would be worse
-        # than not considering it.
+    @testset "auto_ets searches all 15 models, the same space R does" begin
         a = auto_ets(y, m)
-        @test a.seasonal !== :mul
         @test forecast(a, 4) isa TSAnalytics.Forecast      # whatever wins, forecasts
         # R's own pick on this fixture is ETS(A,A,A), and so is this
         @test TSAnalytics.notation(a) == "ETS(A,A,A)"

@@ -28,7 +28,7 @@ and concluding something is broken.
 | `HoltWinters(y)` | [`holt_winters`](@ref) |
 | `forecast::ets(y)` | [`auto_ets`](@ref) |
 | `forecast::ets(y, model="AAA")` | [`fit_ets`](@ref)`(y, m; trend=:add, seasonal=:add)` |
-| `forecast::ets(y, model="MAM")` | [`fit_ets`](@ref)`(y, m; error=:mul, trend=:add, seasonal=:mul)` (fits; does not forecast) |
+| `forecast::ets(y, model="MAM")` | [`fit_ets`](@ref)`(y, m; error=:mul, trend=:add, seasonal=:mul)` |
 | `forecast::thetaf(y)` | [`fit_theta`](@ref) |
 | `acf(y)` / `pacf(y)` | [`acf`](@ref) / [`pacf`](@ref) |
 | `Box.test(y, type="Ljung-Box")` | [`ljungbox_test`](@ref) |
@@ -256,14 +256,26 @@ comparable across error types because the likelihood carries the
 Jacobian `sum(log|yhat|)`; R's decomposes the same way, verified to
 `1e-13`.
 
-### ETS(M,·,M) fits here but does not forecast
+### R's ETS(M,Ad,M) forecast contradicts R's own fitted model
 
-R implements Hyndman et al.'s class 3; this package does not yet.
-[`fit_ets`](@ref) will fit those three models, and
-[`forecast`](@ref) errors on them rather than returning a number that
-looks right. [`auto_ets`](@ref) therefore searches **twelve** models
-where R searches fifteen. Both exclude multiplicative trend by default,
-and both refuse ETS(A,·,M) outright.
+R accumulates the damped trend as `(1 + phi + ... + phi^(h-1))` in its
+ETS(M,Ad,M) **forecast**, while its own one-step recursion is
+`(l + phi*b)*s` and so implies `(phi + ... + phi^h)`. R's non-seasonal
+damped models use the standard accumulation — `ETS(A,Ad,N)` matches
+`l + sum(phi^(1:h))*b` exactly — and so does R's in-sample fitted value
+for ETS(M,Ad,M) itself. Only its forecast differs.
+
+Eight million simulated paths of the model's own recursion agree with
+this package at every horizon; R's mean is off by `0.04` rising to
+`0.27` over eight steps and its standard error by `0.02%` rising to
+`0.8%`.
+
+For the two **undamped** class-3 forms, ETS(M,N,M) and ETS(M,A,M), this
+package and R agree to `6e-9` on the mean and `0.0000%` on the standard
+error.
+
+[`auto_ets`](@ref) searches the same fifteen models R does. Both exclude
+multiplicative trend by default, and both refuse ETS(A,·,M) outright.
 
 ### `fit_theta`'s intervals differ from both references, in four ways
 

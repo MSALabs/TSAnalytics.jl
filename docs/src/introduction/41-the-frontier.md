@@ -56,14 +56,20 @@ errors and the likelihood that makes the selection possible. That is the
 same default space R's `ets()` searches. See
 [Exponential Smoothing, ETS and Theta](../manual/10-exponential-smoothing.md).
 
-Of the fifteen, twelve forecast. The three that do not are the
-multiplicative-**seasonal** forms, ETS(M,·,M), and the reason is
-specific rather than general: past the first seasonal cycle the level
-factor and the seasonal factor share innovations, so the observation
-becomes a *product* of random states. Its mean then picks up a bias
-term that propagating the state does not produce, and its variance needs
-fourth moments of the state rather than second. Those models fit here,
-and error rather than guess when asked to forecast.
+All fifteen fit and all fifteen forecast. The multiplicative-**seasonal**
+forms needed more than propagating the state to get there: past the
+first seasonal cycle the level factor and the seasonal factor share
+innovations, so the observation becomes a product of *dependent* random
+states, its mean picks up a bias term that state propagation does not
+produce, and its variance needs fourth moments of the state rather than
+second. Both come out of an exact moment recursion.
+
+Two of R's own ETS forecasts turned out to be wrong along the way — its
+no-trend seasonal intervals, and its damped multiplicative-seasonal
+forecast, which contradicts R's own fitted recursion. Each was confirmed
+by simulating the model rather than by argument, and both are written up
+in
+[Exponential Smoothing, ETS and Theta](../manual/10-exponential-smoothing.md).
 
 The fifteen that remain unimplemented are the multiplicative-trend
 forms, which R excludes by default too for being unstable, and the
