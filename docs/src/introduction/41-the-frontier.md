@@ -47,23 +47,37 @@ establishing that each series individually has a unit root, which is
 the precondition for asking the cointegration question at all — and
 then you will need to leave.
 
-## Exponential smoothing, properly
+## Exponential smoothing: the non-linear half
 
-[`holt_winters`](@ref) covers the classical recursions. What it does
-not do is the **full ETS taxonomy** — all thirty error/trend/season
-combinations, each with its own state-space representation, selected
-automatically by AICc. That is what R's `ets()` gives you, and it
-matters because the automatic selection is genuinely good: ETS
-routinely wins forecasting competitions against models chosen by hand.
+This section used to say the whole ETS taxonomy was missing. **Six of
+the thirty forms now exist** — [`fit_ets`](@ref) and
+[`auto_ets`](@ref), with AICc selection, a damped trend and the
+likelihood that makes the selection possible. See
+[Exponential Smoothing and ETS](../manual/10-exponential-smoothing.md).
 
-The infrastructure is largely in place. ETS in state-space form runs on
-the same Kalman filter Part VI describes, and the local-level and
-local-trend components are non-stationary by construction, which is
-precisely what [diffuse initialisation](33-diffuse-initialisation.md)
-exists to handle. It is a matter of writing the thirty forms and the
-selection loop, not of new theory.
+Those six are exactly the **linear** ones: additive error, with the
+trend absent, additive or damped, and the seasonal absent or additive.
+They are the subset expressible as a linear Gaussian state space model,
+which is why they could be built on machinery that already existed.
 
-Damped-trend variants, the Theta method and TBATS sit behind it in the
+The remaining twenty-four all involve a **multiplicative error or a
+multiplicative seasonal**, and that is a different problem rather than
+more of the same one. A multiplicative error makes the observation
+equation non-linear in the state, so the exact prediction interval has
+no closed form: you have to simulate paths and take quantiles. R's
+`ets()` does precisely that, and reports it as such. Until that exists
+here, those combinations are **refused by name** rather than
+approximated silently, and the standing workaround is the old one —
+model the logarithm, where multiplicative seasonality is additive.
+
+ETS's reputation is earned on exactly this family. In the M3
+competition the automatically-selected ETS was among the strongest
+entrants, and the selection is doing most of that work: it is better at
+choosing between a damped and an undamped trend than most analysts are.
+Having AICc selection over six forms gets a good deal of that benefit;
+having it over thirty would get the rest.
+
+TBATS and the Theta method sit behind the multiplicative forms in the
 same queue.
 
 ## Components you can name
@@ -168,9 +182,10 @@ an error you can read.
 ## Where to start
 
 If you want to contribute, the ordering that makes sense is roughly the
-order of this chapter: full ETS is large but needs no new theory, and
-VAR is the biggest single addition, opening the whole multivariate
-track behind it.
+order of this chapter. The multiplicative ETS forms need a simulation
+path for their intervals, which nothing here has yet and several later
+models would reuse; VAR is the biggest single addition, opening the
+whole multivariate track behind it.
 
 `development-sequence.md` in the repository carries the full staged
 roadmap with dependencies — what is built, what is next, and what each
@@ -180,4 +195,4 @@ piece needs before it can start.
 
 - [Appendix B](B-verification.md) — the standard every number here was held to
 - [Appendix C](C-further-reading.md) — where to read further on everything above
-- [Coming from R or Python](../manual/11-coming-from-r-python.md) — what to reach for in the meantime
+- [Coming from R or Python](../manual/12-coming-from-r-python.md) — what to reach for in the meantime

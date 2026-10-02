@@ -144,12 +144,18 @@ running the code immediately above them.
 
 ## Where the standard is weaker, and where it is different
 
-Two places depart from the dual-reference norm, and both say so at the
+One place departs from the dual-reference norm, and it says so at the
 point of use rather than only here.
 
-**Single-verified.** The ETS work is validated against `statsmodels`
-alone, because `forecast::ets()` could not be obtained. Its stage notes
-state this.
+!!! note "This section used to list ETS as single-verified"
+    Its stage notes recorded that `forecast::ets()` "could not be
+    obtained" and scoped the work against `statsmodels` alone. R's
+    `forecast` 9.0.2 turned out to be installed after all, so
+    [`fit_ets`](@ref) is dual-verified like everything else — on two
+    series, the simulated fixture and `log(dataset("jj").value)`, across
+    all six models. That re-check also found that `statsmodels`' damped
+    fits stop at its `phi` bound with worse SSE than R's, which a
+    single-reference validation would have adopted as correct.
 
 **Verified against the definition instead of a package.** The
 distributional scoring rules — [`crps_normal`](@ref),
@@ -186,4 +192,4 @@ answer. That is what [Appendix A](A-checklist.md) is for.
 
 - [Appendix A](A-checklist.md) — the checklist
 - [Appendix C](C-further-reading.md) — the six reference books the policy is checked against
-- [Coming from R or Python](../manual/11-coming-from-r-python.md) — every documented divergence in one place
+- [Coming from R or Python](../manual/12-coming-from-r-python.md) — every documented divergence in one place

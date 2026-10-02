@@ -35,8 +35,9 @@ makedocs(;
             "manual/07-state-space-and-kalman.md",
             "manual/08-arimax-and-regression.md",
             "manual/09-forecasting-and-accuracy.md",
-            "manual/10-plotting.md",
-            "manual/11-coming-from-r-python.md",
+            "manual/10-exponential-smoothing.md",
+            "manual/11-plotting.md",
+            "manual/12-coming-from-r-python.md",
         ],
         "Introduction to Time Series Analysis" => [
             "Part I -- The Series and the Machine" => [

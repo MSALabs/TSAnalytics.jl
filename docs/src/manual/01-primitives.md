@@ -333,5 +333,5 @@ forecast.
 ## See also
 
 - [Diagnostics](02-diagnostics.md) — testing what you find here
-- [Plotting](10-plotting.md) — every result type's recipe
+- [Plotting](11-plotting.md) — every result type's recipe
 - [API: Primitives](../api/primitives.md) — full argument lists

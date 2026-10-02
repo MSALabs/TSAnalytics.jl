@@ -201,5 +201,5 @@ variance-model panels — see [GARCH](06-garch-and-volatility.md).
 ## See also
 
 - [Was It Any Good?](../getting-started/03-was-it-any-good.md) — the same tests as a workflow
-- [Coming from R or Python](11-coming-from-r-python.md) — every default that differs
+- [Coming from R or Python](12-coming-from-r-python.md) — every default that differs
 - [API: Diagnostics](../api/diagnostics.md) — full argument lists

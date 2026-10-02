@@ -47,6 +47,7 @@ include("arspectral.jl")   # after spectral.jl (PeriodogramResult) and stattools
 include("autoreg.jl")      # after arspectral.jl (ar_yw) and arx.jl (_ols)
 include("tscv.jl")
 include("holtwinters.jl")
+include("ets.jl")          # after holtwinters.jl: reuses _hw_heuristic_init
 include("garch.jl")
 include("autoregarch.jl")
 include("garchforecast.jl")

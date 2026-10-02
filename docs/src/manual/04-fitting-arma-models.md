@@ -63,7 +63,7 @@ reports the number it actually computed a likelihood on.
     without accounting for it.** Neither convention is wrong; they
     answer different questions about what an observation is once you
     have differenced. See
-    [Coming from R or Python](11-coming-from-r-python.md).
+    [Coming from R or Python](12-coming-from-r-python.md).
 
 ## Including a mean
 

@@ -335,7 +335,7 @@ likelihood evaluation to parallelise.
     like `1.9016` silently means "use 1 data point". And
     `ugarchfilter` ignores `rec.init` entirely, so alignment only works
     at fit time. See
-    [Coming from R or Python](11-coming-from-r-python.md).
+    [Coming from R or Python](12-coming-from-r-python.md).
 
 ## See also
 

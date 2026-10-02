@@ -1,5 +1,69 @@
 # Handoff: Stage 9A — Linear ETS
 
+## Status: COMPLETE (2026-10-02) — four premises corrected
+
+**`forecast::ets()` IS available.** R's `forecast` 9.0.2 is installed on
+this machine, so §4's "could not be obtained — CRAN has been
+unreachable" does not hold and the stage is **dual-verified**, not
+single-verified against Python. (This is the fifth reference this
+project assumed unavailable that was reachable when actually tried.)
+
+**§5.2's log-likelihood caveat is exactly right, and the constant is
+`116.976881`.** R's `ets` reports `-(n/2)log(SSE)`; `statsmodels`
+reports the full Gaussian `-(n/2)(log 2pi + log(SSE/n) + 1)`. The
+difference — `statsmodels` minus R — is `n/2(log n - log 2pi - 1)`,
+which on this 120-point fixture is `116.976881` — matched to **four decimal places** on the two
+undamped non-seasonal models, where both optimisers reach the same
+optimum. This package reports the full Gaussian form, for consistency
+with `fit_arima` et al.
+
+**§3's `phi = 0.98` suspicion resolves against `statsmodels`.** Its
+damped fits sit at its own `phi` upper bound with SSE `5044.65` and
+`420.31`; R finds interior optima (`0.918`, `0.949`) with SSE `5002.51`
+and `412.36`. **R is the better reference for the damped models.** This
+package beats both: `4990.20` and `410.76`.
+
+**§5.1's reduction test cannot hold as written.** It passes the same
+`alpha/beta/gamma` to `holt_winters` and `fit_ets` and expects equal
+`fitted`/`sse`. Two things prevent that:
+  - the parameterisations differ (classical vs innovations), with map
+    `beta = alpha*beta_star`, `gamma = gamma_star*(1 - alpha)`;
+  - for a seasonal model `holt_winters` starts at `t = m+1`, scoring
+    `n - m` observations, where `fit_ets` scores all `n`.
+
+Matching both, the reduction holds to **1e-13** in SSE and `4e-14` on
+every fitted value. The test as written also omits `trend=:additive`
+from its `holt_winters` call, so it would have compared a trended model
+against an untrended one regardless.
+
+**A second verification series, not in this handoff: `log(jj)`.** The
+fixture here was *simulated from* an ETS(A,A,A), which makes it the
+friendliest possible case, so the stage is also verified against R on
+real data — `log(dataset("jj").value)`, 84 quarterly points. All six
+models match or beat R's SSE with R's own parameter counts, R's
+automatic selection agrees (`ETS(A,A,A)`), and simple exponential
+smoothing agrees to `1e-7`.
+
+**One nuance on `phi = 0.98` that the fixture alone would have hidden.**
+`0.98` is not a `statsmodels` quirk — it is R's own upper bound, and
+this package adopts the same `0.8 <= phi <= 0.98` deliberately. On
+`log(jj)` R's damped fit returns `phi = 0.97995483`, i.e. the bound, and
+so does this one. What distinguished the fixture case was that R found
+an *interior* optimum there and `statsmodels` did not. So a `phi` of
+`0.98` is not by itself evidence of anything wrong.
+
+Final state: `src/ets.jl`, `test/test_ets.jl` (all passing),
+`docs/src/manual/10-exponential-smoothing.md` as the new manual
+chapter, and `fit_ets`/`auto_ets`/`ETSModel`/`notation` on
+`docs/src/api/arma-models.md`. Three stale claims elsewhere in the docs
+were corrected as part of this: Appendix B listed ETS as
+single-verified, the Frontier chapter said the whole taxonomy was
+missing and that it "needs no new theory" (the multiplicative half
+needs a simulation path), and the R/Python page still listed
+`dist=:t` for GARCH as unimplemented.
+
+
+
 The ETS family in innovations state space form, scoped to the linear
 subset. Every reference value below was generated this session and the
 fixtures ship alongside this document in `fixtures/`.

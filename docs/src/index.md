@@ -71,9 +71,10 @@ Full detail on all of these lives in the repository README.
     Stages covering primitives (differencing, filters, ACF/PACF,
     periodogram, Box-Cox), diagnostics, decomposition (classical/STL/
     MSTL), AR-X and classical exponential smoothing, ARMA/ARIMA/SARIMA,
-    the GARCH family, state-space methods and the Kalman filter, and
+    the GARCH family, state-space methods and the Kalman filter,
     regression with ARIMA errors (ARIMAX/SARIMAX, both the `:mle` and
-    `:tvss` estimation paths) are complete. Full ETS, vector
+    `:tvss` estimation paths), and the linear ETS family with AICc
+    selection are complete. The multiplicative ETS forms, vector
     autoregression, cointegration, structural time series, and the
     companion TSFeatures.jl package are planned but not yet started.
     See [`development-sequence.md`](https://github.com/MSALabs/TSAnalytics.jl/blob/main/development-sequence.md)
@@ -97,7 +98,7 @@ Full detail on all of these lives in the repository README.
   -- the Introduction is written to be readable without Julia in front
   of you.
 - Coming from R or Python? The Manual's
-  [translation page](manual/11-coming-from-r-python.md) maps common
+  [translation page](manual/12-coming-from-r-python.md) maps common
   workflows directly.
 - Already know the task? The [Manual](manual/01-primitives.md) is
   organized around "how do I ..." questions, not a walkthrough.

@@ -17,6 +17,10 @@ auto_arima
 ```@docs
 holt_winters
 ExponentialSmoothingModel
+fit_ets
+auto_ets
+ETSModel
+notation
 ```
 
 ## Model-fitting infrastructure

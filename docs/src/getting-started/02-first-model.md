@@ -80,7 +80,7 @@ report `240` here.** Neither is wrong; they are different conventions,
 and since every information criterion is built from `nobs`, AIC is not
 comparable across the two without knowing which you have. This is the
 most common cross-language surprise in the whole package, and
-[Coming from R or Python](../manual/11-coming-from-r-python.md)
+[Coming from R or Python](../manual/12-coming-from-r-python.md)
 collects the rest.
 
 ```@example first-model

@@ -11,7 +11,7 @@ of question you are asking, not around the function list.
 | "How do I *do* X?" | **[Manual](../manual/01-primitives.md)** | Task-oriented. Short, entered from search, one `@example` per task. Nothing is explained twice. |
 | "*Why* does X work that way, and when does it fail?" | **[Introduction to Time Series Analysis](../introduction/01-why-model-a-time-series.md)** | A book. 37 chapters, read in order, building from autocorrelation to combined AR-GARCH models. |
 | "What are the arguments to X?" | **[API Reference](../api/primitives.md)** | Every exported function and type, with its docstring. |
-| "I know how to do this in R/Python" | **[Coming from R or Python](../manual/11-coming-from-r-python.md)** | Translation tables, and — more importantly — where the numbers deliberately differ. |
+| "I know how to do this in R/Python" | **[Coming from R or Python](../manual/12-coming-from-r-python.md)** | Translation tables, and — more importantly — where the numbers deliberately differ. |
 
 The division is real rather than decorative: the Manual will not
 explain what a unit root *is*, and the Introduction will not be a good
@@ -29,7 +29,7 @@ fitting anything, which is more than most treatments admit.
 
 Skim the Manual, then use the API reference. The one thing worth
 reading properly is
-[Coming from R or Python](../manual/11-coming-from-r-python.md),
+[Coming from R or Python](../manual/12-coming-from-r-python.md),
 because it lists the places where this package returns a *different
 number* than the one you are used to — and says which of those are
 deliberate improvements rather than incompatibilities.

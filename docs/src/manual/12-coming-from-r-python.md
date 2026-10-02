@@ -26,6 +26,8 @@ and concluding something is broken.
 | `stl(y, s.window=)` | [`stl_decompose`](@ref)`(y, period)` |
 | `decompose(y)` | [`classical_decompose`](@ref)`(y, period)` |
 | `HoltWinters(y)` | [`holt_winters`](@ref) |
+| `forecast::ets(y)` | [`auto_ets`](@ref) |
+| `forecast::ets(y, model="AAA")` | [`fit_ets`](@ref)`(y, m; trend=:add, seasonal=:add)` |
 | `acf(y)` / `pacf(y)` | [`acf`](@ref) / [`pacf`](@ref) |
 | `Box.test(y, type="Ljung-Box")` | [`ljungbox_test`](@ref) |
 | `tseries::adf.test` / `urca::ur.df` | [`adf_test`](@ref) |
@@ -62,6 +64,7 @@ and concluding something is broken.
 | `stats.stattools.durbin_watson` | [`durbin_watson_test`](@ref) |
 | `arch.arch_model` | [`fit_garch`](@ref) |
 | `tsa.holtwinters.ExponentialSmoothing` | [`holt_winters`](@ref) |
+| `tsa.exponential_smoothing.ETSModel` | [`fit_ets`](@ref) |
 
 ## Where the defaults differ
 
@@ -188,13 +191,46 @@ than by constraint. Standard errors are computed on the **natural**
 parameters, matching R — taking the Hessian of the transformed
 objective would give plausible-looking numbers that are quietly wrong.
 
+### `fit_ets`'s log-likelihood differs from R's by a constant
+
+[`fit_ets`](@ref) reports the full Gaussian log-likelihood,
+`-n/2 * (log(2pi) + log(sse/n) + 1)`, matching `statsmodels` and every
+other model in this package — so an ETS `aic` is comparable with a
+[`fit_arima`](@ref) one. **R's `ets` reports `-(n/2)*log(sse)`**, which
+this one exceeds by exactly `n/2 * (log(n) - log(2pi) - 1)`:
+`116.976881` on a 120-point series, `66.903469` on an 84-point one,
+verified against `statsmodels` to four decimals.
+
+Account for it before comparing R's `loglik`, `aic` or `aicc` with this
+package's — and note it depends on `n`, so it does not cancel between
+series of different lengths. Model *rankings* are unaffected, which is why
+[`auto_ets`](@ref) and R's `ets` still select the same model.
+
+### `fit_ets`'s `sigma2`, and intervals 3.5% narrower than R's
+
+`sigma2` is `sse/n` here, the ML estimate the likelihood is built from.
+**R's `ets` uses `sse/(n - np)`.** Substituting R's value into this
+package's own interval arithmetic reproduces R's 95% bound to all eight
+printed decimals, so the entire difference is the denominator — the
+point forecast, the `psi` weights and the interval construction are
+identical. The same `n`-versus-`n-k` choice is documented for
+[`arx`](@ref).
+
+### `statsmodels`' damped ETS fits can stop at the `phi` bound
+
+`0.8 <= phi <= 0.98` in R, in `statsmodels` and here. Hitting `0.98` is
+not itself wrong — on `log(dataset("jj").value)` R returns
+`phi = 0.97995483` for ETS(A,Ad,A), and so does this. But on a
+simulated series where R finds an interior optimum, `statsmodels` still
+returns `0.98` with a materially worse SSE (`420.31` against R's
+`412.36`). For the damped models this package targets R.
+
 ## What is missing here that you may be looking for
 
 | Missing | Note |
 |---|---|
 | HEGY / Canova-Hansen | [`nsdiffs`](@ref) covers R's default seasonal-strength heuristic and OCSB. HEGY and CH need R's separate `uroot` package and are not built here. |
 | A Burg PACF via R's `pacf()` | **R's `pacf()` silently ignores its `method` argument** — all four options return the same numbers. R's real Burg estimator is `ar.burg()`, and `pacf(method=:burg)` here matches it (and `statsmodels`' `pacf_burg`) to `4e-11`. |
-| `dist=:t` for GARCH | Normal innovations only. |
 | `forecast` for `model=:tvss` | `model=:mle` forecasts; `:tvss` does not — `beta` is a latent state there, so it needs a projected path and a second variance term. |
 | Robust SE for ARIMA in R | Not a gap here — `sandwich::vcovHC` **cannot consume an `arima` object at all**. `se_type=:robust` has no R counterpart to compare against. |
 

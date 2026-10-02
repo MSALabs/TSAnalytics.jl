@@ -191,7 +191,7 @@ observations it took.
 This is the mechanism behind `statsmodels`' full-`n` `nobs` convention:
 it augments the state instead of differencing, so it genuinely keeps
 every observation. See [Coming from R or
-Python](11-coming-from-r-python.md).
+Python](12-coming-from-r-python.md).
 
 ## Missing observations
 
