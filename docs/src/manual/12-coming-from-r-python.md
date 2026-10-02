@@ -30,6 +30,7 @@ and concluding something is broken.
 | `forecast::ets(y, model="AAA")` | [`fit_ets`](@ref)`(y, m; trend=:add, seasonal=:add)` |
 | `forecast::ets(y, model="MAM")` | [`fit_ets`](@ref)`(y, m; error=:mul, trend=:add, seasonal=:mul)` |
 | `forecast::thetaf(y)` | [`fit_theta`](@ref) |
+| `forecast::tbats(y)` | [`fit_tbats`](@ref) (no automatic model search) |
 | `acf(y)` / `pacf(y)` | [`acf`](@ref) / [`pacf`](@ref) |
 | `Box.test(y, type="Ljung-Box")` | [`ljungbox_test`](@ref) |
 | `tseries::adf.test` / `urca::ur.df` | [`adf_test`](@ref) |
@@ -68,6 +69,7 @@ and concluding something is broken.
 | `tsa.holtwinters.ExponentialSmoothing` | [`holt_winters`](@ref) |
 | `tsa.exponential_smoothing.ETSModel` | [`fit_ets`](@ref) |
 | `tsa.forecasting.theta.ThetaModel` | [`fit_theta`](@ref) |
+| `tbats.TBATS` (the `tbats` package) | [`fit_tbats`](@ref) |
 
 ## Where the defaults differ
 
@@ -338,6 +340,40 @@ period 4. Pass `deseasonalize=false` when you know better.
 `statsmodels`' version of the test is additionally **liberal**: it uses
 `1 + sum(r^2)` where Bartlett's large-lag variance has
 `1 + 2*sum(r^2)`, so it declares seasonality more often than R does.
+
+### R's seasonal TBATS prediction intervals are far too narrow
+
+This is the largest of the R divergences documented here, and the one most
+likely to matter in practice. For a **seasonal** TBATS model R's
+`forecast::tbats` uses `c_j = alpha` for every shock weight, where the
+correct weight is `w'F^(j-1)g`. At `h = 8` on the bundled quarterly
+fixture R's standard error is `2.640`, against `7.31` from this package,
+from Python's `tbats` package, and from three million simulated paths of
+the model's own recursion. R's interval is **2.8 times too narrow**, and
+the gap grows with the horizon.
+
+R's **non-seasonal** `bats` intervals are correct — they match
+`sqrt(1 + sum((alpha + j*beta)^2))` exactly — which is how the problem was
+localised to the seasonal branch rather than to the variance code in
+general.
+
+The point forecasts agree: this package reproduces R's to `5e-7` and
+Python's to `2e-3` at R's own parameters and seed states, and reproduces
+R's SSE, `variance`, `likelihood` and `AIC` exactly.
+
+### `fit_tbats` estimates its seed states by least squares, unlike both references
+
+Given the smoothing parameters the TBATS recursion is affine in the
+initial state, so the SSE-minimising seed can be had exactly from a
+regression. Both references use a heuristic seed instead: at **identical**
+smoothing parameters this package reaches an SSE of `660.96` where they
+report `672.21`. Fits therefore do not reproduce theirs exactly, and are
+better in sample rather than merely different.
+
+Relatedly, `loglik` is the full Gaussian log-likelihood here, comparable
+with [`fit_ets`](@ref)'s and [`fit_arima`](@ref)'s. **R's `tbats` reports
+`n*log(SSE)` and calls it `likelihood`**, which is not a log-likelihood at
+all; its `AIC` is that plus `2*nparams`.
 
 ## What is missing here that you may be looking for
 

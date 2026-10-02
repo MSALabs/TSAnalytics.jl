@@ -49,6 +49,7 @@ include("tscv.jl")
 include("holtwinters.jl")
 include("ets.jl")          # after holtwinters.jl: reuses _hw_heuristic_init
 include("theta.jl")        # after ets.jl (SES) and decompose.jl (classical_decompose)
+include("tbats.jl")        # after transforms.jl (boxcox) and autoreg.jl (_ar_stationary)
 include("garch.jl")
 include("autoregarch.jl")
 include("garchforecast.jl")

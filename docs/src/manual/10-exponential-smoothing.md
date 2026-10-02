@@ -1,4 +1,4 @@
-# Exponential Smoothing, ETS and Theta
+# Exponential Smoothing, ETS, Theta and TBATS
 
 An ARIMA model says what a series is. An exponential smoothing model
 says how to update a belief about it: keep a running estimate of the
@@ -6,11 +6,14 @@ level, and maybe of the slope and the seasonal pattern, and revise each
 one by a fraction of every new forecast error. The fractions —
 `alpha`, `beta`, `gamma` — are the parameters.
 
-This package has three entry points to that family. Two are the
-classical recursions and the full likelihood-based ETS; the third,
-[`fit_theta`](@ref), looks like a different method entirely and turns
-out to be simple exponential smoothing with a drift term — it has its
-own section at the end.
+This package has four entry points to that family. Two are the classical
+recursions and the full likelihood-based ETS. The third,
+[`fit_theta`](@ref), looks like a different method entirely and turns out
+to be simple exponential smoothing with a drift term. The fourth,
+[`fit_tbats`](@ref), replaces the seasonal states with rotating
+trigonometric terms, which is what lets it handle several seasonal
+periods at once, non-integer periods, and periods far too long to hold as
+states. Both have their own sections at the end.
 
 The difference between the first two is worth getting straight before
 you pick one.
@@ -555,6 +558,116 @@ The prediction intervals differ from both references in several further
 ways, three of which are defects in the references; they are enumerated
 in [Coming from R or Python](12-coming-from-r-python.md).
 
+## TBATS: seasonality that ETS cannot represent
+
+Everything above holds one state per season. That is fine for twelve
+months or four quarters and hopeless beyond it:
+
+- **Half-hourly data with a weekly cycle** has period `336`. A seasonal
+  state model needs 336 states.
+- **Daily data with an annual cycle** has period `365.25`, which is not a
+  number of states at all.
+- **Two cycles at once** — a weekly *and* an annual pattern in daily
+  data — has no representation in ETS whatsoever.
+
+[`fit_tbats`](@ref) (De Livera, Hyndman & Snyder 2011) replaces the
+seasonal states with **rotating trigonometric pairs**. Each harmonic `j`
+of period `m` is a pair `(s, s*)` that rotates by `2*pi*j/m` every step,
+so a period is an *angle* rather than a count, and `k` harmonics cost
+`2k` states however long the period is.
+
+```@example tbats
+using TSAnalytics, Random
+
+# daily data: a weekly cycle, an annual cycle, a trend and noise
+n = 730
+t = 1:n
+y = 100 .+ 0.02 .* t .+ 4 .* sin.(2pi .* t ./ 7) .+
+    8 .* sin.(2pi .* t ./ 365.25) .+ randn(MersenneTwister(7), n)
+
+m = fit_tbats(y, [7, 365.25]; k=[3, 2])
+```
+
+Ten seasonal states cover both cycles, where a seasonal-state model would
+need `7 + 366`:
+
+```@example tbats
+println("states      : ", length(m.seed_states))
+println("sigma2      : ", round(m.sigma2, digits=5), "   (the series' noise variance is 1.0)")
+println("both cycles : ", round(m.sse, digits=2))
+println("weekly only : ", round(fit_tbats(y, 7; k=3).sse, digits=2))
+```
+
+The acronym is Trigonometric, Box-Cox, ARMA errors, Trend, Seasonal.
+`lambda` gives you the B — `lambda=:auto` picks one through
+[`guerrero_lambda`](@ref) — and `trend`/`damped` the T, exactly as in
+[`fit_ets`](@ref).
+
+### How many harmonics
+
+`k=nothing` takes the largest identifiable count. That is `floor(m/2)`,
+*except* for an even integer period, where the `j = m/2` harmonic rotates
+by `pi`: its rotation matrix becomes `-I`, the pair stops mixing, and
+since only `s` is measured, `s*` becomes a state the data cannot inform.
+
+```@example tbats
+println("quarterly : ", TSAnalytics._tbats_kmax(4))
+println("monthly   : ", TSAnalytics._tbats_kmax(12))
+println("weekly    : ", TSAnalytics._tbats_kmax(7))
+println("annual    : ", TSAnalytics._tbats_kmax(365.25))
+```
+
+Those first two are exactly what R's `tbats()` selects by AIC for
+quarterly and monthly data, which is a good sign the rule is the right
+one. Admitting the Nyquist harmonic is not a harmless extra parameter: on
+the quarterly fixture, `k = 2` for `m = 4` used to reach an SSE of
+`1216.2` where `k = 1` reaches `657.4` — a strictly richer model fitting
+almost twice as badly, which is what an unidentified direction looks like.
+
+### The parameter region is a spectral condition
+
+TBATS is forecastable only when every eigenvalue of `F - g*w'` sits inside
+the unit circle, and that — not a box on the individual parameters — is
+what constrains the fit. It is worth knowing about because it is
+unintuitive: the admissible set is **one-sided and asymmetric** in the
+seasonal parameters, so there is no small-gamma neighbourhood that is safe
+regardless of sign.
+
+Fitted TBATS models also sit very close to the boundary by nature, since a
+trigonometric seasonal is nearly a random walk; R's own quarterly fit has
+a spectral radius of `0.99993`. This package keeps a margin of `1e-5`
+inside it, because left to itself the optimiser rides the boundary — a
+nearly non-stationary seasonal always fits the sample better and forecasts
+worse.
+
+### What it does not do
+
+- **No automatic model search.** R's `tbats()` chooses Box-Cox on/off,
+  trend on/off, damping on/off, the ARMA orders and the harmonic counts by
+  AIC. [`fit_tbats`](@ref) fits the model you ask for; comparing a handful
+  of candidates by `aic` is a short loop.
+- **No ARMA errors** — the `A`. The recursion handles them, but the
+  forecastability condition above is only derived here for the no-ARMA
+  state, and an unconstrained ARMA fit would reintroduce exactly the
+  divergence that condition prevents. A non-zero order errors rather than
+  being quietly ignored.
+
+### R's seasonal TBATS intervals are too narrow by a factor of 2.8
+
+This is the sharpest of the reference divergences in this chapter. For a
+seasonal TBATS model R uses `alpha` as every shock weight, where the
+correct weight is `w'F^(j-1)g` — so its intervals ignore the trend and
+seasonal contributions to forecast uncertainty entirely.
+
+At `h = 8` on the bundled quarterly fixture R's standard error is `2.640`.
+This package, Python's `tbats` package and three million simulated paths
+of the model's own recursion all give `7.31`. R's **non-seasonal** `bats`
+intervals are correct, which is how the problem was localised.
+
+The point forecasts agree to `5e-7`, and this package reproduces R's SSE,
+`variance`, `likelihood` and `AIC` exactly at R's own parameters — so this
+is one formula in R, not a different model.
+
 ## What is not here
 
 - **Multiplicative error or seasonality** — the other twenty-four
@@ -563,9 +676,6 @@ in [Coming from R or Python](12-coming-from-r-python.md).
   everywhere else in this package, and in R and `statsmodels`, the
   fitted parameters are treated as known, so the intervals are slightly
   too narrow.
-- **TBATS.** It sits behind the multiplicative forms in the queue,
-  because it needs them; see
-  [The Frontier](../introduction/41-the-frontier.md).
 - **A damped Theta.** The drift is linear and unbounded, as in both
   references. Use a damped ETS when a long horizon has to flatten.
 
@@ -574,4 +684,4 @@ in [Coming from R or Python](12-coming-from-r-python.md).
 - [Fitting ARMA Models](04-fitting-arma-models.md) — the other way to model a seasonal series
 - [Forecasting and Accuracy](09-forecasting-and-accuracy.md) — evaluating what comes out of `forecast`
 - [Coming from R or Python](12-coming-from-r-python.md) — every documented divergence in one place
-- [API: ARMA Models](../api/arma-models.md) — `fit_ets`, `auto_ets`, `fit_theta`, `holt_winters`
+- [API: ARMA Models](../api/arma-models.md) — `fit_ets`, `auto_ets`, `fit_theta`, `fit_tbats`, `holt_winters`

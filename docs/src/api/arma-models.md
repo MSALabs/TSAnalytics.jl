@@ -23,6 +23,8 @@ ETSModel
 notation
 fit_theta
 ThetaModel
+fit_tbats
+TBATSModel
 ```
 
 ## Model-fitting infrastructure

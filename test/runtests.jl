@@ -57,7 +57,8 @@ using Dates: Date
     include("test_holtwinters.jl")
     include("test_ets.jl")         # after test_holtwinters.jl: the ETS(A,A,A) reduction reuses it
     include("test_ets_mult.jl")   # after test_ets.jl: multiplicative error, classes 2 and 3
-    include("test_theta.jl")       # after test_ets.jl and test_datasets.jl: SES reuse plus _load_column
+    include("test_theta.jl")
+    include("test_tbats.jl")      # after test_ets.jl and test_transforms.jl (boxcox)       # after test_ets.jl and test_datasets.jl: SES reuse plus _load_column
     include("test_garch.jl")
     include("test_garcht.jl")      # after test_garch.jl: dist=:t
     include("test_garch_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally

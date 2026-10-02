@@ -85,8 +85,11 @@ having it over thirty would get the rest.
 
 The **Theta method** is built — [`fit_theta`](@ref), the M3 competition
 winner, which reduces exactly to simple exponential smoothing plus half
-the regression slope as drift. TBATS is the one still in the queue, and
-it sits behind the multiplicative forms because it needs them.
+the regression slope as drift. **TBATS is built too** — [`fit_tbats`](@ref), the trigonometric-seasonality
+model of De Livera, Hyndman & Snyder (2011), which is what you reach for
+when a series has more than one seasonal period, a non-integer period, or
+a period too long to hold as states. What it does not yet have is the
+automatic model search R's `tbats()` wraps around it, or ARMA errors.
 
 ## Components you can name
 
