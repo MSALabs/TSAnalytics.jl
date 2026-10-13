@@ -135,9 +135,12 @@ end
 
 function _tsmatrix_from_columns(cols::AbstractVector, what::AbstractString)
     n = length(first(cols))
-    all(c -> length(c) == n, cols) || throw(DimensionMismatch(
+    # ragged input is refused, never padded or truncated -- and as an
+    # ArgumentError, since the argument itself is malformed
+    all(c -> length(c) == n, cols) || throw(ArgumentError(
         "tsmatrix: the $what has columns of unequal length " *
-        "$(Tuple(length(c) for c in cols))"))
+        "$(Tuple(length(c) for c in cols)); every series must cover the same " *
+        "time points. Align them first -- nothing is padded or truncated."))
     n > 0 || throw(ArgumentError("tsmatrix: the columns are empty"))
     M = Matrix{Float64}(undef, n, length(cols))
     @inbounds for (j, c) in enumerate(cols)

@@ -36,8 +36,9 @@ makedocs(;
             "manual/08-arimax-and-regression.md",
             "manual/09-forecasting-and-accuracy.md",
             "manual/10-exponential-smoothing.md",
-            "manual/11-plotting.md",
-            "manual/12-coming-from-r-python.md",
+            "manual/11-vector-autoregression.md",
+            "manual/12-plotting.md",
+            "manual/13-coming-from-r-python.md",
         ],
         "Introduction to Time Series Analysis" => [
             "Part I -- The Series and the Machine" => [
@@ -113,6 +114,7 @@ makedocs(;
             "api/garch.md",
             "api/state-space.md",
             "api/arimax.md",
+            "api/multivariate.md",
             "api/forecasting.md",
             "api/plotting.md",
         ],

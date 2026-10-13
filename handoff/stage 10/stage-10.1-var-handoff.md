@@ -81,7 +81,7 @@ reference JSON. Copy the CSVs to `test/fixtures/var/` and the scripts to
 | `var2_nearunit.csv` | 200 × 2 | two AR(1)s at `φ = 0.98`, seed 20261016 — near-boundary stability |
 | `var2_explosive.csv` | 60 × 2 | `A = [1.05 0.02; 0.00 1.03]`, seed 20261017 — `is_stable == false` |
 | `uschange.csv` | 187 × 5 | fpp3 benchmark, already in `test_data/`, already exposed as `TSAnalytics.US_CHANGE` |
-| `econ5.csv` | 161 × 5 | Shumway & Stoffer, already in `data/`, GPL-3, values of order 10⁴ — the conditioning stress case |
+| `econ5.csv` | 160 × 5 | Shumway & Stoffer, already in `data/`, GPL-3, values of order 10⁴ — the conditioning stress case |
 
 **Why `econ5` matters.** `[V]` It is the only fixture where
 reference-vs-reference agreement degrades from `~1e-16` to `~5e-13` on
@@ -577,7 +577,7 @@ end
 end
 
 @testset "fit_var: econ5, p=2 -- conditioning stress (values ~1e4)" begin
-    E = read_fixture("econ5.csv")                          # 161 × 5
+    E = read_fixture("econ5.csv")                          # 160 × 5
     m = fit_var(E, 2; deterministic=:const)
     @test m.loglik ≈ -2451.9592961449634 atol=1e-6         # looser: see 3
     # QR and Cholesky must still agree here -- this is the fixture that catches it

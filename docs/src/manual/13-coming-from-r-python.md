@@ -25,6 +25,11 @@ and concluding something is broken.
 | `forecast::accuracy(f, test)` | [`accuracy`](@ref) |
 | `stl(y, s.window=)` | [`stl_decompose`](@ref)`(y, period)` |
 | `decompose(y)` | [`classical_decompose`](@ref)`(y, period)` |
+| `vars::VAR(Y, p)` | [`fit_var`](@ref) |
+| `vars::VARselect` | [`var_select`](@ref) |
+| `vars::roots` | [`roots`](@ref) — same convention |
+| `vars::causality(…, cause=)` | [`granger_test`](@ref)`(m; cause=)` |
+| `lmtest::grangertest` | [`granger_test`](@ref)`(y, x; lags=)` — a different test |
 | `HoltWinters(y)` | [`holt_winters`](@ref) |
 | `forecast::ets(y)` | [`auto_ets`](@ref) |
 | `forecast::ets(y, model="AAA")` | [`fit_ets`](@ref)`(y, m; trend=:add, seasonal=:add)` |
@@ -66,6 +71,11 @@ and concluding something is broken.
 | `stats.diagnostic.het_arch` | [`arch_lm_test`](@ref) |
 | `stats.stattools.durbin_watson` | [`durbin_watson_test`](@ref) |
 | `arch.arch_model` | [`fit_garch`](@ref) |
+| `VAR(Y).fit(p)` | [`fit_var`](@ref) |
+| `VAR(Y).select_order(L)` | [`var_select`](@ref) |
+| `.roots` | `1 ./ `[`roots`](@ref)`(m)` — reciprocals, see below |
+| `.test_causality` | [`granger_test`](@ref)`(m; cause=)` |
+| `.test_inst_causality` | [`instantaneous_causality`](@ref) |
 | `tsa.holtwinters.ExponentialSmoothing` | [`holt_winters`](@ref) |
 | `tsa.exponential_smoothing.ETSModel` | [`fit_ets`](@ref) |
 | `tsa.forecasting.theta.ThetaModel` | [`fit_theta`](@ref) |
@@ -374,6 +384,73 @@ Relatedly, `loglik` is the full Gaussian log-likelihood here, comparable
 with [`fit_ets`](@ref)'s and [`fit_arima`](@ref)'s. **R's `tbats` reports
 `n*log(SSE)` and calls it `likelihood`**, which is not a log-likelihood at
 all; its `AIC` is that plus `2*nparams`.
+
+### `roots` means opposite things in the two references
+
+`vars::roots()` returns the **moduli of the companion-matrix
+eigenvalues** — stable if all `< 1`. `statsmodels`' `.roots` returns the
+**roots of the characteristic polynomial** — stable if all `|·| > 1`.
+They are exact reciprocals, verified on five fixtures to between
+`1.1e-16` and `9.3e-15`.
+
+[`roots`](@ref) follows R. Getting this wrong silently *inverts* a
+stability test, which is why it is called out here as well as in the
+docstring. For `statsmodels`' convention, take `1 ./ roots(m)`.
+
+### `deterministic=:trend` is not `statsmodels`' `trend="ct"`
+
+R's `type="trend"` is a trend with **no constant**; `statsmodels`'
+`trend="ct"` is constant **and** trend. On the bundled fixture they
+differ by `6.15` in log-likelihood. [`fit_var`](@ref) spans both
+vocabularies with five values and is spelled like neither reference, for
+exactly this reason: `:none`, `:const`, `:trend` (R's), `:both` (`"ct"`),
+`:quadratic` (`"ctt"`). R has no equivalent of the last; `statsmodels`
+has none of the third.
+
+### Order selection holds the sample fixed; a fitted model does not
+
+Both `VARselect` and `select_order` estimate every candidate on the same
+`T = n − lag_max` observations. A fitted model uses its own `n − p`. Both
+numbers are right and both references report both, so
+[`var_select`](@ref) and `aic(fit_var(…))` differ by construction — on
+the bundled fixture, `-0.6050354269` against `-0.5819716232`.
+
+Relatedly, `statsmodels`' `select_order(L)` returns `L+1` rows, for lags
+`0…L`, where `VARselect` returns `L`. **Except with `trend="n"`**, where
+a lag-0 model has no regressors at all and `statsmodels` silently drops
+that row — so the off-by-one is conditional, and code that applies it
+unconditionally reads the wrong lag.
+
+### `vars::causality` reports p = 0 for any moderately strong rejection
+
+It computes `1 - pf(...)` and `1 - pchisq(...)` instead of the upper
+tail, so its p-values underflow to exactly zero in ordinary use. On
+`climhyd`, an `F` of `13.36` on `(10, 2634)` degrees of freedom is
+reported as `0` where the true tail is `3.66e-23`; a χ² of `184.7` on 5
+df as `0` against `5.23e-38`.
+
+This package computes the upper tail directly, so **its p-values are not
+comparable with `vars` in the tail** — they agree with `statsmodels`,
+which calls a survival function and gets it right.
+
+### `statsmodels` cannot test instantaneous causality between two blocks
+
+`test_inst_causality` raises `IndexError` whenever **both** sets have
+more than one member: it indexes a mask with two fancy index arrays,
+which only broadcast when one has length 1. Verified failing at (2,4),
+(3,3) and (4,2) on `K = 6`, and working at (1, K−1) and (K−1, 1). It
+always errors rather than returning a wrong answer, and the behaviour is
+identical on 0.14.1 and 0.15.0.
+
+For a general block `vars` is therefore the only reference, and
+[`instantaneous_causality`](@ref) agrees with it there.
+
+### Both references accept VAR inputs that cannot produce a fit
+
+`n = 8`, `K = 2`, `p = 5` — eleven parameters per equation from three
+observations — returns without complaint from both. [`fit_var`](@ref)
+refuses that, along with `p < 1`, `NaN` input, `K = 1` and an
+unrecognised `deterministic`, each by name and naming the fix.
 
 ## What is missing here that you may be looking for
 

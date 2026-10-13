@@ -731,7 +731,7 @@ end
     @test t.pvalue ≈ 1.833851e-14 rtol=1e-5     # statsmodels value; R gives 1.831868e-14
 
     # the full k=6 sweep: df must be |cause| * |caused| at every split
-    C = read_fixture("climhyd.csv")             # 454 x 6
+    C = read_fixture("climhyd.csv")             # 453 x 6
     mc = fit_var(C, 2; deterministic=:const)
     nm = mc.names
     for (n, chi2, df) in [(1, 184.728185617809, 5), (2, 200.262649874447, 8),
@@ -997,7 +997,7 @@ statsmodels.
 fixtures/
   ref_R_granger.json     # 15 system tests + 15 instantaneous + 6 pairwise, from vars 1.6.1 / lmtest 0.9.40
   ref_py_granger.json    # statsmodels 0.15.0 counterparts, incl. its own error strings
-  climhyd.csv            # 454 x 6, Shumway & Stoffer -- the k=6 block sweep and the tail cases
+  climhyd.csv            # 453 x 6, Shumway & Stoffer -- the k=6 block sweep and the tail cases
   us4.csv                # uschange[:, 1:4] -- the k=4, |cause|=2, |caused|=2 case
 scripts/
   ref_R_granger.R        # regenerates ref_R_granger.json

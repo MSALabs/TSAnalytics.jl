@@ -1,12 +1,12 @@
 using Test
 using TSAnalytics
 using Random
-using LinearAlgebra: norm, eigvals, I, diag, issymmetric
+using LinearAlgebra: norm, eigvals, I, diag, diagm, dot, issymmetric
 using Statistics: mean, std, var
 # StatsAPI does not export these; importing them once here keeps a test from
 # passing in isolation (where the author imported them) and erroring under the
 # full suite, which is exactly how the missing `std` import slipped through.
-using StatsAPI: coef, vcov, residuals, fitted, predict, loglikelihood, aic, bic, nobs, stderror
+using StatsAPI: coef, coefnames, vcov, residuals, fitted, predict, loglikelihood, aic, bic, nobs, stderror
 using Dates: Date
 
 @testset "TSAnalytics.jl" begin
@@ -19,6 +19,8 @@ using Dates: Date
     include("test_timevaryingssm_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally; reuses test_gaussianssm_bulk.jl's 364 cases
     include("test_diffuseinit.jl")
     include("test_var_primitives.jl")   # Stage 10.0: tsmatrix, multi-response _ols, companion
+    include("test_var.jl")              # Stage 10.1: after test_var_primitives.jl
+    include("test_granger.jl")          # Stage 10.2: after test_var.jl
     include("test_stattools.jl")
     include("test_ccf.jl")
     include("test_unitroot.jl")

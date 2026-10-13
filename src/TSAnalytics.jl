@@ -50,6 +50,8 @@ include("holtwinters.jl")
 include("ets.jl")          # after holtwinters.jl: reuses _hw_heuristic_init
 include("theta.jl")        # after ets.jl (SES) and decompose.jl (classical_decompose)
 include("tbats.jl")        # after transforms.jl (boxcox) and autoreg.jl (_ar_stationary)
+include("var.jl")          # Stage 10.1: after unitroot.jl (_ols, _companion) and forecast.jl
+include("granger.jl")      # Stage 10.2: after var.jl and diagnostics.jl (_f_ccdf)
 include("garch.jl")
 include("autoregarch.jl")
 include("garchforecast.jl")

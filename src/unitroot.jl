@@ -99,90 +99,130 @@ end
 _diagvec(A) = [A[i, i] for i in 1:size(A, 1)]
 
 """
-    _ols(X, Y::AbstractMatrix; method=:qr) -> (B, E, se, XtX_inv)
+    _mols(Z, X; method=:qr, weights=nothing) -> (B, E, se, ZtZ_inv)
 
-Multi-response least squares: the same regressors `X` against **every**
-column of `Y`, in one factorization.
+Least squares with a **matrix** response: solves `X = Z*B + E` for `B` of
+size `(q, K)`, where `Z` is `(T, q)` and `X` is `(T, K)`.
 
-This is the primitive the multivariate models are built on. A `K`-variate
-VAR(p) has `K` equations that share one regressor matrix `Z`, so the right
-computation is **one** `qr(Z)` and `K` back-substitutions — not `K` calls
-to the single-response `_ols`, which would factorize the same matrix `K`
-times for no benefit. `Z \\ Y` with a matrix right-hand side already does
-exactly that in Julia, so the straightforward expression is also the fast
-one.
+The point of the matrix form: all `K` columns of `X` share one regressor
+matrix, so this does **one** factorization of `Z` and `K`
+back-substitutions. Calling the single-response `_ols` in a loop over
+columns re-factorizes `Z` `K` times for an identical answer.
+`Z \\ X` with a matrix right-hand side already does exactly the right
+thing in Julia, so the straightforward expression is also the fast one.
 
 Returns
 
-- `B` — `k × K`, column `j` the coefficients of equation `j`
-- `E` — `n × K` residuals, `Y - X*B`
-- `se` — `k × K` standard errors
-- `XtX_inv` — `k × k`, shared by every equation
+- `B` — `q × K`, column `j` the coefficients of equation `j`
+- `E` — `T × K` residuals on the **original** (unweighted) scale
+- `se` — `q × K` standard errors, column `j` equation `j`'s
+- `ZtZ_inv` — `q × q`, shared by every equation, which callers need for
+  the full parameter covariance `kron(Σ, ZtZ_inv)`
 
-`se[i, j] = sqrt(XtX_inv[i, i] * Σ[j, j])` with
-`Σ = E'E / (n - k)`, the degrees-of-freedom-adjusted residual
-covariance. That follows from `vcov(vec(B)) = kron(Σ, (X'X)^-1)`: the
-regressor part is shared, so only the diagonal of `Σ` enters a standard
-error. A caller needing the **full** covariance forms that Kronecker
-product itself — `fit_var` does, because the analytic impulse-response
-standard errors consume it whole.
+`se[i, j] = sqrt(ZtZ_inv[i, i] · Σ[j, j])` with `Σ = E'E / (T - q)`, the
+degrees-of-freedom-adjusted residual covariance: since
+`vcov(vec(B)) = kron(Σ, (Z'Z)⁻¹)` and the regressor part is shared, only
+the diagonal of `Σ` enters a standard error.
 
-`Σ` is not returned: it is `E' * E / (n - k)`, one line at the call site,
-and callers generally want the maximum-likelihood divisor `E'E / n` as
-well.
+## Siblings, deliberately
 
-Unlike the single-response method this one is **OLS only** — no
-`weights`. Adding a GLS path here would be untested code for a caller
-that does not exist; the single-response method keeps its weighted
-reduction.
+This mirrors the single-response `_ols`'s argument names, error style and
+weighted reduction — rows scaled by `sqrt.(weights)` — so the two read as
+siblings. `method=:qr` (the default) factorizes `Z` directly and loses
+accuracy with `cond(Z)`; `:cholesky` factorizes `Z'Z`, is faster for a
+well-conditioned problem, and loses accuracy with `cond(Z)²`. Same
+tradeoff, same default, same reason.
 
-`method` behaves exactly as in the single-response method, including the
-`:cholesky` refusal when `X'X` is not positive definite.
+## It refuses a rank-deficient `Z`, where both references do not
+
+`[V]` With a duplicated column, both references proceed silently: R's `lm`
+inside `vars::VAR` drops a column and reports `NA` coefficients, and
+`statsmodels`' `lstsq` returns a perfectly finite **minimum-norm** solution
+with no warning and no `NaN` — after which every standard error, impulse
+response and Granger test is meaningless while looking fine.
+
+That failure mode is not hypothetical here. Before this check existed,
+`fit_var` on a series with one column duplicated returned no error,
+coefficients of order `3.9e14`, and a log-likelihood of `+2798.9` where
+the true figure is around `-500`.
+
+So this throws an `ArgumentError` naming collinearity. Under `:qr` the
+rank is read off the factorization's own diagonal, against the
+conventional tolerance `q · eps() · max|diag(R)|`; under `:cholesky` it
+is the positive-definiteness failure, already handled the same way by the
+single-response method. Pivoted QR with column dropping stays deferred,
+for the reason `stage-1.4-ols-cholesky-handoff.md` gives: the bookkeeping
+is real and no caller needs it.
 """
-function _ols(X::AbstractMatrix{<:Real}, Y::AbstractMatrix{<:Real};
-              method::Symbol=:qr)
+function _mols(Z::AbstractMatrix{<:Real}, X::AbstractMatrix{<:Real};
+               method::Symbol=:qr,
+               weights::Union{Nothing,AbstractVector{<:Real}}=nothing)
     method in (:qr, :cholesky) || throw(ArgumentError("method must be :qr or :cholesky"))
-    n, k = size(X)
-    size(Y, 1) == n || throw(DimensionMismatch(
-        "_ols: X has $n rows but Y has $(size(Y, 1))"))
-    K = size(Y, 2)
-    K >= 1 || throw(ArgumentError("_ols: Y must have at least one column"))
-    dof = n - k
+    T, q = size(Z)
+    size(X, 1) == T || throw(DimensionMismatch(
+        "_mols: Z has $T rows but X has $(size(X, 1))"))
+    K = size(X, 2)
+    K >= 1 || throw(ArgumentError("_mols: X must have at least one column"))
+    dof = T - q
     dof > 0 || throw(ArgumentError(
-        "_ols: not enough observations -- $n rows for $k regressors per equation"))
+        "_mols: not enough observations -- $T rows for $q regressors per equation"))
 
-    local B, XtX_inv
-    if method === :qr
-        F = qr(X)
-        B = F \ Y                              # ONE factorization, K solves
-        R = F.R
-        Rinv = R \ Matrix{Float64}(I(k))
-        XtX_inv = Rinv * Rinv'
-    else # :cholesky
-        XtX = X' * X
-        C = try
-            cholesky(Hermitian(Matrix(XtX)))
-        catch e
-            e isa PosDefException &&
-                throw(ArgumentError("_ols: method=:cholesky failed -- X'X is not positive " *
-                                     "definite (likely collinear regressors); try method=:qr"))
-            rethrow()
-        end
-        B = C \ (X' * Y)
-        XtX_inv = C \ Matrix{Float64}(I(k))
+    if weights !== nothing
+        length(weights) == T || throw(ArgumentError("weights must have length T"))
+        all(>(0), weights) || throw(ArgumentError("weights must be positive"))
+        sw = sqrt.(weights)
+        Zw = Z .* sw
+        Xw = X .* sw
+    else
+        Zw = Z
+        Xw = X
     end
 
-    E = Y - X * B
-    sigma = (E' * E) ./ dof
-    dx = _diagvec(XtX_inv)
-    se = Matrix{Float64}(undef, k, K)
+    local B, ZtZ_inv
+    if method === :qr
+        F = qr(Zw)
+        R = F.R
+        d = abs.(_diagvec(R))
+        tol = q * eps(Float64) * maximum(d)
+        if any(<=(tol), d)
+            throw(ArgumentError(
+                "_mols: the regressor matrix is rank deficient (collinear " *
+                "columns) -- $(count(<=(tol), d)) of $q pivots are at or below " *
+                "the tolerance $(tol). A duplicated variable, or a variable that " *
+                "is an exact combination of others, does this. Remove it. " *
+                "(Both R and statsmodels proceed silently here and return " *
+                "meaningless coefficients.)"))
+        end
+        B = F \ Xw                              # ONE factorization, K solves
+        Rinv = R \ Matrix{Float64}(I(q))
+        ZtZ_inv = Rinv * Rinv'
+    else # :cholesky
+        ZtZ = Zw' * Zw
+        C = try
+            cholesky(Hermitian(Matrix(ZtZ)))
+        catch e
+            e isa PosDefException &&
+                throw(ArgumentError("_mols: method=:cholesky failed -- Z'Z is not positive " *
+                                     "definite (collinear columns); remove the collinear " *
+                                     "variable, or try method=:qr for a diagnosis"))
+            rethrow()
+        end
+        B = C \ (Zw' * Xw)
+        ZtZ_inv = C \ Matrix{Float64}(I(q))
+    end
+
+    E = X - Z * B                               # residuals on the ORIGINAL scale
+    Ew = weights === nothing ? E : Xw - Zw * B  # weighted residuals, for Sigma
+    sigma = (Ew' * Ew) ./ dof
+    dx = _diagvec(ZtZ_inv)
+    se = Matrix{Float64}(undef, q, K)
     @inbounds for j in 1:K
         sj = sigma[j, j]
-        for i in 1:k
+        for i in 1:q
             se[i, j] = sqrt(max(dx[i] * sj, 0.0))
         end
     end
-    return B, E, se, XtX_inv
+    return B, E, se, ZtZ_inv
 end
 
 """
@@ -222,8 +262,15 @@ function _companion(A::AbstractVector{<:AbstractMatrix})
     @inbounds for j in 1:p
         C[1:K, ((j-1)*K+1):(j*K)] .= A[j]
     end
-    @inbounds for j in 1:(p-1)
-        C[(j*K+1):((j+1)*K), ((j-1)*K+1):(j*K)] .= I(K)
+    # The sub-diagonal identity, written element by element. At p = 1 there
+    # is NO identity block -- the companion matrix is A[1] itself -- and the
+    # guard says so explicitly rather than relying on Julia treating the
+    # ranges 3:2 and 1:0 as an empty assignment, which would hide a bug
+    # instead of announcing it. It also avoids materializing a second matrix.
+    if p > 1
+        @inbounds for i in 1:(K * (p - 1))
+            C[K + i, i] = 1.0
+        end
     end
     return C
 end

@@ -128,6 +128,43 @@ function _f_cdf(x::Real, d1::Real, d2::Real)
     return _beta_inc_reg(d1 / 2, d2 / 2, d1 * x / (d1 * x + d2))
 end
 
+"""
+    _f_ccdf(f, d1, d2)
+
+Upper tail `P(X > f)` for `X ~ F(d1, d2)`, via the regularized incomplete
+beta function with **swapped parameters at the complementary argument**:
+
+    P(F > f) = I_{d2/(d1 f + d2)}(d2/2, d1/2)
+
+The complementary argument `d2 / (d1 f + d2)` is formed **directly**, not
+as `1 - d1 f/(d1 f + d2)`. That matters: for large `f` the inner ratio
+rounds to `1.0` and the whole tail is lost to cancellation.
+
+!!! note "This is not a stylistic preference — it is a bug in `vars`"
+    `[V]` `vars::causality` computes its p-values as `1 - pf(...)`
+    (`vars/R/causality.R:135`) and `1 - pchisq(...)` (`:167`), so they
+    underflow to **exactly zero** in routine use. On `climhyd` with
+    `p = 2` an ordinary Granger `F` of `13.359738021985` on `(10, 2634)`
+    degrees of freedom is reported as `p = 0.000000e+00` where the true
+    tail is `3.664479e-23`. Four of the fifteen reference cases collected
+    for Stage 10.2 come back as exact zeros from `vars`.
+
+    `statsmodels` calls a survival function and gets both right, so this
+    is a defect rather than a convention. A test comparing p-values
+    against `vars` in the tail would "fail" where this package is
+    correct, which is why the tests pin the statistic against `vars` and
+    the tail against `statsmodels`.
+
+`[V]` Verified against R's `pf(lower.tail = FALSE)` at `d1 = 5`,
+`d2 = 800`, agreeing down to `1e-138` — where `1 - pf(...)` has been
+returning `0` since about `f = 20`.
+
+See also [`_chisq_ccdf`](@ref), which computes the upper incomplete gamma
+directly and so never had the analogous problem.
+"""
+_f_ccdf(f::Real, d1::Real, d2::Real) =
+    f <= 0 ? 1.0 : _beta_inc_reg(d2 / 2, d1 / 2, d2 / (d1 * f + d2))
+
 # ---------------------------------------------------------------------------
 # Ljung-Box
 # ---------------------------------------------------------------------------
