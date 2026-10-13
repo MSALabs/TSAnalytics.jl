@@ -18,6 +18,7 @@ using Dates: Date
     include("test_timevaryingssm.jl")
     include("test_timevaryingssm_bulk.jl")  # gated behind TSANALYTICS_FULL_TESTS internally; reuses test_gaussianssm_bulk.jl's 364 cases
     include("test_diffuseinit.jl")
+    include("test_var_primitives.jl")   # Stage 10.0: tsmatrix, multi-response _ols, companion
     include("test_stattools.jl")
     include("test_ccf.jl")
     include("test_unitroot.jl")

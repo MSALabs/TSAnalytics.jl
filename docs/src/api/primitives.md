@@ -14,6 +14,8 @@ DatasetInfo
 ```@docs
 tsvalues
 tsindex
+tsmatrix
+tsnames
 ```
 
 ## Differencing

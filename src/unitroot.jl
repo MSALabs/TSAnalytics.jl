@@ -98,6 +98,136 @@ end
 
 _diagvec(A) = [A[i, i] for i in 1:size(A, 1)]
 
+"""
+    _ols(X, Y::AbstractMatrix; method=:qr) -> (B, E, se, XtX_inv)
+
+Multi-response least squares: the same regressors `X` against **every**
+column of `Y`, in one factorization.
+
+This is the primitive the multivariate models are built on. A `K`-variate
+VAR(p) has `K` equations that share one regressor matrix `Z`, so the right
+computation is **one** `qr(Z)` and `K` back-substitutions — not `K` calls
+to the single-response `_ols`, which would factorize the same matrix `K`
+times for no benefit. `Z \\ Y` with a matrix right-hand side already does
+exactly that in Julia, so the straightforward expression is also the fast
+one.
+
+Returns
+
+- `B` — `k × K`, column `j` the coefficients of equation `j`
+- `E` — `n × K` residuals, `Y - X*B`
+- `se` — `k × K` standard errors
+- `XtX_inv` — `k × k`, shared by every equation
+
+`se[i, j] = sqrt(XtX_inv[i, i] * Σ[j, j])` with
+`Σ = E'E / (n - k)`, the degrees-of-freedom-adjusted residual
+covariance. That follows from `vcov(vec(B)) = kron(Σ, (X'X)^-1)`: the
+regressor part is shared, so only the diagonal of `Σ` enters a standard
+error. A caller needing the **full** covariance forms that Kronecker
+product itself — `fit_var` does, because the analytic impulse-response
+standard errors consume it whole.
+
+`Σ` is not returned: it is `E' * E / (n - k)`, one line at the call site,
+and callers generally want the maximum-likelihood divisor `E'E / n` as
+well.
+
+Unlike the single-response method this one is **OLS only** — no
+`weights`. Adding a GLS path here would be untested code for a caller
+that does not exist; the single-response method keeps its weighted
+reduction.
+
+`method` behaves exactly as in the single-response method, including the
+`:cholesky` refusal when `X'X` is not positive definite.
+"""
+function _ols(X::AbstractMatrix{<:Real}, Y::AbstractMatrix{<:Real};
+              method::Symbol=:qr)
+    method in (:qr, :cholesky) || throw(ArgumentError("method must be :qr or :cholesky"))
+    n, k = size(X)
+    size(Y, 1) == n || throw(DimensionMismatch(
+        "_ols: X has $n rows but Y has $(size(Y, 1))"))
+    K = size(Y, 2)
+    K >= 1 || throw(ArgumentError("_ols: Y must have at least one column"))
+    dof = n - k
+    dof > 0 || throw(ArgumentError(
+        "_ols: not enough observations -- $n rows for $k regressors per equation"))
+
+    local B, XtX_inv
+    if method === :qr
+        F = qr(X)
+        B = F \ Y                              # ONE factorization, K solves
+        R = F.R
+        Rinv = R \ Matrix{Float64}(I(k))
+        XtX_inv = Rinv * Rinv'
+    else # :cholesky
+        XtX = X' * X
+        C = try
+            cholesky(Hermitian(Matrix(XtX)))
+        catch e
+            e isa PosDefException &&
+                throw(ArgumentError("_ols: method=:cholesky failed -- X'X is not positive " *
+                                     "definite (likely collinear regressors); try method=:qr"))
+            rethrow()
+        end
+        B = C \ (X' * Y)
+        XtX_inv = C \ Matrix{Float64}(I(k))
+    end
+
+    E = Y - X * B
+    sigma = (E' * E) ./ dof
+    dx = _diagvec(XtX_inv)
+    se = Matrix{Float64}(undef, k, K)
+    @inbounds for j in 1:K
+        sj = sigma[j, j]
+        for i in 1:k
+            se[i, j] = sqrt(max(dx[i] * sj, 0.0))
+        end
+    end
+    return B, E, se, XtX_inv
+end
+
+"""
+    _companion(A::AbstractVector{<:AbstractMatrix}) -> Matrix{Float64}
+
+The `Kp × Kp` companion matrix of a `K`-variate VAR(p) whose coefficient
+matrices are `A[1] … A[p]`, each `K × K`:
+
+    C = [ A₁ A₂ … A_p ]
+        [ I  0  …  0   ]
+        [ 0  I  …  0   ]
+        [        ⋱     ]
+
+Stacking the VAR(p) into a VAR(1) on `Kp` states is what makes stability,
+the moving-average representation behind the impulse responses, and the
+forecast error variance accumulation all one computation. The eigenvalues
+of `C` are the companion roots: the process is stable when every modulus
+is below one.
+
+`[V]` Note the convention, because the two references disagree about
+which quantity they call `roots`: these are the **companion eigenvalues**
+(`vars::roots`, stable if `< 1`), whose moduli are the exact reciprocals
+of the characteristic-polynomial roots `statsmodels` reports (stable if
+`> 1`).
+
+The package already has `_ar_stationary` for the univariate case; this is
+its `K`-variate counterpart, and nothing shared between them would be
+worth the indirection.
+"""
+function _companion(A::AbstractVector{<:AbstractMatrix})
+    p = length(A)
+    p >= 1 || throw(ArgumentError("_companion: need at least one coefficient matrix"))
+    K = size(A[1], 1)
+    all(a -> size(a) == (K, K), A) || throw(DimensionMismatch(
+        "_companion: every coefficient matrix must be $K × $K"))
+    C = zeros(Float64, K * p, K * p)
+    @inbounds for j in 1:p
+        C[1:K, ((j-1)*K+1):(j*K)] .= A[j]
+    end
+    @inbounds for j in 1:(p-1)
+        C[(j*K+1):((j+1)*K), ((j-1)*K+1):(j*K)] .= I(K)
+    end
+    return C
+end
+
 # ---------------------------------------------------------------------------
 # ADF / PP response-surface p-values (MacKinnon 1994/2010)
 # ---------------------------------------------------------------------------
