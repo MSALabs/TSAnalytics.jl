@@ -1,9 +1,14 @@
 # Handoff: Completing the TSAnalytics.jl Documentation
 
-## Status: COMPLETE (2026-09-28)
+## Status: COMPLETE for its own scope (2026-09-28) — but see "Documentation debt" at the end
 
 Every page listed below is written, and every `@example` block in them
 executes. The documentation has no remaining stubs.
+
+**Stage 9 (2026-10-02/03) added four model families that this document
+predates**, and the audit at the end of it records exactly what is and is
+not up to date. Read that section before treating the documentation as
+current.
 
 Decisions taken, for the record:
 
@@ -469,3 +474,150 @@ Items 1–5 are unblocked today. Only two pages and one appendix wait on decisio
 5. **Should the divergence list live in `11-coming-from-r-python.md` only**, or
    also as a standalone reference? It is currently scattered across docstrings
    and `development-sequence.md`. One canonical home is better than three.
+
+
+---
+
+# Documentation debt, audited 2026-10-03
+
+Stage 9 shipped `fit_ets`/`auto_ets` (all fifteen models in R's default
+space), `fit_theta` and `fit_tbats`. The audit below was run against the
+tree at `4bb66f3`. **Nothing here is a stub or a wrong number** — it is
+prose that has gone stale and coverage that was never written.
+
+## Verified complete, and mechanically enforced
+
+- **API reference: 133 of 133 exported names** appear in an `@docs`
+  block. Not an assertion — `docs/make.jl` sets `checkdocs=:exports`, so
+  a missing entry fails the build, and the build passes. `fit_ets`,
+  `auto_ets`, `ETSModel`, `notation`, `fit_theta`, `ThetaModel`,
+  `fit_tbats` and `TBATSModel` are all on `api/arma-models.md`.
+- **`docs/src/manual/10-exponential-smoothing.md`** is new and in the
+  nav at position 10, retitled "Exponential Smoothing, ETS, Theta and
+  TBATS". It covers `holt_winters` → ETS → Theta → TBATS, with every
+  `@example` executed at build time. Plotting and the R/Python page were
+  renumbered to 11 and 12 to make room, and all inbound links updated.
+- **`docs/src/manual/12-coming-from-r-python.md`** holds every divergence
+  found in Stage 9, which keeps the §2.x decision above intact: that page
+  is still the single canonical home for the divergence list.
+- `introduction/41-the-frontier.md`, `docs/src/index.md`'s status note,
+  and `development-sequence.md` are all current.
+
+## Gap 1 — the book has no exponential-smoothing chapter (needs a decision)
+
+The Introduction is 41 chapters and exponential smoothing appears only in
+passing: chapters 30 and 33 mention it to contrast with the Kalman
+filter, 41 lists it, and `C-further-reading.md` cites fpp3. There is no
+chapter on it.
+
+**This predates Stage 9.** `holt_winters` shipped at Stage 5.5 and never
+got one either. But ETS, Theta and TBATS now make it a four-model hole in
+the narrative, and the book is the one part of the documentation a reader
+goes through in order.
+
+It needs a structural decision before anything is written, which is why
+it is listed first and was not simply fixed:
+
+- **One chapter**, after chapter 23, closing Part IV. Cheap: no
+  renumbering, no `make.jl` churn.
+- **A short Part** (smoothing → the ETS taxonomy → Theta and TBATS)
+  slotted after chapter 23. Better pedagogy, but renumbers chapters
+  24–41 and every cross-reference to them — roughly 40 files.
+
+Either way the material already exists in Manual 10 and can be adapted
+rather than written cold.
+
+## Gap 2 — `manual/09-forecasting-and-accuracy.md:28` lists the wrong types
+
+It reads:
+
+> **`forecast(m, h)` is the signature on every forecastable type** —
+> `ArmaModel`, `ArimaModel`, `SarimaModel` and `ARXModel` all retain the
+> series they were fitted to.
+
+Three types are missing: **`ETSModel`, `ThetaModel`, `TBATSModel`**.
+Checked against the source rather than guessed — those three have
+`forecast(model, horizon)` methods, and `ExponentialSmoothingModel`
+(`holt_winters`) and `AutoRegModel` correctly do **not** appear because
+neither forecasts. `ArimaxModel`/`SarimaxModel` are already handled
+further down that page via their `newexog` signature.
+
+This is the page a reader lands on for forecasting, so it is the gap most
+likely to mislead.
+
+## Gap 3 — `manual/05-automatic-order-selection.md` covers only `auto_arima`
+
+Zero occurrences of "ets", case-insensitive. The chapter is titled
+"Automatic Order Selection" and `auto_ets` now runs a fifteen-model AICc
+search with an `additive_only` switch and a parallel path that is
+asserted to select the identical model. Either a section here or a clear
+cross-reference to Manual 10.
+
+## Gap 4 — `C-further-reading.md` cites none of Stage 9's primary sources
+
+The file has a single `# Further Reading` heading and no subsections. Three
+works are now primary sources for shipped code and none is listed:
+
+- **Hyndman, Koehler, Ord & Snyder (2008)**, *Forecasting with
+  Exponential Smoothing* — the ETS taxonomy, the parameter regions, and
+  the class 1/2/3 variance results `fit_ets` implements.
+- **Assimakopoulos & Nikolopoulos (2000)** — the Theta method; and
+  **Hyndman & Billah (2003)**, whose SES-plus-drift equivalence is what
+  `fit_theta` actually implements.
+- **De Livera, Hyndman & Snyder (2011)** — TBATS.
+
+## Gap 5 — Appendix B describes only two kinds of disagreement
+
+**Correcting an earlier reading of my own here**: the "Eighteen of these
+appear across the Introduction" count is *not* stale. It counts
+Introduction chapters carrying a `disagreement` box, and Stage 9's
+findings were written up in the Manual, not in the book. The count
+stands.
+
+The actual gap is that `B-verification.md` frames verification as two
+cases — the references disagree with each other, or they share a
+limitation this package shares too — and Stage 9 needed a third:
+
+> **A reference is simply wrong, and the matter was settled by
+> simulating the model's own recursion rather than by consulting a
+> second reference.**
+
+That happened three times, and it is the method that did the decisive
+work, so the appendix that explains the verification standard should
+describe it:
+
+1. **R's ETS(A,N,A)/(M,N,A) intervals** apply the seasonal variance
+   increment one period early — `floor(h/m)` elapsed seasonal shocks
+   where the correct count is `floor((h-1)/m)`. 4,000,000 paths give
+   `2.5808*sigma2` at `h = 4` against R's `3.0536*sigma2`; 6,000,000
+   from R's own fitted ETS(M,N,A) state agree with this package to 0.09%
+   at every horizon against R being +25.6% too wide at `h = 4`.
+2. **R's ETS(M,Ad,M) forecast contradicts R's own fitted model** —
+   it accumulates the damped trend as `(1 + phi + ... + phi^(h-1))` where
+   its own one-step recursion `(l + phi*b)*s` implies
+   `(phi + ... + phi^h)`. 8,000,000 paths side with this package.
+3. **R's seasonal TBATS intervals are 2.8x too narrow** — `c_j = alpha`
+   for every shock weight where the correct weight is `w'F^(j-1)g`. At
+   `h = 8` R gives `2.640` against `7.31` from this package, from
+   Python's `tbats`, and from 3,000,000 paths.
+
+In all three cases R's *neighbouring* branch is correct — non-seasonal
+`bats`, trended ETS, non-seasonal damped ETS — which is how each was
+localised rather than written off as "R is wrong". That nuance belongs in
+the appendix too, because it is what makes the claims credible.
+
+## Also worth recording, not documentation gaps
+
+- **`getting-started/05-where-next.md` has no route to Manual 10.** Its
+  routing table predates the chapter. One row.
+- **`development-sequence.md` rows 0.1–0.2 and 6.1–6.4 carry no
+  `built` marker** although they are built — the state-space engine is in
+  `src/statespace/`. Since that file doubles as the changelog, this is a
+  gap in it. Flagged twice and still unfixed; it is a two-minute edit.
+- **Two deliberate gaps in Stage 9 itself**, already documented in the
+  manual and the error messages, listed here so they are not mistaken
+  for documentation debt: no `auto_tbats` (R's AIC search over
+  Box-Cox/trend/damping/ARMA/harmonics), and no ARMA errors in TBATS —
+  the recursion handles them but the forecastability condition is only
+  derived for the no-ARMA state, so a non-zero order errors rather than
+  fitting unconstrained.
