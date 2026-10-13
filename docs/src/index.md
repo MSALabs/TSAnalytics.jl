@@ -99,7 +99,7 @@ Full detail on all of these lives in the repository README.
   -- the Introduction is written to be readable without Julia in front
   of you.
 - Coming from R or Python? The Manual's
-  [translation page](manual/13-coming-from-r-python.md) maps common
+  [translation page](manual/14-coming-from-r-python.md) maps common
   workflows directly.
 - Already know the task? The [Manual](manual/01-primitives.md) is
   organized around "how do I ..." questions, not a walkthrough.

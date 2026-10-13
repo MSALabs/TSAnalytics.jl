@@ -440,3 +440,75 @@ frame.
         end
     end
 end
+
+"""
+    @recipe f(r::IRFResult)
+
+A `responses × impulses` grid of impulse responses against horizon, one
+panel per pair, titled `impulse → response`, with a zero line. The
+orthogonalized responses are drawn, since they are the ones with a
+one-standard-deviation interpretation; when `r` carries bootstrap bands
+(`irf(...; boot=true)`) they are shaded behind the line.
+"""
+@recipe function f(r::IRFResult)
+    nr, ni = length(r.responses), length(r.impulses)
+    layout --> (nr, ni)
+    legend --> false
+    titlefontsize --> 8
+    hz = collect(r.horizons)
+    for a in 1:nr, b in 1:ni
+        sp = (a - 1) * ni + b
+        if r.lower !== nothing
+            @series begin
+                subplot := sp
+                seriestype := :line
+                fillrange := [M[a, b] for M in r.upper]
+                fillalpha := 0.2
+                linealpha := 0.0
+                hz, [M[a, b] for M in r.lower]
+            end
+        end
+        @series begin
+            subplot := sp
+            seriestype := :line
+            title := "$(r.impulses[b]) → $(r.responses[a])"
+            hz, [M[a, b] for M in r.orth]
+        end
+        @series begin
+            subplot := sp
+            seriestype := :hline
+            linestyle := :dash
+            color := :gray
+            [0.0]
+        end
+    end
+end
+
+"""
+    @recipe f(f::FEVDResult)
+
+One panel per variable, its forecast error variance split by shock as
+stacked shares from `0` to `1` across horizons `1 … h`.
+"""
+@recipe function f(fv::FEVDResult)
+    K = size(fv.decomp, 1)
+    h = collect(fv.horizons)
+    layout --> (K, 1)
+    ylims --> (0.0, 1.0)
+    for i in 1:K
+        base = zeros(length(h))
+        for j in 1:K
+            top = base .+ fv.decomp[i, :, j]
+            @series begin
+                subplot := i
+                seriestype := :line
+                fillrange := copy(base)
+                fillalpha := 0.6
+                title := "FEVD of $(fv.names[i])"
+                label := string(fv.names[j])
+                h, top
+            end
+            base = top
+        end
+    end
+end

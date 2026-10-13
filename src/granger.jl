@@ -57,7 +57,7 @@ struct InstantaneousCausalityTest <: HypothesisTest
 end
 
 """
-    _var_indices(m, want) -> Vector{Int}
+    _var_indices(m, want; who="granger_test") -> Vector{Int}
 
 Resolve variable names (or indices) against a fitted model's `names`,
 refusing anything that does not appear. Duplicates are refused too:
@@ -65,26 +65,26 @@ refusing anything that does not appear. Duplicates are refused too:
 overlapping cause and caused sets, both silently, and a repeated
 restriction makes the restriction matrix rank-deficient.
 """
-function _var_indices(m::VARModel, want)
+function _var_indices(m::VARModel, want; who::AbstractString="granger_test")
     items = want isa Union{Symbol,Integer} ? [want] : collect(want)
-    isempty(items) && throw(ArgumentError("granger_test: the variable set is empty"))
+    isempty(items) && throw(ArgumentError("$who: the variable set is empty"))
     out = Int[]
     for w in items
         i = if w isa Integer
             1 <= w <= length(m.names) || throw(ArgumentError(
-                "granger_test: variable index $w is outside 1:$(length(m.names))"))
+                "$who: variable index $w is outside 1:$(length(m.names))"))
             Int(w)
         else
             j = findfirst(==(Symbol(w)), m.names)
             if j === nothing
                 have = join(string.(m.names), ", ")
                 throw(ArgumentError(
-                    "granger_test: no variable named :$w. The model has $have."))
+                    "$who: no variable named :$w. The model has $have."))
             end
             j
         end
         i in out && throw(ArgumentError(
-            "granger_test: variable :$(m.names[i]) is named twice; a repeated " *
+            "$who: variable :$(m.names[i]) is named twice; a repeated " *
             "restriction is rank deficient. (Both references accept this silently.)"))
         push!(out, i)
     end

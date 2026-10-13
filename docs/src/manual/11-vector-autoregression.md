@@ -188,6 +188,155 @@ instantaneous_causality(m2; cause = :gnp)
 This is **not** a directional statement — contemporaneous correlation is
 symmetric, so swapping the two sets returns the identical statistic.
 
+## Impulse responses
+
+An impulse response answers the question a VAR exists for: if one
+variable is shocked today, what happens to every variable over the
+following periods. [`irf`](@ref) returns them at horizons `0 … h`, every
+matrix laid out `[response, impulse]`:
+
+```@example var
+D = dataset("climhyd")
+W = (Temp = D.Temp, DewPt = D.DewPt, CldCvr = D.CldCvr)
+mw = fit_var(W, 2)
+r = irf(mw, 8)
+round.(r.orth[2]; digits = 3)        # one period after the shock
+```
+
+### The ordering is an assumption, not a formatting choice
+
+The orthogonalized responses — the ones with a "one standard deviation
+shock" reading — come from the Cholesky factor of the residual
+covariance. That factor makes the **first** variable respond within the
+period only to its own shock, the second to the first two, and so on.
+Reorder the columns and every orthogonalized response changes:
+
+```@example var
+rp = irf(fit_var((CldCvr = D.CldCvr, DewPt = D.DewPt, Temp = D.Temp), 2), 8)
+println("Temp's impact response to its own shock, Temp first: ",
+        round(r.orth[1][1, 1]; digits = 4))
+println("the same, with Temp last:                            ",
+        round(rp.orth[1][3, 3]; digits = 4))
+```
+
+The non-orthogonalized responses (`r.nonorth`) are merely relabelled by a
+reordering. Both references leave the user to know this; the result here
+records the order it used in `r.names` and prints it.
+
+### Uncertainty
+
+`irf(m, h; stderr = true)` attaches analytic asymptotic standard errors
+(Lütkepohl 2005, §3.7). `vars` has none at all, so `statsmodels` was the
+only software reference; the formulas were also checked against a
+numerical Jacobian and against a parametric bootstrap of the sampling
+distribution, because the orthogonalized one is stated incorrectly in the
+textbook and `statsmodels`' own source says so.
+
+`irf(m, h; boot = true, runs = 1000, rng = …)` attaches residual-bootstrap
+percentile bands — `vars`' scheme. One generator per replication makes a
+seeded run reproducible and the threaded result identical to the serial
+one. Expect the bands to be a little narrow in short samples: on a known
+bivariate VAR with `n = 200` a nominal 95% band covered the truth about
+92–93% of the time, the small-sample bias Kilian (1998) documented for
+this interval. `vars` makes no correction either.
+
+`cumulative = true` gives running sums, which converge to
+[`lr_effects`](@ref) — and **that refuses an unstable VAR**, because the
+sum does not converge. Both references invert `I - Σ A_j` regardless.
+`econ5`'s VAR(2), with its largest root just above 1, is a real example:
+
+```@example var
+try
+    lr_effects(m)
+catch err
+    println(sprint(showerror, err)[1:120], " …")
+end
+```
+
+### Forecast error variance decomposition
+
+[`fevd`](@ref) splits each variable's `h`-step forecast error variance by
+orthogonalized shock. It inherits the ordering dependence, and its
+horizons start at **1** where the impulse response's start at 0 — a
+one-step forecast already has error. The two objects do not share an
+axis, and nothing aligns them silently.
+
+```@example var
+f = fevd(mw, 8)
+round.(f.decomp[:, 8, :]; digits = 3)    # [variable, shock] at the 8-step horizon
+```
+
+Both [`IRFResult`](@ref) and [`FEVDResult`](@ref) have plot recipes:
+`plot(r)` draws the `response × impulse` grid with any bootstrap band
+shaded, `plot(f)` the stacked shares.
+
+## Structural VARs
+
+The Cholesky ordering in [`irf`](@ref) is one identification scheme
+among many. A structural VAR states the scheme explicitly, as
+restrictions on `A u_t = B ε_t`, with `missing` marking what to estimate:
+
+```@example var
+s = fit_svar(mw; A = [1.0 0.0 0.0; missing 1.0 0.0; missing missing 1.0],
+                 B = [missing 0.0 0.0; 0.0 missing 0.0; 0.0 0.0 missing])
+```
+
+That one is recursive and just-identified — six free parameters for
+the six distinct elements of `Σ` — so it reproduces the Cholesky
+responses exactly. Fewer free parameters over-identify the model, and
+[`fit_svar`](@ref) tests the extra restrictions; more are refused before
+any optimization, because the data cannot separate them.
+
+[`blanchard_quah`](@ref) identifies through the long run instead: the
+last shock has no permanent effect on the first variable, and so on.
+
+```@example var
+round.(blanchard_quah(mw).lrim; digits = 3)
+```
+
+Structural impulse responses and variance decompositions are
+[`irf`](@ref)`(s, h)` and [`fevd`](@ref)`(s, h)` — the same recursion,
+with the structural impact matrix in place of the Cholesky factor.
+
+!!! warning "Identification is an assumption the data cannot check"
+    A just-identified scheme fits the data exactly as well as any other —
+    the likelihood is the same. Which restrictions are right is economics,
+    not statistics; only the over-identifying ones are testable.
+
+## Checking a fitted VAR
+
+The first question to ask of a fitted VAR is whether what it left behind
+looks like white noise. [`var_diagnostics`](@ref) runs the standard set
+in one call:
+
+```@example var
+d = var_diagnostics(mw)
+d.portmanteau
+```
+
+- [`portmanteau_test`](@ref) — Hosking's multivariate portmanteau, the
+  vector analogue of Ljung-Box. It **needs `lags > p`**: with `lags ≤ p`
+  its degrees of freedom are not positive. `vars` runs anyway and
+  reports `df ≤ 0`; this package refuses. Its power depends on the lag
+  choice, so report the lag with the result.
+- [`bg_test`](@ref) and [`es_test`](@ref) — the Breusch-Godfrey LM test
+  and its Edgerton-Shukur small-sample F form. Prefer the F form in short
+  samples.
+- [`normality_test`](@ref) — multivariate Jarque-Bera, with its skewness
+  and kurtosis halves (they sum to the joint statistic) and, on request,
+  one test per equation, which is how you find *which* equation fails.
+- `arch_lm_test(m; lags)` — multivariate ARCH-LM. Its degrees of freedom
+  grow as `K⁴`, so it runs out of observations quickly at larger `K`; an
+  infeasible auxiliary regression is refused by name.
+
+```@example var
+d.normality
+```
+
+The p-values are this package's own upper tails. `vars` computes every
+diagnostic p-value as `1 − CDF`, which reports `0` for any strong
+rejection — the same defect as its Granger test, below.
+
 ## Two places where the references are wrong
 
 Both are worth knowing because a test written against the reference
@@ -231,11 +380,13 @@ instantaneous_causality(C; cause = [:Temp, :DewPt, :CldCvr])
 
 ## What is not here yet
 
-- **Impulse responses and FEVD** (10.3), **residual diagnostics** (10.8),
-  **cointegration** (10.4, 10.5), **VECM** (10.6) and **structural VARs**
-  (10.7). The companion matrix and the moving-average representation this
-  chapter's forecast already uses are what those are built on, and
-  [`companion`](@ref) is exported for that reason.
+- Cointegration testing and the VECM have their own chapter,
+  [Cointegration](12-cointegration.md).
+- **Sign-restricted and proxy SVARs**, and bands for structural impulse
+  responses. Neither reference ships the first two.
+- **Sims-Zha error bands**, generalized (Pesaran-Shin) impulse responses
+  and bias-corrected bootstrap bands. `statsmodels` has the first and
+  neither reference the other two; each is a separate piece of work.
 - **Exogenous regressors**, restricted VARs and Bayesian priors. The
   regressor construction would carry exogenous columns untouched, so it
   is a clean later addition rather than a rewrite.
@@ -245,5 +396,5 @@ instantaneous_causality(C; cause = [:Temp, :DewPt, :CldCvr])
 ## See also
 
 - [Forecasting and Accuracy](09-forecasting-and-accuracy.md) — evaluating what comes out of `forecast`
-- [Coming from R or Python](13-coming-from-r-python.md) — every documented divergence in one place
+- [Coming from R or Python](14-coming-from-r-python.md) — every documented divergence in one place
 - [API: Multivariate](../api/multivariate.md)

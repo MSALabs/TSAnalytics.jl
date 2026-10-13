@@ -30,6 +30,20 @@ and concluding something is broken.
 | `vars::roots` | [`roots`](@ref) — same convention |
 | `vars::causality(…, cause=)` | [`granger_test`](@ref)`(m; cause=)` |
 | `lmtest::grangertest` | [`granger_test`](@ref)`(y, x; lags=)` — a different test |
+| `vars::irf(m, n.ahead=h)` | [`irf`](@ref)`(m, h)` — horizon first, `[response, impulse]` |
+| `vars::fevd(m, n.ahead=h)` | [`fevd`](@ref)`(m, h)` — `decomp[variable, horizon, shock]` |
+| `vars::serial.test(type="PT.asymptotic")` | [`portmanteau_test`](@ref)`(m; lags)` (`adjusted=true` for `"PT.adjusted"`) |
+| `vars::serial.test(type="BG")` / `"ES"` | [`bg_test`](@ref) / [`es_test`](@ref) |
+| `vars::normality.test` | [`normality_test`](@ref) |
+| `vars::arch.test` | [`arch_lm_test`](@ref)`(m; lags)` |
+| `urca::ca.jo(Y, ecdet="none", K=k+1)` | [`johansen_test`](@ref)`(Y; lags=k, deterministic=:const)` — different critical values, see below |
+| `urca::ca.po(Y, type="Pz")` | [`phillips_ouliaris_test`](@ref) — `Pz` with a constant or trend differs, see below |
+| `tseries::po.test` | not shipped — a third Phillips-Ouliaris normalization |
+| `urca::cajorls(ca.jo(…), r)` | [`fit_vecm`](@ref)`(Y; lags, rank=r)` — lag coefficients differ by `Π`, see below |
+| `vars::vec2var(j, r)` | [`var_rep`](@ref)`(fit_vecm(…))` |
+| `tsDyn::VECM(Y, lag, r, estim="2OLS")` | [`fit_vecm`](@ref)`(…; method=:twostep)` |
+| `vars::SVAR(m, Amat=…, Bmat=…)` | [`fit_svar`](@ref)`(m; A=…, B=…)` — `missing` where R has `NA` |
+| `vars::BQ(m)` | [`blanchard_quah`](@ref)`(m)` |
 | `HoltWinters(y)` | [`holt_winters`](@ref) |
 | `forecast::ets(y)` | [`auto_ets`](@ref) |
 | `forecast::ets(y, model="AAA")` | [`fit_ets`](@ref)`(y, m; trend=:add, seasonal=:add)` |
@@ -76,6 +90,14 @@ and concluding something is broken.
 | `.roots` | `1 ./ `[`roots`](@ref)`(m)` — reciprocals, see below |
 | `.test_causality` | [`granger_test`](@ref)`(m; cause=)` |
 | `.test_inst_causality` | [`instantaneous_causality`](@ref) |
+| `.irf(h)` / `.fevd(h)` | [`irf`](@ref) / [`fevd`](@ref) — the same numbers, different layout |
+| `IRAnalysis.stderr(orth=…)` | [`irf_stderr`](@ref)`(m, h; orth=…)` |
+| `.test_whiteness(nlags, adjusted=…)` | [`portmanteau_test`](@ref)`(m; lags, adjusted=…)` |
+| `.test_normality()` | [`normality_test`](@ref) |
+| `tsa.stattools.coint(y, X, trend=…)` | [`coint_test`](@ref)`(hcat(y, X); trend=…)` |
+| `vecm.coint_johansen(Y, det_order, k_ar_diff)` | [`johansen_test`](@ref)`(Y; lags=k_ar_diff)` |
+| `vecm.VECM(Y, k_ar_diff, coint_rank, deterministic="co")` | [`fit_vecm`](@ref)`(Y; lags=k_ar_diff, rank=coint_rank)` |
+| `SVAR(Y, svar_type="A", A=…)` | [`fit_svar`](@ref)`(fit_var(Y, p); A=…)` — `missing` where statsmodels has `"E"` |
 | `tsa.holtwinters.ExponentialSmoothing` | [`holt_winters`](@ref) |
 | `tsa.exponential_smoothing.ETSModel` | [`fit_ets`](@ref) |
 | `tsa.forecasting.theta.ThetaModel` | [`fit_theta`](@ref) |
@@ -451,6 +473,65 @@ For a general block `vars` is therefore the only reference, and
 observations — returns without complaint from both. [`fit_var`](@ref)
 refuses that, along with `p < 1`, `NaN` input, `K = 1` and an
 unrecognised `deterministic`, each by name and naming the fix.
+
+### Johansen critical values with an unrestricted constant
+
+The statistics agree with `urca` and `statsmodels` to `1e-10`; the
+critical values for the common case do not agree with `urca`. Its
+`ecdet = "none"` — an unrestricted constant, despite the name — reads
+Osterwald-Lenum's Table **1.1\***, the case where the data's constant
+lies only in the cointegrating relation (5% trace `8.18, 17.95, 31.52`).
+[`johansen_test`](@ref) reads Table **1**, the case the model actually
+fits (`3.76, 15.41, 29.68`), which `statsmodels`' independently simulated
+table matches. `urca`'s `ecdet = "const"` and `"trend"` use the matching
+tables (1\* and 2\*) and agree here exactly.
+
+### `urca`'s Phillips-Ouliaris `Pz` with a constant or trend
+
+`ca.po` builds the moment matrix from the raw levels where Phillips &
+Ouliaris (1990) demean or detrend them first. Its statistic then changes
+when a constant is added to the data, and under the null it rejected
+0.25% (constant) and 0% (trend) of the time at the nominal 5% in 4000
+simulations. [`phillips_ouliaris_test`](@ref) follows the paper; `Pu`,
+and `Pz` with no deterministic terms, agree with `ca.po` to `1e-10`.
+
+### An Engle-Granger statistic with automatic lag selection
+
+`statsmodels`' `coint` and an Engle-Granger built from R's `lm` and
+`urca::ur.df` agree exactly at a fixed lag and pick different lags when
+each searches. [`coint_test`](@ref) uses [`adf_test`](@ref)'s search,
+which is `statsmodels`'; pass `lags` with `autolag = nothing` to
+reproduce either.
+
+### `cajorls`' short-run coefficients
+
+`urca::ca.jo` defaults to `spec = "longrun"`, which puts the levels
+term at lag `K` rather than lag 1. The adjustment coefficients and `β`
+are unchanged, but the lag coefficients become `Γ*_i = Γ_i + Π`.
+[`fit_vecm`](@ref) reports the lag-1 form, as `statsmodels`, `tsDyn` and
+`vars::vec2var` do; the test suite checks the identity.
+
+### `statsmodels`' SVAR log-likelihood is the reduced form's
+
+Whatever the restrictions, `SVARResults.llf` is the unrestricted VAR's
+log-likelihood, so an over-identified model looks just-identified. The
+usual two-variable example, `A = [1 0; E 1]` with `B = I`, is
+over-identified — it also fixes both structural variances at one — and
+`vars` rejects it (`LR = 121.6` on 2 df). [`fit_svar`](@ref) reports the
+structural likelihood and the LR test.
+
+### Long-run effects of an unstable VAR
+
+Both references compute `(I - Σ A_j)⁻¹` regardless of stability.
+[`lr_effects`](@ref) refuses when a companion root is on or outside the
+unit circle — `econ5`'s VAR(2) is a real example — while
+[`irf`](@ref) at a finite horizon keeps working.
+
+### `vars`' diagnostic p-values
+
+All ten of `vars`' residual-diagnostic p-values are `1 − CDF`, like its
+Granger test, and print `0` for strong rejections that have representable
+tails. Compare statistics with `vars`, never p-values.
 
 ## What is missing here that you may be looking for
 

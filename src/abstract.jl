@@ -60,5 +60,23 @@ statistic(t::HypothesisTest) = t.statistic
     pvalue(t::HypothesisTest) -> Real
 
 The p-value associated with `t`'s test statistic.
+
+Some tests genuinely have none — the Johansen and Phillips-Ouliaris
+cointegration tests come with critical values only, and the Engle-Granger
+test has p-value surfaces for at most six series. Those tests' `pvalue`
+methods throw an `ArgumentError` naming [`critical_values`](@ref) rather
+than return `NaN` or a value clipped at a table bound.
 """
 pvalue(t::HypothesisTest) = t.pvalue
+
+"""
+    critical_values(t::HypothesisTest) -> Union{Nothing, NamedTuple}
+
+The critical values a test reports, as a `NamedTuple` whose `levels`
+field names the significance levels (in percent) **explicitly** —
+different tests order them differently (MacKinnon's tables run 1%, 5%,
+10%; Phillips-Ouliaris and Johansen run 10%, 5%, 1%), so position is
+never load-bearing. `nothing` for a test that reports none.
+"""
+critical_values(t::HypothesisTest) =
+    hasfield(typeof(t), :critical_values) ? getfield(t, :critical_values) : nothing

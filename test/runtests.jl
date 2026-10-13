@@ -1,12 +1,12 @@
 using Test
 using TSAnalytics
 using Random
-using LinearAlgebra: norm, eigvals, I, diag, diagm, dot, issymmetric
+using LinearAlgebra: norm, eigvals, I, diag, diagm, dot, issymmetric, cholesky, Hermitian, tr, rank, triu, logdet
 using Statistics: mean, std, var
 # StatsAPI does not export these; importing them once here keeps a test from
 # passing in isolation (where the author imported them) and erroring under the
 # full suite, which is exactly how the missing `std` import slipped through.
-using StatsAPI: coef, coefnames, vcov, residuals, fitted, predict, loglikelihood, aic, bic, nobs, stderror
+using StatsAPI: coef, coefnames, vcov, residuals, fitted, predict, loglikelihood, aic, bic, nobs, stderror, dof
 using Dates: Date
 
 @testset "TSAnalytics.jl" begin
@@ -21,6 +21,13 @@ using Dates: Date
     include("test_var_primitives.jl")   # Stage 10.0: tsmatrix, multi-response _ols, companion
     include("test_var.jl")              # Stage 10.1: after test_var_primitives.jl
     include("test_granger.jl")          # Stage 10.2: after test_var.jl
+    include("test_irf.jl")              # Stage 10.3: after test_var.jl
+    include("test_vardiag.jl")          # Stage 10.8: after test_var.jl
+    include("test_coint.jl")            # Stage 10.4a: after test_unitroot.jl (extends its MacKinnon tables)
+    include("test_phillips_ouliaris.jl") # Stage 10.4b
+    include("test_johansen.jl")         # Stage 10.5
+    include("test_vecm.jl")             # Stage 10.6
+    include("test_svar.jl")             # Stage 10.7
     include("test_stattools.jl")
     include("test_ccf.jl")
     include("test_unitroot.jl")

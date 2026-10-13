@@ -52,6 +52,11 @@ include("theta.jl")        # after ets.jl (SES) and decompose.jl (classical_deco
 include("tbats.jl")        # after transforms.jl (boxcox) and autoreg.jl (_ar_stationary)
 include("var.jl")          # Stage 10.1: after unitroot.jl (_ols, _companion) and forecast.jl
 include("granger.jl")      # Stage 10.2: after var.jl and diagnostics.jl (_f_ccdf)
+include("irf.jl")          # Stage 10.3: after granger.jl (_var_indices, _vech_indices, _dupl_pinv)
+include("vardiagnostics.jl") # Stage 10.8: after irf.jl and diagnostics.jl (JarqueBeraTest, ARCHLMTest, _f_ccdf)
+include("cointegration.jl")  # Stage 10.4-10.5: after unitroot.jl (adf_test, MacKinnon tables, _bartlett_lrv) and var.jl
+include("vecm.jl")           # Stage 10.6: after cointegration.jl (_johansen_rrr) and irf.jl
+include("svar.jl")           # Stage 10.7: after irf.jl (the MA recursion, _impact_ma_rep) and optim.jl
 include("garch.jl")
 include("autoregarch.jl")
 include("garchforecast.jl")
@@ -60,6 +65,6 @@ include("diagnosticplot.jl")
 include("recipes.jl")
 
 export TimeSeriesModel, StateSpaceModel, UnivariateModel, HypothesisTest
-export statistic, pvalue
+export statistic, pvalue, critical_values
 
 end # module TSAnalytics

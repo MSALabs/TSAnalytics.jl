@@ -37,8 +37,9 @@ makedocs(;
             "manual/09-forecasting-and-accuracy.md",
             "manual/10-exponential-smoothing.md",
             "manual/11-vector-autoregression.md",
-            "manual/12-plotting.md",
-            "manual/13-coming-from-r-python.md",
+            "manual/12-cointegration.md",
+            "manual/13-plotting.md",
+            "manual/14-coming-from-r-python.md",
         ],
         "Introduction to Time Series Analysis" => [
             "Part I -- The Series and the Machine" => [

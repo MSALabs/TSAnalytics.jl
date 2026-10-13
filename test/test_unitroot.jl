@@ -322,8 +322,11 @@ end
     @test isapprox(cv_inf.p10, -2.56677; atol=1e-5)
 
     @test_throws ArgumentError adf_pvalue_response_surface(-3.5, :bogus)
-    @test_throws ArgumentError adf_pvalue_response_surface(-3.5, :c; N=2)
-    @test_throws ArgumentError adf_critical_values_response_surface(:c; N=2)
+    # N > 1 (the cointegration case) became supported in Stage 10.4a; the
+    # coverage limits are what is refused now -- see test_coint.jl
+    @test_throws ArgumentError adf_pvalue_response_surface(-3.5, :c; N=7)
+    @test_throws ArgumentError adf_critical_values_response_surface(:c; N=13)
+    @test_throws ArgumentError adf_critical_values_response_surface(:n; N=2)
 
     # end-to-end: adf_test's default pvalue_method now matches the response surface directly
     fixture = joinpath(@__DIR__, "fixtures", "ar1_ref_series.csv")

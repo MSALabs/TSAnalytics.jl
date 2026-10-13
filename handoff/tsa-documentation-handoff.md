@@ -621,3 +621,33 @@ the appendix too, because it is what makes the claims credible.
   the recursion handles them but the forecastability condition is only
   derived for the no-ARMA state, so a non-zero order errors rather than
   fitting unconstrained.
+
+# Documentation debt added by Stage 10, audited 2026-10-13
+
+Stage 10 shipped with its **manual** coverage complete — chapter 11
+(VAR, IRF/FEVD, structural VARs, residual diagnostics), a new chapter 12
+(cointegration and the VECM), and the R/Python translation chapter
+renumbered to 14 with every Stage 10 divergence. What it did **not**
+touch is the Introduction (the book) and its apparatus:
+
+1. **The book has no multivariate part.** Chapters 1–41 are univariate.
+   VAR, impulse responses, Granger causality and cointegration are a
+   natural Part (the frontier chapter 41 should point at it), and the
+   spurious-regression story is the strongest motivating example the book
+   could have for chapter 03's differencing argument.
+2. **`C-further-reading` lacks every Stage 10 primary source:**
+   Lütkepohl (2005); Johansen (1988, 1991) and Johansen & Juselius (1990);
+   Osterwald-Lenum (1992); Engle & Granger (1987); MacKinnon (1994, 2010);
+   Phillips & Ouliaris (1990); Blanchard & Quah (1989); Amisano &
+   Giannini (1997); Kilian (1998) on bootstrap IRF bands; Edgerton &
+   Shukur (1999).
+3. **Appendix B (verification) has no Stage 10 entries**, and Stage 10
+   added several to its "reference wrong" category: `urca::ca.po`'s `Pz`
+   with a constant or trend (not level-invariant, ~0% size), `urca`'s
+   Johansen `ecdet="none"` using Osterwald-Lenum's Table 1.1\*,
+   `statsmodels`' SVAR `llf` being the reduced form's, and `vars`'
+   package-wide `1 − CDF` p-values. The `_std_normal_cdf` tail bug
+   (this package's own, fixed in 10.4a) belongs in the "we were wrong"
+   column alongside them.
+4. **`getting-started/05-where-next.md`** has no route to chapters 11
+   or 12.

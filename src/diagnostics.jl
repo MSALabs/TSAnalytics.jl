@@ -643,12 +643,19 @@ end
 erf(x) = P(1/2, x^2) (regularized lower incomplete gamma, x >= 0),
 reusing this file's own `_upper_incomplete_gamma_reg` rather than a
 fresh erf polynomial approximation or a `Distributions.jl` dependency
-just for a normal tail probability."
+just for a normal tail probability.
+
+The lower tail is taken from the upper incomplete gamma directly,
+`Φ(z) = Q(1/2, z²/2)/2` for `z < 0`. Forming `erf = 1 - Q` first and then
+`1 - erf` cancels catastrophically and returned exactly `0` for `z`
+below about `-8.3` -- found in Stage 10.4a, where MacKinnon p-values of
+`8e-24` came back as `0` (and `adf_test`/`pp_test` shared the defect for
+extreme statistics)."
 function _std_normal_cdf(z::Real)
     z == 0 && return 0.5
     x2 = (abs(z) / sqrt(2))^2
-    erfx = 1 - _upper_incomplete_gamma_reg(0.5, x2)
-    return z > 0 ? 0.5 * (1 + erfx) : 0.5 * (1 - erfx)
+    q = _upper_incomplete_gamma_reg(0.5, x2)     # = 1 - erf(|z|/√2), accurate in the tail
+    return z > 0 ? 1 - 0.5 * q : 0.5 * q
 end
 
 """_pan_prob(x, a, c, niter) -- Farebrother's (1980, 1984) Applied

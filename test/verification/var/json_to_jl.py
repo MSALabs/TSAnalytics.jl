@@ -11,8 +11,8 @@ Run from the repository root:
 
     python test/verification/var/json_to_jl.py
 
-Regenerate the JSONs first with ref_R.R / ref_py.py / extra2.R and the two
-granger scripts if anything upstream changes.
+Regenerate the JSONs first with the R and Python scripts under
+test/verification/ if anything upstream changes.
 """
 import json
 import os
@@ -29,6 +29,19 @@ SOURCES = [
     ("REF_PY_GRANGER", "ref_py_granger.json"),
     ("REF_R_PRIM", "ref_R_prim.json"),
     ("REF_PY_PRIM", "ref_py_prim.json"),
+    ("REF_R_IRF", "ref_R_irf.json"),
+    ("REF_PY_IRF", "ref_py_irf.json"),
+    ("VERIFY_IRF_SE", "verify_irf_se.json"),
+    ("REF_R_COINT", "ref_R_coint.json"),
+    ("REF_PY_COINT", "ref_py_coint.json"),
+    ("REF_R_JOHANSEN", "ref_R_johansen.json"),
+    ("REF_PY_JOHANSEN", "ref_py_johansen.json"),
+    ("REF_R_VECM", "ref_R_vecm.json"),
+    ("REF_PY_VECM", "ref_py_vecm.json"),
+    ("REF_R_SVAR", "ref_R_svar.json"),
+    ("REF_PY_SVAR", "ref_py_svar.json"),
+    ("REF_R_DIAG", "ref_R_diag.json"),
+    ("REF_PY_DIAG", "ref_py_diag.json"),
 ]
 
 

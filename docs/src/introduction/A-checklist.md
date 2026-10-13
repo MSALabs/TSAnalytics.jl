@@ -120,7 +120,7 @@ a real false alarm.
    squared residuals; this package and `arch` use a 0.94-decay backcast.
    Worth `1.05` log-likelihood units on a 1,260-point series.
 
-[Coming from R or Python](../manual/13-coming-from-r-python.md) has
+[Coming from R or Python](../manual/14-coming-from-r-python.md) has
 every one of these in full, with the numbers.
 
 ---

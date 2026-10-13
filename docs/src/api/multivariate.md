@@ -31,6 +31,71 @@ GrangerTest
 InstantaneousCausalityTest
 ```
 
+## Impulse responses and variance decomposition
+
+```@docs
+irf
+IRFResult
+ma_rep
+orth_ma_rep
+irf_stderr
+cum_effect_stderr
+lr_effects
+lr_effect_stderr
+coef_alpha
+fevd
+FEVDResult
+```
+
+## Residual diagnostics
+
+```@docs
+var_diagnostics
+portmanteau_test
+PortmanteauTest
+normality_test
+MultivariateNormalityTest
+bg_test
+BreuschGodfreyTest
+es_test
+EdgertonShukurTest
+MultivariateARCHLMTest
+```
+
+`arch_lm_test` gains a method for a fitted VAR; its docstring is listed
+with the univariate method.
+
+## Cointegration
+
+```@docs
+coint_test
+CointTest
+phillips_ouliaris_test
+PhillipsOuliarisTest
+reject
+johansen_test
+JohansenTest
+coint_rank
+normalize_beta
+critical_values
+```
+
+## VECM
+
+```@docs
+fit_vecm
+VECMModel
+var_rep
+```
+
+## Structural VAR
+
+```@docs
+fit_svar
+blanchard_quah
+SVARModel
+```
+
 ## Forecasting
 
 ```@docs

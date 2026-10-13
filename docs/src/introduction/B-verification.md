@@ -192,4 +192,4 @@ answer. That is what [Appendix A](A-checklist.md) is for.
 
 - [Appendix A](A-checklist.md) — the checklist
 - [Appendix C](C-further-reading.md) — the six reference books the policy is checked against
-- [Coming from R or Python](../manual/13-coming-from-r-python.md) — every documented divergence in one place
+- [Coming from R or Python](../manual/14-coming-from-r-python.md) — every documented divergence in one place
