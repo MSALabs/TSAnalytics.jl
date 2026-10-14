@@ -53,16 +53,16 @@ row splits in two. Rationale in `stage-10-dependency-list.md`.
 
 | # | Item | Status | Difficulty |
 |---|---|---|---|
-| **10.0** | Multi-response OLS, `tsmatrix`, companion matrix | **new row** | Easy |
+| **10.0** | Multi-response OLS, `tsmatrix`, companion matrix | **new row** — `stage-10.0-primitives-handoff.md` | Easy |
 | 10.1 | VAR + lag-order selection | pending — `stage-10.1-var-handoff.md` | Easy |
 | 10.2 | Granger causality | pending — `stage-10.2-granger-handoff.md` | Easy–Moderate |
-| 10.3 | IRF, FEVD (+ analytic and bootstrap standard errors) | pending | Easy–Moderate |
-| **10.4a** | Cointegration — Engle-Granger (tau) | **split from 10.4** | Moderate |
-| **10.4b** | Cointegration — Phillips-Ouliaris (Z) | **split from 10.4** | Moderate |
-| 10.5 | Cointegration — Johansen | pending | Moderate–Hard |
-| 10.6 | VECM | pending | Hard |
-| 10.7 | Structural VAR | pending | Hard |
-| **10.8** | Multivariate residual diagnostics | **new row** | Easy–Moderate |
+| 10.3 | IRF, FEVD (+ analytic and bootstrap standard errors) | pending — `stage-10.3-irf-fevd-handoff.md` | Easy–Moderate |
+| **10.4a** | Cointegration — Engle-Granger (tau) | **split from 10.4** — `stage-10.4a-engle-granger-handoff.md` | Moderate |
+| **10.4b** | Cointegration — Phillips-Ouliaris (Z) | **split from 10.4** — `stage-10.4b-phillips-ouliaris-handoff.md` | Moderate |
+| 10.5 | Cointegration — Johansen | pending — `stage-10.5-johansen-handoff.md` | Moderate–Hard |
+| 10.6 | VECM | pending — `stage-10.6-vecm-handoff.md` | **Moderate** (revised, see §5.12) |
+| 10.7 | Structural VAR | pending — `stage-10.7-svar-handoff.md` | Hard |
+| **10.8** | Multivariate residual diagnostics | **new row** — `stage-10.8-var-diagnostics-handoff.md` | Easy–Moderate |
 
 **Build order, on evidence rather than numbering:**
 
@@ -157,67 +157,6 @@ pip install statsmodels --break-system-packages
 
 `[V]` 1,130 `r-cran-*` packages are available in the Ubuntu archive —
 worth checking there first for any future R dependency.
-
-### Environment re-established on the implementation machine (2026-10-13)
-
-The recipe above is for the Linux sandbox these documents were written
-in. The actual implementation machine is **Windows**, and the whole
-reference bundle was re-verified there before any code was written.
-
-**Installed, and what differs from the authoring sandbox:**
-
-| Package | Authoring sandbox | Implementation machine |
-|---|---|---|
-| R | 4.3.3 | **4.6.0** |
-| `vars` | 1.6.1 | **1.6.1** — exact match, installed from CRAN as a binary |
-| `urca` | 1.3.3 | 1.3.4 |
-| `tseries` | 0.10.55 | 0.10.63 |
-| `lmtest` | 0.9.40 | 0.9.40 — exact match |
-| `strucchange` | — | 1.6.0 (pulled in by `vars`) |
-| `forecast` | 8.21.1 | 9.0.2 |
-| `jsonlite` | — | 2.0.0 |
-| Python | — | 3.8.10 |
-| `statsmodels` | 0.15.0 | **0.14.1** |
-| `numpy` | 2.5.3 | **1.24.3** |
-
-`install.packages("vars")` is all that was needed; the `apt-get` and
-GitHub-mirror route is not required on Windows.
-
-**`tsDyn` is NOT installable here and does not need to be.** It has no
-binary for R 4.6.0, and there is no Rtools on this machine
-(`pkgbuild::has_build_tools()` is `FALSE`, no `make` on `PATH`), so the
-charter's `R CMD INSTALL` route cannot run either. It matters less than
-it looks: `tsDyn::VECM` is only the **third** R reference for 10.6, and
-`urca::cajorls` and `vars::vec2var` are both present, so 10.6 stays
-dual-verifiable against R and `statsmodels VECM`. Installing Rtools is
-the fix if a third opinion is ever wanted.
-
-**Do not upgrade `statsmodels` to 0.15.0.** `[V]` 0.14.1 is the newest
-release that exists for Python 3.8, so upgrading would mean upgrading
-Python — and every earlier stage's Python references were generated on
-3.8.10 / statsmodels 0.14.1. The version gap was tested instead of
-assumed away: all four reference JSONs were regenerated on this machine
-and diffed against the bundled ones, value by value.
-
-| Bundle file | Values compared | Max relative difference | Structural mismatches |
-|---|---|---|---|
-| `ref_R.json` | 2,319 | `8.4e-15` | none but the R version string |
-| `ref_R_granger.json` | 186 | **`0.0` — bit-identical** | none but the R version string |
-| `ref_py.json` | 2,743 | `6.2e-11` | none but the version strings |
-| `ref_py_granger.json` | 336 | `7.7e-13` | **none at all** |
-
-**5,584 reference numbers, nothing above `1e-9`**, across R 4.6.0 vs
-4.3.3, statsmodels 0.14.1 vs 0.15.0 and numpy 1.24.3 vs 2.5.3. The worst
-case, `6.2e-11`, is on `econ5` — the badly-conditioned `k = 5` fixture
-this bundle deliberately includes as the conditioning stress case, where
-even R-vs-Python agreement degrades to `~5e-13`. So the bundle is fully
-reproducible here and the recorded numbers can be trusted as they stand.
-
-`[V]` The one version-sensitive **defect** claim was checked directly
-rather than inferred: statsmodels' `test_inst_causality` `IndexError`
-(§5.10 item 2) reproduces identically on 0.14.1 — same
-`sig_mask[causing_ind, caused_ind] = 1` line, same error as soon as the
-causing set has more than one member. §5.10 stands.
 
 ### Which reference serves which item
 
@@ -539,6 +478,25 @@ order.max=2:  ar = [0.673140896685106, -0.03945717137380811]
               var.pred  = 0.9560758286522902
 ```
 
+### 5.9b Every array layout differs between references, and one case is silent
+
+`[V]` The references agree on every IRF/FEVD *number* and disagree about
+every *layout*:
+
+| Object | `vars` | statsmodels |
+|---|---|---|
+| IRF | `irf$<impulse>`, a list keyed by impulse, each `(h+1) × K` (rows = horizon, cols = response) | `irfs[horizon, response, impulse]` |
+| MA representation | `Psi`/`Phi` — `(K, K, h+1)`, horizon **last** | `orth_ma_rep`/`ma_rep` — `(h+1, K, K)`, horizon **first** |
+| FEVD | `fevd$<variable>`, `h × K`, horizons **1…h** | `decomp[variable, horizon, shock]` |
+
+Two things follow. **IRF and FEVD do not share a horizon axis** — for
+one call the IRF has `h+1` horizons from 0 and the FEVD has `h` from 1.
+And **when `K == h+1`, R's `(K,K,h+1)` is square, so a transpose error
+is invisible**: `econ5` at `K=5, h=4` gives `(5,5,5)`, and a comparison
+that failed to move the horizon axis reported a 34.48 discrepancy that
+was its own bug. Any test of the MA representation must include a
+`K == h+1` case for exactly this reason.
+
 ### 5.10 Reference defects found so far (running list)
 
 Keep this list current — each item's handoff adds to it. These are
@@ -565,13 +523,181 @@ places where a test must **not** be written against the reference.
 3. **Both references silently accept nonsense inputs** — §5.8 for VAR
    sizes; for causality, `vars` accepts an omitted `cause` (warns and
    uses the first variable) and statsmodels accepts `cause` = every
-   variable and overlapping cause/caused sets.
+   variable and overlapping cause/caused sets. For impulse responses,
+   `[V]` statsmodels accepts `irf(0)` (returning shape `(1,K,K)`) and
+   `fevd(0)` (returning an **empty** `(K,0,K)` decomposition), while
+   `vars` fails both with `subscript out of bounds` and `n.ahead = -1`
+   with `data is too long`.
+4. **Neither reference refuses a long-run effect on an explosive VAR.**
+   `[V]` statsmodels computes `inv(I − Σ A_j)` regardless of stability;
+   on `var2_explosive` (max companion root `1.040418520983`) the Neumann
+   series does not converge and the number is meaningless. 10.3 refuses
+   `lr_effects` when `!is_stable` while keeping the finite-horizon IRF
+   working — a new entry in the project's honest-refusal list.
+5. **`vars` has no analytic IRF standard errors at all** — it
+   bootstraps (`vars/R/internal.R`'s `.boot`, 79 lines). Not a defect,
+   but it means the charter's dual-verification rule cannot be met for
+   that quantity by a second package. 10.3 §5 satisfies it instead with
+   two independent checks: a numerical Jacobian (agreement `2.1e-12`)
+   and a 4000-replication parametric bootstrap (1.4–4.8% relative,
+   consistent with Monte Carlo error) — the latter validating the
+   *orthogonalized* formula, whose textbook statement statsmodels' own
+   source flags as containing a typo.
 
 *(For context, the project found three bugs in R's `forecast` during
 Stage 9 — the ETS no-trend seasonal interval variance, the ETS(M,Ad,M)
 forecast contradicting its own fitted recursion, and the seasonal TBATS
 intervals being 2.8× too narrow. Items 1 and 2 above are the fourth and
 fifth.)*
+
+### 5.12 Correction to the dependency list on 10.6 (VECM)
+
+`stage-10-dependency-list.md` §4.5 recorded that VECM has *"three
+references, three normalizations"* and rated 10.6 the hardest item in
+the stage. **That was wrong.** The disagreement was a
+deterministic-specification mismatch, not a normalization difference —
+the same mistake the Johansen `ecdet="none"` naming invites (§5.6b).
+
+`[V]` Once matched — `urca::ca.jo(ecdet="none")` + `cajorls` ↔
+statsmodels `VECM(deterministic="co")` ↔ `tsDyn::VECM(estim="ML")` — all
+three agree on β to `≤ 9.8e-15` and on α to `≤ 8.7e-14`, across five
+configurations including rank 2. `tsDyn`'s `estim="2OLS"` is a genuinely
+different estimator (Engle-Granger two-step rather than Johansen ML),
+not a normalization.
+
+**Revised difficulty for 10.6: moderate.** Details in
+`stage-10.6-vecm-handoff.md` §1.
+
+### 5.13 More reference defects (appending to §5.10)
+
+6. **statsmodels' `get_var_endog` disagrees with its own `fit` on the
+   trend column.** `[V]` The helper builds the trend as `1:T`; `fit`
+   returns coefficients corresponding to `p+1:n`. Using the helper and
+   solving by hand shifts the constant by exactly `p ×` the trend
+   coefficient (`4.922e-04` on `var2_p1`). It is a correct reference for
+   the lag block and wrong for the deterministic columns.
+7. **Both references proceed silently on rank-deficient input.** `[V]`
+   With a duplicated column, R's `lm` drops it and reports `NA`
+   coefficients; `np.linalg.lstsq` returns a finite minimum-norm
+   solution with no warning, after which every downstream quantity is
+   meaningless while looking fine.
+8. **The `vars` `1 − CDF` p-value defect is package-wide**, not confined
+   to `causality.R`. `[S]` Ten sites in `R/internal.R` (`:480`, `:512`,
+   `:534`, `:555`, `:563`, `:571`, `:617`, `:629`, `:668`, `:686`) cover
+   the ARCH, Jarque-Bera, portmanteau, Breusch-Godfrey and
+   Edgerton-Shukur tests. `[V]` On `uschange` the multivariate JB of
+   282.122726829 (df 10) is reported as `0.000000e+00` against a true
+   `9.282e-55`.
+8b. **`vars` runs the portmanteau test with `df ≤ 0`** when
+   `lags.pt ≤ p`, where statsmodels correctly refuses with a message
+   naming the constraint. Conversely statsmodels accepts `nlags = 300`
+   on `T = 198`, returning `df = 1192`.
+9. **statsmodels' `coint` accepts an empty regressor set** `[V]` —
+   silently becoming a plain ADF and reporting N=1 critical values — and
+   **returns `NaN` critical values** for the no-constant case at N > 1.
+10. **`tseries::po.test`'s p-values are interval-censored** at `0.0100`
+   and `0.1500` with a warning, and its `demean` flag changes the
+   statistic by a factor of 3.3 on a cointegrated fixture.
+11. **statsmodels' `coint_johansen` accepts `k_ar_diff = 0`**, returns
+   all-NaN critical values for `det_order = 2` with **no warning** and
+   for 13 variables with only a warning; and `[V]` its `n−r = 1` trace
+   critical value is `3.8415` — the χ²(1) quantile — for both
+   `det_order = 0` and `1`, where Osterwald-Lenum's varies with the
+   deterministic specification as the theory requires.
+12. **statsmodels' `VECM` accepts `coint_rank = 0`** (returning an
+   *empty* β), `rank ≥ K`, and `k_ar_diff = 0`; `tsDyn` **silently
+   switches estimator** when 2OLS is asked for with rank > 1.
+13. **statsmodels' SVAR marks free parameters with the string `"E"`**,
+   not `np.nan`. `[S]` `svar_model.py` does `A.astype("U")` then
+   `A == "E"`, so a float array with `np.nan` yields an empty mask and
+   the opaque `ValueError: zero-size array to reduction operation
+   maximum which has no identity`. The implementation is fine; the API
+   is a trap.
+14. **`vars::SVAR(estmethod="direct")` does not reach the optimum.**
+   `[V]` It returns `A[2,1] = -0.2937500000000004` against the correct
+   `-0.293820788` from `scoring` and statsmodels, and R itself warns
+   *"one-dimensional optimization by Nelder-Mead is unreliable"*. Use
+   `scoring` as the reference.
+15. **`vars`' `Sigma.U` is scaled by 100.** `[S]` `SVAR.R:256` forms
+   `A^-1 B B' A'^-1` and `:278` returns `Sigma.U * 100`. Comparing it to
+   a covariance without that factor is a trap.
+16. **Neither reference refuses a long-run effect on an explosive
+   VAR** (§5.10 item 4 covers this; repeated here for the index).
+17. *(added 2026-10-13, while building 10.3)* **The bundle itself
+   contains long-run effects for an unstable VAR.** `[V]` `econ5`'s
+   VAR(2) has largest companion root `1.006183`, and `ref_py_irf.json`'s
+   `E5_p2_h4` carries `lr_effects`, `orth_lr_effects` and
+   `lr_effect_stderr` for it — numbers that are not the limit of
+   anything. Item 4 is therefore not only a synthetic-fixture concern;
+   it bites on the stage's own real data. 10.3's tests skip those three
+   keys for unstable fits and assert the refusal instead.
+18. *(added 2026-10-13, from the Osterwald-Lenum (1992) paper itself)*
+   **Item 11's last clause and 10.5 §5's table decision are wrong.**
+   The `3.8415` smallest-block trace value is not a defect: Osterwald-
+   Lenum's own **Table 1** (unrestricted constant, the `:const` case)
+   gives **3.76** there and **Table 2** (unrestricted trend) **3.74** —
+   the asymptotic theory makes the last block χ²(1)-like in exactly
+   those cases. statsmodels' `det_order = −1, 0, 1` tables agree with
+   O-L Tables **0, 1, 2** to within a few percent at every `p − r`
+   (5% trace, `p − r = 1…5`: sm `3.84, 15.49, 29.80, 47.85, 69.82` vs
+   O-L Table 1 `3.76, 15.41, 29.68, 47.21, 68.52`), which is what two
+   independent simulations look like. What `urca::ca.jo(ecdet="none")`
+   uses — `8.18, 17.95, 31.52, …` — is O-L **Table 1.1\***, the case
+   where the model has an unrestricted constant but the DGP's constant
+   is restricted to the cointegrating space; the paper itself calls that
+   table "superfluous" under Johansen (1992)'s procedure. **Decision:**
+   10.5 maps its five `deterministic` values to O-L Tables 0, 1, 1\*,
+   2, 2\* per the paper's own decision table (p. 466), so `:const` uses
+   Table 1 and agrees with statsmodels, not `urca`. Also: the paper
+   tabulates `p − r ≤ 11`, so the paper-sourced coverage is `K ≤ 11`,
+   not 12.
+19. *(added 2026-10-13, while building 10.8)* **Not every `vars` zero is
+   an underflow bug.** `climhyd`'s multivariate JB of `1850.92` on 12 df
+   has a true tail near `1e-391`, below `floatmin(Float64)`; no double
+   holds it and `statsmodels` also returns `0.0`. 10.8 §7.6's
+   `normality_test(mC).pvalue > 0.0` cannot be satisfied by any
+   implementation. BG (`4.3e-23`) and ES (`4.9e-32`) on the same data
+   *are* representable, and those are the real instances of item 8.
+20. *(added 2026-10-13, while building 10.4b)* **`urca::ca.po`'s `Pz`
+   with `demean = "constant"` or `"trend"` uses the raw `M_zz = T⁻¹Σ z z'`**
+   where Phillips & Ouliaris (1990, §3 remark (f)) — and so their Tables
+   IVb/IVc — use the demeaned/detrended data. `[V]` Not invariant to a
+   level shift (71.86 → 38.84 on `coint2_yes` after adding 1000), and
+   badly undersized: 0.25% / 0% rejections at the nominal 5% in 4000
+   null simulations, against 4.3% / 4.2% for the paper's form. 10.4b's
+   §7.1 `Pz` constant/trend reference values are therefore the defect's
+   output; the tests reproduce them with the raw-`M_zz` variant instead
+   of asserting against them. `Pu` and `Pz`/`"none"` are unaffected.
+   Also: the handoff's bandwidths 2 and 8 are `tseries::po.test`'s rule;
+   `ca.po`, whose statistics are asserted, uses 5 and 15 at n = 250.
+21. *(added 2026-10-13, while building 10.6)* **`urca::cajorls`' lag
+   coefficients are the `spec = "longrun"` parameterization**, the
+   `ca.jo` default: the levels term sits at lag `K`, so the reported
+   short-run block is `Γ*_i = Γ_i + Π`, not `Γ_i`. Not a defect, but 10.6
+   §7.2's test compares it to `Γ` directly and would fail. α, β and the
+   constant are unaffected. `[V]` `tsDyn`'s `estim = "2OLS"` with
+   `include = "const"` runs the cointegrating regression **without an
+   intercept** (the constant is in the error-correction equation), which
+   is why its β is not the static regression's with a constant.
+22. *(added 2026-10-13, while building 10.7)* **The SVAR handoff's
+   "just-identified" examples are over-identified, and its order
+   condition is inverted.** `A = [1 0; NA 1]` with `B = I` (and the
+   matching B-model) has **one** free parameter for Σ's `K(K+1)/2 = 3`
+   distinct elements: it also fixes both structural variances at one.
+   `[V]` `vars` itself rejects it, `LR = 121.5955` on 2 df (and prints
+   `p = 0` — the `1 − CDF` defect once more; the tail is `3.9e-27`).
+   It looked just-identified because **`statsmodels`' SVAR `llf` is the
+   reduced-form VAR's log-likelihood whatever the restrictions** —
+   `−496.0377` for the A- and B-models alike. So §4.1 (the likelihood is
+   unchanged) and §4.2 (`P P' = Σ`) hold only for genuinely
+   just-identified schemes — `A` unit lower-triangular with a free
+   diagonal `B`, or a free lower-triangular `B` — which are what the tests
+   use; the A-model's estimate `A₂₁ = −Σ₁₂/Σ₁₁` matches either way. §5's
+   code refuses `nfree < K(K+1)/2` as under-identified; the inequality
+   is the other way round (fewer free parameters is over-identified and
+   gets the LR test; more is not identified, which `vars` refuses).
+
+---
 
 ### 5.11 Correction to the dependency list on 10.2
 
@@ -705,20 +831,9 @@ dependency since 0.1.0, for tails that already exist.
 | File | Shape | Role |
 |---|---|---|
 | `test_data/uschange.csv` | 187 × 5 | fpp3's VAR benchmark; already exposed as `TSAnalytics.US_CHANGE` |
-| `data/econ5.csv` | 161 × 5 | Shumway & Stoffer's VAR/cointegration example |
-| `data/climhyd.csv` | 454 × 6 | S&S cross-correlation example; 10.2 |
+| `data/econ5.csv` | 160 × 5 | Shumway & Stoffer's VAR/cointegration example |
+| `data/climhyd.csv` | 453 × 6 | S&S cross-correlation example; 10.2 |
 | `data/aus_production.csv` | 217 × 7 | mixed-frequency multivariate |
-
-**Correction applied 2026-10-13 (first implementation session).** `econ5`
-and `climhyd` were listed as `160 × 5` and `453 × 6` here, in the README,
-in the dependency list §1 (tagged `[V]`) and in 10.1 §3. Both were off by
-one. Re-measured three ways on the bundled files, which are byte-identical
-to `data/`: `wc -l` gives 162 and 455 total lines, every file ends in a
-newline and contains no blank lines, and both reference stacks agree that
-the first line is a header — `R read.csv` and `pandas.read_csv` each
-return **161 × 5** and **454 × 6**. `uschange` at `187 × 5` was correct.
-Corrected in all five documents. The lesson is the charter's own §2.1: two
-`[V]` tags were carrying recalled numbers.
 
 Plus the seeded synthetic fixtures generated for 10.1, which the later
 items reuse — see `stage-10.1-var-handoff.md` §3 and the `fixtures/`

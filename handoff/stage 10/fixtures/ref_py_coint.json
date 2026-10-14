@@ -1,0 +1,1116 @@
+{
+ "eg_yes_c": {
+  "fx": "coint2_yes.csv",
+  "trend": "c",
+  "N": 2,
+  "autolag": "aic",
+  "maxlag": null,
+  "stat": -5.746952529220881,
+  "p": 5.590777170620387e-06,
+  "crit": [
+   -3.940964283479299,
+   -3.360778600829019,
+   -3.0615268019870645
+  ]
+ },
+ "eg_no_c": {
+  "fx": "coint2_no.csv",
+  "trend": "c",
+  "N": 2,
+  "autolag": "aic",
+  "maxlag": null,
+  "stat": -1.4514152059537195,
+  "p": 0.7793471793153373,
+  "crit": [
+   -3.940964283479299,
+   -3.360778600829019,
+   -3.0615268019870645
+  ]
+ },
+ "eg_r1_c": {
+  "fx": "coint3_r1.csv",
+  "trend": "c",
+  "N": 3,
+  "autolag": "aic",
+  "maxlag": null,
+  "stat": -12.266871635006085,
+  "p": 8.202610145748116e-24,
+  "crit": [
+   -4.3522458161323865,
+   -3.775223578369542,
+   -3.477196994887179
+  ]
+ },
+ "eg_r2_c": {
+  "fx": "coint3_r2.csv",
+  "trend": "c",
+  "N": 3,
+  "autolag": "aic",
+  "maxlag": null,
+  "stat": -15.726939692435598,
+  "p": 7.764480802357456e-34,
+  "crit": [
+   -4.3522458161323865,
+   -3.775223578369542,
+   -3.477196994887179
+  ]
+ },
+ "eg_trend_ct": {
+  "fx": "coint2_trend.csv",
+  "trend": "ct",
+  "N": 2,
+  "autolag": "aic",
+  "maxlag": null,
+  "stat": -16.642272736329353,
+  "p": 5.826502530841494e-33,
+  "crit": [
+   -4.390198269705327,
+   -3.818959919517427,
+   -3.5248699196838964
+  ]
+ },
+ "eg_yes_n": {
+  "fx": "coint2_yes.csv",
+  "trend": "n",
+  "N": 2,
+  "autolag": "aic",
+  "maxlag": null,
+  "stat": -2.64105452303326,
+  "p": 0.06675122464385544,
+  "crit": [
+   NaN,
+   NaN,
+   NaN
+  ]
+ },
+ "eg_yes_ct": {
+  "fx": "coint2_yes.csv",
+  "trend": "ct",
+  "N": 2,
+  "autolag": "aic",
+  "maxlag": null,
+  "stat": -5.776360491539316,
+  "p": 2.8386882290894806e-05,
+  "crit": [
+   -4.390198269705327,
+   -3.818959919517427,
+   -3.5248699196838964
+  ]
+ },
+ "eg_yes_c_lag4": {
+  "fx": "coint2_yes.csv",
+  "trend": "c",
+  "N": 2,
+  "autolag": null,
+  "maxlag": 4,
+  "stat": -5.278983513620234,
+  "p": 4.8939912421616865e-05,
+  "crit": [
+   -3.940964283479299,
+   -3.360778600829019,
+   -3.0615268019870645
+  ]
+ },
+ "eg_no_c_lag4": {
+  "fx": "coint2_no.csv",
+  "trend": "c",
+  "N": 2,
+  "autolag": null,
+  "maxlag": 4,
+  "stat": -1.258083608751315,
+  "p": 0.8420280910313263,
+  "crit": [
+   -3.940964283479299,
+   -3.360778600829019,
+   -3.0615268019870645
+  ]
+ },
+ "mackinnon_tables": {
+  "n_N1": {
+   "crit_n250": [
+    -2.574741232,
+    -1.942126241728,
+    -1.615799400704
+   ],
+   "crit_asym": [
+    -2.56574,
+    -1.941,
+    -1.61682
+   ],
+   "pvals": [
+    1.0570487880413703e-06,
+    7.326906489110129e-05,
+    0.00048372740257371865,
+    0.0007757464688888037,
+    0.0026637350127542685,
+    0.043520623056049056,
+    0.28810611212633064,
+    0.6842796360469544
+   ]
+  },
+  "n_N2": {
+   "crit_n250": "IndexError: index 1 is out of bounds for axis 0 with size 1",
+   "crit_asym": "IndexError: index 1 is out of bounds for axis 0 with size 1",
+   "pvals": [
+    1.793803451613028e-05,
+    0.0010892673635925798,
+    0.006133735196018867,
+    0.009328424450237452,
+    0.027033337926474103,
+    0.2366216480043815,
+    0.7009896573207942,
+    0.9403596669881464
+   ]
+  },
+  "n_N3": {
+   "crit_n250": "IndexError: index 2 is out of bounds for axis 0 with size 1",
+   "crit_asym": "IndexError: index 2 is out of bounds for axis 0 with size 1",
+   "pvals": [
+    0.00014086202965464618,
+    0.006404715918185378,
+    0.029237397165442765,
+    0.041773404900325356,
+    0.10060250139659566,
+    0.5024111924626194,
+    0.8991455560863655,
+    0.9870196782995976
+   ]
+  },
+  "n_N4": {
+   "crit_n250": "IndexError: index 3 is out of bounds for axis 0 with size 1",
+   "crit_asym": "IndexError: index 3 is out of bounds for axis 0 with size 1",
+   "pvals": [
+    0.000720276389630922,
+    0.023295467750211803,
+    0.08567560317991868,
+    0.11512713601720392,
+    0.23296780069324852,
+    0.726575325702866,
+    0.9683597852334371,
+    0.9971573483215169
+   ]
+  },
+  "n_N5": {
+   "crit_n250": "IndexError: index 4 is out of bounds for axis 0 with size 1",
+   "crit_asym": "IndexError: index 4 is out of bounds for axis 0 with size 1",
+   "pvals": [
+    0.0028105689740628875,
+    0.061914355592924845,
+    0.18489281081341213,
+    0.23481722175384867,
+    0.40558923646904216,
+    0.8677966374106273,
+    0.990740690667267,
+    0.9994592130493658
+   ]
+  },
+  "n_N6": {
+   "crit_n250": "IndexError: index 5 is out of bounds for axis 0 with size 1",
+   "crit_asym": "IndexError: index 5 is out of bounds for axis 0 with size 1",
+   "pvals": [
+    0.008469594728357198,
+    0.13095503174943457,
+    0.32072156921559675,
+    0.386880720874781,
+    0.5840073338802116,
+    0.9422313028645191,
+    0.9974599320715282,
+    0.9999030368909955
+   ]
+  },
+  "n_N7": {
+   "crit_n250": "IndexError: index 6 is out of bounds for axis 0 with size 1",
+   "crit_asym": "IndexError: index 6 is out of bounds for axis 0 with size 1",
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "n_N8": {
+   "crit_n250": "IndexError: index 7 is out of bounds for axis 0 with size 1",
+   "crit_asym": "IndexError: index 7 is out of bounds for axis 0 with size 1",
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "n_N9": {
+   "crit_n250": "IndexError: index 8 is out of bounds for axis 0 with size 1",
+   "crit_asym": "IndexError: index 8 is out of bounds for axis 0 with size 1",
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "n_N10": {
+   "crit_n250": "IndexError: index 9 is out of bounds for axis 0 with size 1",
+   "crit_asym": "IndexError: index 9 is out of bounds for axis 0 with size 1",
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "n_N11": {
+   "crit_n250": "IndexError: index 10 is out of bounds for axis 0 with size 1",
+   "crit_asym": "IndexError: index 10 is out of bounds for axis 0 with size 1",
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "n_N12": {
+   "crit_n250": "IndexError: index 11 is out of bounds for axis 0 with size 1",
+   "crit_asym": "IndexError: index 11 is out of bounds for axis 0 with size 1",
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "c_N1": {
+   "crit_n250": [
+    -3.456780859712,
+    -2.8731715065600003,
+    -2.572968544
+   ],
+   "crit_asym": [
+    -3.43035,
+    -2.86154,
+    -2.56677
+   ],
+   "pvals": [
+    2.2193154713956276e-05,
+    0.0014105112530392603,
+    0.007987094061496709,
+    0.012136617627520873,
+    0.034894400275345266,
+    0.28657309916843154,
+    0.7532643012005655,
+    0.958532086060056
+   ]
+  },
+  "c_N2": {
+   "crit_n250": [
+    -3.9407840320000003,
+    -3.3606795679999997,
+    -3.06145832
+   ],
+   "crit_asym": [
+    -3.89644,
+    -3.33613,
+    -3.04445
+   ],
+   "pvals": [
+    0.00016464262671930766,
+    0.00718130705505248,
+    0.03239538836017372,
+    0.04615024182850857,
+    0.1102054949706574,
+    0.5285780802451076,
+    0.902847226038779,
+    0.9859002580259643
+   ]
+  },
+  "c_N3": {
+   "crit_n250": [
+    -4.352009684287999,
+    -3.775084641152,
+    -3.4770966879999996
+   ],
+   "crit_asym": [
+    -4.29374,
+    -3.74066,
+    -3.45218
+   ],
+   "pvals": [
+    0.0007698368160730042,
+    0.02463429241030831,
+    0.08978016598183797,
+    0.12031323741791095,
+    0.24154168474025267,
+    0.7341365326385638,
+    0.9658031459476534,
+    0.9951914365103041
+   ]
+  },
+  "c_N4": {
+   "crit_n250": [
+    -4.716339952,
+    -4.1411184,
+    -3.843838592
+   ],
+   "crit_asym": [
+    -4.64332,
+    -4.096,
+    -3.8102
+   ],
+   "pvals": [
+    0.0028607882255107706,
+    0.063946930362468,
+    0.18880966349833028,
+    0.23943304161568502,
+    0.4117938261671736,
+    0.8682993413999918,
+    0.988973128876279,
+    0.9988119933362168
+   ]
+  },
+  "c_N5": {
+   "crit_n250": [
+    -5.045835472,
+    -4.4715532,
+    -4.174597344
+   ],
+   "crit_asym": [
+    -4.95756,
+    -4.41519,
+    -4.13157
+   ],
+   "pvals": [
+    0.008668659500369017,
+    0.13315938783188014,
+    0.3243947435215425,
+    0.3907761345697619,
+    0.587600160957856,
+    0.941133944996775,
+    0.9967927850462205,
+    0.9997716105900548
+   ]
+  },
+  "c_N6": {
+   "crit_n250": [
+    -5.349273319104,
+    -4.774877231552,
+    -4.4778398798720005
+   ],
+   "crit_asym": [
+    -5.24568,
+    -4.70693,
+    -4.42501
+   ],
+   "pvals": [
+    0.021849061154535287,
+    0.23472322759578118,
+    0.47862543437092303,
+    0.5510750083053761,
+    0.7367213297019012,
+    0.9757841020974386,
+    0.9991354126558304,
+    0.9999607444306813
+   ]
+  },
+  "c_N7": {
+   "crit_n250": [
+    -5.63173385312,
+    -5.0567940312960005,
+    -4.759485879872
+   ],
+   "crit_asym": [
+    -5.51233,
+    -4.97684,
+    -4.69648
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "c_N8": {
+   "crit_n250": [
+    -5.8974218215039995,
+    -5.321634289344,
+    -5.023765032192
+   ],
+   "crit_asym": [
+    -5.76202,
+    -5.22924,
+    -4.95007
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "c_N9": {
+   "crit_n250": [
+    -6.149430747776,
+    -5.5722075435519995,
+    -5.273661490944001
+   ],
+   "crit_asym": [
+    -5.99742,
+    -5.46697,
+    -5.18897
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "c_N10": {
+   "crit_n250": [
+    -6.38950956288,
+    -5.810728238976,
+    -5.511442188864
+   ],
+   "crit_asym": [
+    -6.22103,
+    -5.69244,
+    -5.41533
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "c_N11": {
+   "crit_n250": [
+    -6.619489967872,
+    -6.038942800384,
+    -5.738792836672
+   ],
+   "crit_asym": [
+    -6.43377,
+    -5.90714,
+    -5.63086
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "c_N12": {
+   "crit_n250": [
+    -6.840687400192,
+    -6.258362332672,
+    -5.957216792576
+   ],
+   "crit_asym": [
+    -6.6379,
+    -6.11279,
+    -5.83724
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "ct_N1": {
+   "crit_n250": [
+    -3.99544583392,
+    -3.428199079936,
+    -3.13745663232
+   ],
+   "crit_asym": [
+    -3.95877,
+    -3.41049,
+    -3.12705
+   ],
+   "pvals": [
+    0.00020574728263882532,
+    0.008793701231094677,
+    0.03939102799324626,
+    0.055955600839423664,
+    0.1320809847799973,
+    0.6014337722402741,
+    0.9441147109023218,
+    0.9942331676947893
+   ]
+  },
+  "ct_N2": {
+   "crit_n250": [
+    -4.389945664,
+    -3.818805584,
+    -3.524755206912
+   ],
+   "crit_asym": [
+    -4.32762,
+    -3.78057,
+    -3.49631
+   ],
+   "pvals": [
+    0.000863086191132674,
+    0.027439561717521543,
+    0.09929798290831976,
+    0.13268729173646265,
+    0.26375388541838785,
+    0.7716464508695638,
+    0.9776929615099649,
+    0.9978140385450868
+   ]
+  },
+  "ct_N3": {
+   "crit_n250": [
+    -4.738915216384,
+    -4.166768346752,
+    -3.871532998208
+   ],
+   "crit_asym": [
+    -4.66305,
+    -4.1189,
+    -3.83511
+   ],
+   "pvals": [
+    0.0030649564383527853,
+    0.06777986738926886,
+    0.19877651160059995,
+    0.25154495930408827,
+    0.4299022633617552,
+    0.8838798889301969,
+    0.9920270403560341,
+    0.999361279259567
+   ]
+  },
+  "ct_N4": {
+   "crit_n250": [
+    -5.060115899904,
+    -4.487349510592,
+    -4.1914845050239995
+   ],
+   "crit_asym": [
+    -4.9694,
+    -4.42871,
+    -4.14633
+   ],
+   "pvals": [
+    0.009022340663827547,
+    0.13784247647463604,
+    0.33333430570711886,
+    0.4008444092602389,
+    0.5994705791702293,
+    0.9467545045241166,
+    0.997535755713499,
+    0.9998698970575081
+   ]
+  },
+  "ct_N5": {
+   "crit_n250": [
+    -5.358584054656,
+    -4.785154313024,
+    -4.488810094015999
+   ],
+   "crit_asym": [
+    -5.25276,
+    -4.71537,
+    -4.43422
+   ],
+   "pvals": [
+    0.0223216458347454,
+    0.23889919979628105,
+    0.48543286913500727,
+    0.558178564920682,
+    0.7434505397735688,
+    0.977665599343841,
+    0.9993074544971577,
+    0.9999766142149513
+   ]
+  },
+  "ct_N6": {
+   "crit_n250": [
+    -5.638364607808,
+    -5.06389513408,
+    -4.766982542592
+   ],
+   "crit_asym": [
+    -5.51727,
+    -4.98228,
+    -4.70233
+   ],
+   "pvals": [
+    0.04773732137408675,
+    0.3634710844830127,
+    0.6320776096913873,
+    0.6991529532452143,
+    0.8489152161206224,
+    0.9913598295463685,
+    0.9998217245811687,
+    0.9999961525220925
+   ]
+  },
+  "ct_N7": {
+   "crit_n250": [
+    -5.902369286784,
+    -5.326772810112,
+    -5.0291457712
+   ],
+   "crit_asym": [
+    -5.76537,
+    -5.23299,
+    -4.95405
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "ct_N8": {
+   "crit_n250": [
+    -6.1531081491199995,
+    -5.57610085344,
+    -5.277722706880001
+   ],
+   "crit_asym": [
+    -6.00003,
+    -5.46971,
+    -5.19183
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "ct_N9": {
+   "crit_n250": [
+    -6.392406667648,
+    -5.813853871872,
+    -5.514659270976
+   ],
+   "crit_asym": [
+    -6.22288,
+    -5.69447,
+    -5.41738
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "ct_N10": {
+   "crit_n250": [
+    -6.6218671473279995,
+    -6.0415435719040005,
+    -5.741464101376001
+   ],
+   "crit_asym": [
+    -6.43551,
+    -5.90887,
+    -5.63255
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "ct_N11": {
+   "crit_n250": [
+    -6.842677614016,
+    -6.260441628544,
+    -5.959367146368
+   ],
+   "crit_asym": [
+    -6.63894,
+    -6.11404,
+    -5.8385
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "ct_N12": {
+   "crit_n250": [
+    -7.055917271936,
+    -6.4717067487360005,
+    -6.169537758336
+   ],
+   "crit_asym": [
+    -6.83488,
+    -6.31127,
+    -6.0365
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "ctt_N1": {
+   "crit_n250": [
+    -4.418077283008,
+    -3.856220210176,
+    -3.5679871557759997
+   ],
+   "crit_asym": [
+    -4.37113,
+    -3.83239,
+    -3.55326
+   ],
+   "pvals": [
+    0.0010263486522916546,
+    0.031507049520026524,
+    0.11291474575803784,
+    0.1503905127775883,
+    0.295182559744655,
+    0.8167402369138229,
+    0.9870296709815183,
+    0.9989573259007248
+   ]
+  },
+  "ctt_N2": {
+   "crit_n250": [
+    -4.774706615424,
+    -4.207565376576,
+    -3.9155890839680003
+   ],
+   "crit_asym": [
+    -4.69276,
+    -4.15387,
+    -3.87346
+   ],
+   "pvals": [
+    0.003405721373257141,
+    0.07410991980517392,
+    0.2158619104832763,
+    0.27128772113960786,
+    0.4590973620727013,
+    0.9058975383406243,
+    0.9952264590979718,
+    0.9997410275010333
+   ]
+  },
+  "ctt_N3": {
+   "crit_n250": [
+    -5.086278157952,
+    -4.516712002879999,
+    -4.22304486176
+   ],
+   "crit_asym": [
+    -4.99071,
+    -4.45311,
+    -4.1728
+   ],
+   "pvals": [
+    0.009647034468822462,
+    0.14581238784939915,
+    0.3498614220228092,
+    0.4195650493191802,
+    0.6216005052009271,
+    0.9560209034189311,
+    0.9984300597004894,
+    0.9999441588143071
+   ]
+  },
+  "ctt_N4": {
+   "crit_n250": [
+    -5.378189112256,
+    -4.806876043712,
+    -4.51184058112
+   ],
+   "crit_asym": [
+    -5.2678,
+    -4.73244,
+    -4.45268
+   ],
+   "pvals": [
+    0.023390642071009292,
+    0.24774089753553796,
+    0.49953513261296245,
+    0.5729244957846422,
+    0.7574964467823847,
+    0.9812586861048996,
+    0.999550389744323,
+    0.9999903829019584
+   ]
+  },
+  "ctt_N5": {
+   "crit_n250": [
+    -5.653344361856,
+    -5.080444530688,
+    -4.784487348992
+   ],
+   "crit_asym": [
+    -5.52826,
+    -4.99491,
+    -4.71587
+   ],
+   "pvals": [
+    0.04921378652873603,
+    0.371980683106669,
+    0.6425367146464347,
+    0.7093409103096346,
+    0.8569077117389216,
+    0.9926546612877667,
+    0.9998827719250911,
+    0.9999984785303404
+   ]
+  },
+  "ctt_N6": {
+   "crit_n250": [
+    -5.914263776576,
+    -5.339652366208,
+    -5.042686133184
+   ],
+   "crit_asym": [
+    -5.77379,
+    -5.24217,
+    -4.96397
+   ],
+   "pvals": [
+    0.09187038487923732,
+    0.5063237681821803,
+    0.7624476232861948,
+    0.8162425451937616,
+    0.9216775180378336,
+    0.9972976158167867,
+    0.9999697097255227,
+    0.9999997146834694
+   ]
+  },
+  "ctt_N7": {
+   "crit_n250": [
+    -6.162757506688,
+    -5.586458165248,
+    -5.288530016384
+   ],
+   "crit_asym": [
+    -6.00609,
+    -5.47664,
+    -5.19921
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "ctt_N8": {
+   "crit_n250": [
+    -6.400328582719999,
+    -5.8222626892800005,
+    -5.523371842432
+   ],
+   "crit_asym": [
+    -6.22758,
+    -5.69983,
+    -5.4232
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "ctt_N9": {
+   "crit_n250": [
+    -6.62850776768,
+    -6.048674391744,
+    -5.748832913599999
+   ],
+   "crit_asym": [
+    -6.43933,
+    -5.91298,
+    -5.63704
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "ctt_N10": {
+   "crit_n250": [
+    -6.848542449408001,
+    -6.26650317408,
+    -5.965616383616
+   ],
+   "crit_asym": [
+    -6.64235,
+    -6.11753,
+    -5.84215
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "ctt_N11": {
+   "crit_n250": [
+    -7.060966091072,
+    -6.4768799561599995,
+    -6.1749177015039995
+   ],
+   "crit_asym": [
+    -6.83743,
+    -6.31396,
+    -6.03921
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  },
+  "ctt_N12": {
+   "crit_n250": [
+    -7.266833335744001,
+    -6.680569863104,
+    -6.377426309504
+   ],
+   "crit_asym": [
+    -7.02582,
+    -6.50353,
+    -6.22941
+   ],
+   "pvals": [
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range",
+    "IndexError: list index out of range"
+   ]
+  }
+ },
+ "mackinnon_stats_grid": [
+  -5.0,
+  -4.0,
+  -3.5,
+  -3.367,
+  -3.0,
+  -2.0,
+  -1.0,
+  0.0
+ ],
+ "err_one_series": "no error -> CointResult(coint_t=-1.9031209664892392, pvalue=0.33059433701277763, critical_values=array([-3.45688813, -2.87321851, -2.57299362]))",
+ "err_bad_trend": "ValueError: trend must be one of: 'c', 'n', 'ct', 'ctt'",
+ "err_N13": "IndexError: list index out of range",
+ "err_N7_pval": "IndexError: list index out of range",
+ "err_n_crit_N2": "IndexError: index 1 is out of bounds for axis 0 with size 1",
+ "meta": {
+  "statsmodels": "0.15.0"
+ }
+}

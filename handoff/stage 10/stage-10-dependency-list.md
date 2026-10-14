@@ -115,8 +115,8 @@ decision to make before 10.5, not during it.
 | File | Shape | Why it is the right fixture |
 |---|---|---|
 | `test_data/uschange.csv` | 187 × 5 (Consumption, Income, Production, Savings, Unemployment) | `[V]` fpp3's own VAR example; already exposed as `TSAnalytics.US_CHANGE` (`src/datasets.jl:46`), whose docstring already calls it a *"Multivariate/VAR … benchmark"* |
-| `data/econ5.csv` | 161 × 5 | `[V]` Shumway & Stoffer's `econ5` — their VAR and cointegration chapter example. GPL-3, already redistributed |
-| `data/climhyd.csv` | 454 × 6 | `[V]` S&S cross-correlation example; useful for 10.2 |
+| `data/econ5.csv` | 160 × 5 | `[V]` Shumway & Stoffer's `econ5` — their VAR and cointegration chapter example. GPL-3, already redistributed |
+| `data/climhyd.csv` | 453 × 6 | `[V]` S&S cross-correlation example; useful for 10.2 |
 | `data/aus_production.csv` | 217 × 7 | `[V]` already bundled, mixed-frequency multivariate |
 
 `[S]` `src/dataset_catalogue.jl` already handles multi-column datasets
@@ -515,6 +515,13 @@ the estimator (ML vs two-step OLS) differ. 10.6 is dual-verifiable, but
 only once the deterministic case and estimator are pinned on **both**
 sides. Budget for that; do not assume `beta` is comparable out of the
 box.
+
+> **Corrected 2026-10-13, on building 10.6.** "Three normalizations" was
+> wrong: once the deterministic specification is matched
+> (`ecdet="none"` ↔ `"co"` ↔ `include="const"`), `cajorls`, `statsmodels`
+> and `tsDyn`'s ML agree on β to `≤ 1e-14`, and `tsDyn`'s 2OLS is a
+> different estimator, matched exactly by `fit_vecm(…; method=:twostep)`.
+> 10.6 is moderate, not hard. See the charter §5.12 and §5.13 item 21.
 
 ---
 
