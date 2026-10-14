@@ -48,7 +48,7 @@ holiday lands in different months in different years. None of these is
 seasonal in the fixed-period sense, and a smoother that treats them as
 noise will leave them in the "adjusted" series where they will be
 mistaken for real movement. This is
-[Chapter 36](36-calendar-effects.md)'s problem, at national scale.
+[Chapter 40](40-calendar-effects.md)'s problem, at national scale.
 
 **Extreme values are identified and explained.** Not downweighted
 quietly, as `robust=true` does, but detected, classified as additive
@@ -83,7 +83,7 @@ ARIMA model sits inside a seasonal adjustment program at all.
 
 **X-12-ARIMA** (Census, 1998) generalised the pre-adjustment step into
 **RegARIMA**: a regression with ARIMA errors — precisely the model of
-[Chapter 34](34-regression-with-arima-errors.md) — where the regressors
+[Chapter 38](38-regression-with-arima-errors.md) — where the regressors
 are calendar effects, outliers, and anything else you want removed
 before the seasonal filters run.
 
@@ -138,5 +138,5 @@ narrative: an Indian series with Diwali in it.
 ## See also
 
 - [Chapters 13–16](13-components.md) — the decomposition methods this chapter is contrasting against
-- [Chapter 34](34-regression-with-arima-errors.md) — RegARIMA, which is the same model
-- [Chapter 39](39-x13-from-julia.md) — running X-13 from Julia
+- [Chapter 38](38-regression-with-arima-errors.md) — RegARIMA, which is the same model
+- [Chapter 43](43-x13-from-julia.md) — running X-13 from Julia

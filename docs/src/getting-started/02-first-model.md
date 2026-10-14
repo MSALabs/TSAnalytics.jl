@@ -128,7 +128,7 @@ Six steps ran, none of which you had to ask for:
    different models on identical data.
 5. **Each candidate was fitted by maximum likelihood through a Kalman
    filter.** Every ARMA, ARIMA and SARIMA fit in this package runs the
-   same state-space recursion underneath — the topic of Part VI of the
+   same state-space recursion underneath — the topic of Part VII of the
    Introduction, and genuinely the same code.
 6. **The intervals came from the state covariance** the filter was
    already carrying, not from a separate calculation bolted on

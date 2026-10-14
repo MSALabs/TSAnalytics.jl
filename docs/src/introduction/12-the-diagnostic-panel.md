@@ -135,7 +135,7 @@ Correlation is gone. Variance plainly is not. This is Chapter 11's
 trapdoor showing up inside the panel itself, and the remedy is not
 another autoregressive term — no amount of mean modelling repairs a
 variance problem. The panel is not asking for a bigger model here; it
-is pointing at Part V.
+is pointing at Part VI.
 
 ```@example ch12
 function contaminated_normal(n)

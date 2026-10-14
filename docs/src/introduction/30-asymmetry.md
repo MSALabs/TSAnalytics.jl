@@ -1,6 +1,6 @@
 # Asymmetry
 
-Chapter 25's GARCH treats a 5% fall and a 5% rise as identical shocks.
+Chapter 29's GARCH treats a 5% fall and a 5% rise as identical shocks.
 Real markets do not. This chapter fixes that, twice, in two different
 ways — and one of the fixes carries a naming trap worth knowing about
 before it causes real confusion.
@@ -49,7 +49,7 @@ println("GARCH(1,1)'s next-period variance after a +3% shock: ", resp_rise)
 println("identical: ", resp_fall == resp_rise)
 ```
 
-Chapter 25's model cannot represent what the histogram just showed, no
+Chapter 29's model cannot represent what the histogram just showed, no
 matter how it is fitted — checked directly above, the two responses
 are bit-for-bit identical. The model squares the shock, and squaring
 destroys the sign before it ever reaches the variance equation. The
@@ -244,7 +244,7 @@ for (nm, m) in [("GARCH", mg), ("GJR", m_gjr), ("EGARCH", m_e)]
 end
 ```
 
-Chapter 25's diagnostic, applied to all three: every one of them passes
+Chapter 29's diagnostic, applied to all three: every one of them passes
 cleanly (`p > 0.8` in every case). When all three specifications leave
 equally structureless residuals, the choice between them is not really
 a specification question at all — the reader should stop agonising
@@ -318,4 +318,4 @@ fits best on any given series. Everything so far has been in-sample
 description — nothing has actually forecast a variance forward more
 than one step, even implicitly, and one of these three models turns
 out to be structurally unable to do that step analytically at all.
-Chapter 27 forecasts forward, and finds out which.
+Chapter 31 forecasts forward, and finds out which.

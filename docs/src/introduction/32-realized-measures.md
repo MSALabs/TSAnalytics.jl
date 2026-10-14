@@ -1,7 +1,7 @@
 # Realized Measures
 
-The last chapter of Part V, and the one where the whole approach
-changes. Chapters 25 to 27 *inferred* volatility from daily returns,
+The last chapter of Part VI, and the one where the whole approach
+changes. Chapters 29 to 31 *inferred* volatility from daily returns,
 through a fitted model. This chapter *measures* it directly from
 intraday data, and the difference turns out to be more than technical.
 
@@ -9,7 +9,7 @@ intraday data, and the difference turns out to be more than technical.
 book has no intraday financial series, so every price path in this
 chapter is simulated and is labelled as such throughout — a reader who
 mistook one for a real market series would draw wrong conclusions about
-real-world magnitudes. This is also the one chapter in Part V with no
+real-world magnitudes. This is also the one chapter in Part VI with no
 cross-language reference implementation to check numbers against:
 Python's `arch` (version `5.1.0` here) has no `realized` submodule at
 all, confirmed directly rather than assumed, and R's `highfrequency`
@@ -38,13 +38,13 @@ println("squared daily return: ", daily_return^2)
 
 The top panel holds seventy-eight observations of how the price
 actually moved through the day. The bottom holds one number. Chapters
-25 to 27 used only the bottom panel and *inferred* the day's volatility
+29 to 31 used only the bottom panel and *inferred* the day's volatility
 through a fitted model. The top panel makes it almost directly
 measurable instead — realized variance is nothing more than the sum of
 the squared five-minute returns, computed above via this package's own
 [`realized_variance`](@ref). Volatility stops being a latent parameter
 estimated from a model and starts being a quantity computed from data,
-which changes what can be checked: Chapter 27's forecasts were being
+which changes what can be checked: Chapter 31's forecasts were being
 evaluated against a squared daily return nobody could actually see
 coming, an extremely noisy stand-in for the thing the forecast was
 really about.
@@ -203,7 +203,7 @@ Realized semivariance splits the same sum of squares into the part
 contributed by negative-return intervals and the part contributed by
 positive ones — the two add back to exactly `realized_variance`, by
 construction, checked directly above. On a day built with one
-negative move, the downside half dominates. This is Chapter 26's
+negative move, the downside half dominates. This is Chapter 30's
 asymmetry appearing again, now as a direct measurement rather than a
 fitted parameter: GJR and EGARCH *inferred* an asymmetric response
 from daily data by estimating a coefficient; semivariance simply
@@ -218,7 +218,7 @@ println("correlation, GARCH forecast vs. realized variance:      ", round(cor(m.
 println("correlation, GARCH forecast vs. squared daily return:   ", round(cor(m.sigma2, daily_returns.^2), digits=3))
 ```
 
-This is the practical payoff of the whole chapter. Chapter 27 forecast
+This is the practical payoff of the whole chapter. Chapter 31 forecast
 a quantity nobody could directly observe, so evaluating those forecasts
 meant comparing them against squared daily returns — an unbiased but
 extremely noisy proxy for the day's true variance. Correlating the
@@ -230,8 +230,8 @@ improvement in how precisely that judgement can be made is enormous.
 
 The honest limitation: every technique in this chapter needs intraday
 data, which is expensive, often unavailable, and does not exist at all
-for most macroeconomic series. These methods complement Chapters 25 to
-27 on the narrow class of series where fine-grained data actually
+for most macroeconomic series. These methods complement Chapters 29 to
+31 on the narrow class of series where fine-grained data actually
 exists — they do not replace GARCH modelling generally.
 
 NSE provides intraday data, so realized measures are directly
@@ -253,13 +253,13 @@ whatever a piece of software happens to default to.
 
 ## Where this leaves you
 
-Part V is finished. Volatility can be modelled from daily data,
+Part VI is finished. Volatility can be modelled from daily data,
 forecast forward with an honest account of when the forecast is exact
 and when it has to be simulated, and — where intraday data actually
 exists — measured directly and used to check whether the models
 built earlier in this Part are telling the truth.
 
 Everything in Parts IV and V has treated each series as arriving on
-its own, with no information from outside it. Part VI opens the
-machinery underneath everything built so far, and Part VII brings the
+its own, with no information from outside it. Part VII opens the
+machinery underneath everything built so far, and Part VIII brings the
 outside world in.

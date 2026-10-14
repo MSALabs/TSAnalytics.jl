@@ -271,6 +271,6 @@ STL adapts to *drift* in a seasonal pattern; it has no concept of a
 calendar and does not know the drift it is following is caused by one.
 The proper fix is a regressor built from the actual festival dates
 rather than a decomposition parameter tuned to chase the symptom —
-that is Chapter 36.
+that is Chapter 40.
 
 Chapter 16 takes on the three-periods-at-once case directly.

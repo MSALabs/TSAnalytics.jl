@@ -1,6 +1,6 @@
 # ARCH and GARCH
 
-Chapter 24 established that the variance moves and that its movement is
+Chapter 28 established that the variance moves and that its movement is
 predictable. This chapter models it, using an idea that is genuinely
 simple, wrapped in notation that is genuinely confusing — and the
 confusion is this chapter's disagreement box.
@@ -125,7 +125,7 @@ consequence — the model is estimable, but the long-run behaviour it
 implies is only weakly pinned down by any finite amount of data.
 
 `ω > 0` is required for the variance recursion to stay positive, and
-`α, β ≥ 0` are needed for the same reason at every step. Chapter 26
+`α, β ≥ 0` are needed for the same reason at every step. Chapter 30
 shows a model that escapes these constraints entirely, by construction
 rather than by careful bookkeeping.
 
@@ -188,7 +188,7 @@ the ARMA-side display:
 The **news impact curve** (bottom right) is the one to look at next.
 It is symmetric here by construction — GARCH cannot be anything else,
 since `e²` discards the sign of the shock before the model ever sees
-it. Whether real returns agree is Chapter 26's subject.
+it. Whether real returns agree is Chapter 30's subject.
 
 ```@example ch25
 println("panels returned as data, not just drawn:")
@@ -284,7 +284,7 @@ break itself looks to the model like an extremely slow-decaying
 shock — it has no way to distinguish "genuinely persistent
 clustering" from "one big level change that never reverted."
 Unusually high estimated persistence is therefore weak evidence of
-genuine persistence and reasonable evidence that Chapter 24's
+genuine persistence and reasonable evidence that Chapter 28's
 variance-shift test should have been run before reaching for
 GARCH at all.
 
@@ -295,5 +295,5 @@ directly whether the model actually worked. The model built in this
 chapter treats a large fall and a large rise as identical shocks —
 squaring destroys the sign before it ever reaches the variance
 equation. Anyone who has watched a market fall knows that is not how
-volatility actually behaves. Chapter 26 fixes that, in two different
+volatility actually behaves. Chapter 30 fixes that, in two different
 ways.

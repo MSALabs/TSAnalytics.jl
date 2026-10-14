@@ -1,6 +1,6 @@
 # Forecasting Volatility
 
-Chapters 25 and 26 described variance. This chapter projects it
+Chapters 29 and 30 described variance. This chapter projects it
 forward — and discovers along the way that one of the three models
 cannot be projected forward analytically at all, which turns out to be
 a structural fact about the model rather than a gap in this package.
@@ -43,7 +43,7 @@ println("half-life of a shock: ", round(half_life, digits=1), " trading days")
 The forecast converges toward the unconditional (long-run) variance,
 `ω / (1 − α − β)` — from below if current volatility happens to be
 calm, from above if it is turbulent. The rate of convergence is set
-entirely by `α + β`, which Chapter 25 found to be about `0.92` for
+entirely by `α + β`, which Chapter 29 found to be about `0.92` for
 this exact fit, giving a half-life of roughly `8.4` trading days:
 noticeably persistent, though a shock still fades within a couple of
 trading weeks rather than lingering for months.
@@ -227,7 +227,7 @@ has already seen. It will, however, correctly predict the decay
 roughly how long the elevated volatility should be expected to
 persist. Anticipating the spike itself, rather than only its
 aftermath, needs an exogenous regressor built from the calendar —
-the same answer Chapter 36 gives for festivals.
+the same answer Chapter 40 gives for festivals.
 
 ## Where this leaves you
 
@@ -238,4 +238,4 @@ the formula cannot reach. Everything in Parts IV and V so far has
 estimated volatility indirectly, from daily returns. Where intraday
 data is available, volatility can instead be *measured* rather than
 modelled, which is a different approach entirely, with different
-strengths. Chapter 28 closes Part V there.
+strengths. Chapter 32 closes Part VI there.

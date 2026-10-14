@@ -197,7 +197,7 @@ much it matters is precisely the overclaim this book keeps warning
 against, and the measurement here costs two lines.
 
 A rolling window handles a break by forgetting, which is crude but
-honest. Modelling the break explicitly is Chapter 41's territory and
+honest. Modelling the break explicitly is Chapter 52's territory and
 not built here. In the meantime, comparing both windows on the same
 series is cheap and tells you directly whether the older data is
 helping or hurting.
@@ -322,4 +322,4 @@ Every model built across this Part has assumed constant variance.
 Chapter 11 showed a real series where that assumption was plainly
 false, and nothing built since has addressed it.
 
-Part V does.
+Part VI does.

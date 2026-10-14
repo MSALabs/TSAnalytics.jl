@@ -118,7 +118,7 @@ changes over time and everything is pooled together into one
 histogram, fat tails appear automatically, with no separate mechanism
 required. **The non-normality in the left panel and the clustering in
 the previous section's ACF may be the same phenomenon, seen twice** —
-worth realising now, before Chapter 25 starts building a model for one
+worth realising now, before Chapter 29 starts building a model for one
 of them.
 
 ## Not every variance problem is clustering
@@ -142,7 +142,7 @@ transformation and needs nothing further here. The second is a
 structural break — the **simulated** series above literally switches
 from `σ = 0.01` to `σ = 0.05` partway through and stays there — and it
 wants an intervention term or a split sample, not a variance model.
-Only the first is genuinely what Part V is about: variance that rises
+Only the first is genuinely what Part VI is about: variance that rises
 and falls repeatedly around some level, never settling.
 
 ```@example ch24
@@ -209,7 +209,7 @@ the next three chapters build, not the kind built so far.
 Indian equity and currency series show both patterns from this
 chapter's fourth section, and telling them apart matters in
 practice. There is genuine clustering of the kind the rest of Part
-V models. There are also datable variance shifts tied to specific
+VI models. There are also datable variance shifts tied to specific
 policy moments — the 1991 liberalisation, the 2016 demonetisation
 announcement, the introduction of currency futures — where the
 variability changed level once and stayed changed rather than
@@ -228,6 +228,6 @@ model without checking which situation is actually present.
 
 The mean of a return series is close to unpredictable. The variance is
 not — it clusters, it is measurable, and thirteen chapters of tooling
-built for the mean have nothing to say about it. Chapter 25 builds a
+built for the mean have nothing to say about it. Chapter 29 builds a
 model for it, and the idea underneath is considerably simpler than the
 size of the literature it launched would suggest.

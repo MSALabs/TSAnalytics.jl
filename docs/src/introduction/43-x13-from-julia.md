@@ -144,6 +144,6 @@ abstraction.
 
 ## See also
 
-- [Chapter 38](38-official-seasonal-adjustment.md) — why this program exists
-- [Chapter 40](40-adjusting-an-indian-series.md) — the case that needs it
-- [Chapter 34](34-regression-with-arima-errors.md) — RegARIMA, which is the pre-adjustment step
+- [Chapter 42](42-official-seasonal-adjustment.md) — why this program exists
+- [Chapter 44](44-adjusting-an-indian-series.md) — the case that needs it
+- [Chapter 38](38-regression-with-arima-errors.md) — RegARIMA, which is the pre-adjustment step

@@ -99,7 +99,7 @@ At the same nominal width the triangular filter is visibly smoother,
 because it stops pretending the observation nine weeks away is exactly
 as informative as the one next door. This is the entire idea behind the
 Henderson filters official statistical agencies use in practice, and
-Chapter 38 returns to them properly. The point worth taking now is
+Chapter 42 returns to them properly. The point worth taking now is
 narrower: a filter's width and its shape are two separate choices, and
 most treatments only ever let a reader vary the first one.
 

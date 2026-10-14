@@ -339,6 +339,6 @@ likelihood evaluation to parallelise.
 
 ## See also
 
-- [Chapters 24–28](../introduction/24-why-variance-changes.md) — why variance changes, and what each model assumes about it
+- [Chapters 28–32](../introduction/28-why-variance-changes.md) — why variance changes, and what each model assumes about it
 - [Diagnostics](02-diagnostics.md) — the tests used above
 - [API: GARCH](../api/garch.md)

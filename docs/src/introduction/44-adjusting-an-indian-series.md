@@ -1,6 +1,6 @@
 # Adjusting an Indian Series
 
-[Chapter 36](36-calendar-effects.md) established the problem and
+[Chapter 40](40-calendar-effects.md) established the problem and
 modelled it: Diwali moves between October and November, so no
 fixed-period seasonal component can represent it, and a regressor
 built from a table of real festival dates fixes that — worth about
@@ -11,7 +11,7 @@ That chapter *modelled* the effect. This one is about what it takes to
 **publish an adjusted series** with the effect removed, which is a
 different and harder job.
 
-## What Chapter 36 left undone
+## What Chapter 40 left undone
 
 Recall where it got to. [`fit_sarimax`](@ref) with a Diwali indicator
 and a lockdown dummy gave a good fit, a coefficient with a plausible
@@ -30,7 +30,7 @@ revisions, its own history, and its own users.
 entirely in the festival month. Plants shut for some number of days
 around Diwali, and that number does not respect month boundaries. A
 weighted window spread across the weeks either side is at least as
-defensible, and Chapter 36 said so. **Choosing between them by eye is
+defensible, and Chapter 40 said so. **Choosing between them by eye is
 not a method**, and an agency cannot publish "we picked the one that
 looked better".
 
@@ -48,7 +48,7 @@ seasonal factors. What is the rule?
 
 ## What X-13 does instead
 
-The RegARIMA step of X-13 is the same model as Chapter 36's —
+The RegARIMA step of X-13 is the same model as Chapter 40's —
 regression with ARIMA errors — but the surrounding machinery is what
 turns a fit into a publication.
 
@@ -78,7 +78,7 @@ res = x13(iip_series;
 ```
 
 !!! note "Not executed here"
-    As in [Chapter 39](39-x13-from-julia.md), these blocks are written
+    As in [Chapter 43](43-x13-from-julia.md), these blocks are written
     against the real API but are not run at build time —
     SeasonalAdjustment.jl is not a dependency of these docs.
 
@@ -101,7 +101,7 @@ refuses.
 
 **Outliers are named.** The 2020 lockdown does not need a hand-built
 dummy over a window you chose; `outlier = true` finds it, classifies it
-as a level shift or temporary change, and reports the dates. Chapter 36
+as a level shift or temporary change, and reports the dates. Chapter 40
 picked April–June 2020 by looking at the series, and said so. X-13
 picks it by a documented rule, which is what you need when somebody
 asks why those three months and not four.
@@ -113,14 +113,14 @@ specification rather than a span you chose.
 **The diagnostics come out with the result.** `mstats(res).q` is one
 number a downstream user can check. `qs(res)` tests explicitly for
 seasonality *remaining* in the adjusted series, which is the question
-that matters and the one Chapter 36 never asked.
+that matters and the one Chapter 40 never asked.
 
 ## The part that does not get easier
 
 None of this solves the underlying data problem, and it is worth being
 blunt about that.
 
-Chapter 36's disagreement box found a **nineteen-day spread** between
+Chapter 40's disagreement box found a **nineteen-day spread** between
 four equally authoritative-looking sources on the date of Guru Nanak
 Jayanti 2026. The reason is structural: Diwali, Guru Nanak Jayanti and
 most of India's actual festival calendar follow a lunisolar system
@@ -167,13 +167,13 @@ the adjustment worked.
 
 This book ends at the boundary. What you have from Part III is enough
 to decompose a series for your own understanding, and what
-[Chapter 36](36-calendar-effects.md) gives you is enough to model a
+[Chapter 40](40-calendar-effects.md) gives you is enough to model a
 moving holiday inside an ARIMA. Publishing an official adjusted series
 is a different job, and it has its own package and its own book.
 
 ## See also
 
-- [Chapter 36](36-calendar-effects.md) — the effect, modelled, with real data and the date-source problem in full
-- [Chapter 38](38-official-seasonal-adjustment.md) — why agencies work this way
-- [Chapter 39](39-x13-from-julia.md) — the interface
-- [Chapter 41](41-the-frontier.md) — what else this package does not do
+- [Chapter 40](40-calendar-effects.md) — the effect, modelled, with real data and the date-source problem in full
+- [Chapter 42](42-official-seasonal-adjustment.md) — why agencies work this way
+- [Chapter 43](43-x13-from-julia.md) — the interface
+- [Chapter 52](52-the-frontier.md) — what else this package does not do

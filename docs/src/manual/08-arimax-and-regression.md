@@ -318,6 +318,6 @@ built. `fit_arima`/`fit_sarima` forecasts are unaffected.
 
 ## See also
 
-- [Chapter 36](../introduction/36-calendar-effects.md) — this example worked in full, including why a moving festival defeats every decomposition method
+- [Chapter 40](../introduction/40-calendar-effects.md) — this example worked in full, including why a moving festival defeats every decomposition method
 - [Forecasting](09-forecasting-and-accuracy.md) — for the models that do forecast
 - [API: ARIMAX](../api/arimax.md)

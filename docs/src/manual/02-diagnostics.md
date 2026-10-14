@@ -178,7 +178,7 @@ println("sign bias, joint effect: p = ", round(sb.joint_effect_pvalue, digits=4)
 
 `nyblom_test` takes a score matrix rather than a model — the
 per-observation gradient contributions — so it applies to anything that
-can produce them. See [Chapter 32](../introduction/32-time-varying-systems.md)
+can produce them. See [Chapter 36](../introduction/36-time-varying-systems.md)
 for a worked example, and note it reports **critical values rather than
 a p-value**, because its null distribution is non-standard and
 tabulated only at three levels.

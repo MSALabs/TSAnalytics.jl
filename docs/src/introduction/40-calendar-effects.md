@@ -172,7 +172,7 @@ April 2020 reads `54.0` against February's `134.2` — the lockdown, the
 largest single move in the series by a wide margin. Left unmodelled it
 would dominate every fit in this chapter and swamp an effect worth a
 few index points. An explicit dummy for the three worst months is the
-honest minimum, and Chapter 35's own warning applies: this is a known,
+honest minimum, and Chapter 39's own warning applies: this is a known,
 datable, abrupt event, so an intervention dummy is the right tool
 rather than anything that drifts.
 
@@ -296,7 +296,7 @@ end
 regression-with-ARIMA-errors model; neither [`forecast`](@ref) nor
 `predict` has a method for the [`ArimaxModel`](@ref)/[`SarimaxModel`](@ref)
 they return — confirmed directly above rather than inferred from the
-exports. Chapter 34 never needed a forecast from its joint fit and so
+exports. Chapter 38 never needed a forecast from its joint fit and so
 never hit this; this chapter does. An out-of-sample comparison of the
 kind Chapter 23 insists on therefore needs a forecast written by hand,
 and on a strongly seasonal series a hand-rolled *non*-seasonal
@@ -316,7 +316,7 @@ have rather than a result that came out badly.
 
 Deterministic outside information — a calendar, a known holiday table,
 an ordinary count of weekdays — can be brought into a model as a
-regressor exactly the way Chapter 34's measured regressors were, and
+regressor exactly the way Chapter 38's measured regressors were, and
 checked the same way.
 
 It also cost this chapter its opening assumption. Bundling the real
@@ -326,8 +326,8 @@ built to demonstrate the technique had quietly encoded the wrong sign
 for years. **That is the argument for real data over a convincing
 simulation, made at this book's own expense.**
 
-One assumption has now survived every model built across Part VII: the
-error term's variance has been constant throughout, and Chapter 24
+One assumption has now survived every model built across Part VIII: the
+error term's variance has been constant throughout, and Chapter 28
 already established that for a great many real series it is not.
 
-Chapter 37.
+Chapter 41.

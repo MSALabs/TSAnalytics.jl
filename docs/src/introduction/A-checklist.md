@@ -16,7 +16,7 @@ each one *means* is in Part II. This page is the order.
 | Is the variance stable? | Plot it. Then [`guerrero_lambda`](@ref) | λ near `1` | λ near `0` → take logs, or [`boxcox`](@ref) with the returned λ |
 | Is there a trend or seasonality you can see? | `plot(y)`, [`acf`](@ref) | — | Slow ACF decay means differencing, not a high AR order |
 | Is it stationary? | [`adf_test`](@ref) **and** [`kpss_test`](@ref) | ADF rejects, KPSS does not | See the four-way table below |
-| Is there a seasonal period you did not know about? | [`periodogram`](@ref) | A clear peak | No peak: the seasonality may be moving — [Chapter 36](36-calendar-effects.md) |
+| Is there a seasonal period you did not know about? | [`periodogram`](@ref) | A clear peak | No peak: the seasonality may be moving — [Chapter 40](40-calendar-effects.md) |
 | Are there outliers? | Plot it. [`stl_decompose`](@ref)`(y, m; robust=true)`, then `.weights` | No zero weights | Weight `0` means the fit refused to explain that point — decide whether it is real |
 
 ### The two stationarity tests together

@@ -1,6 +1,6 @@
 # Smoothing
 
-Chapter 30's filter estimated the state using everything observed *up
+Chapter 34's filter estimated the state using everything observed *up
 to* each moment. This chapter uses everything, including what came
 after — and the gap between the two turns out to be larger, and more
 useful, than most readers expect on first meeting it.
@@ -190,7 +190,7 @@ the shaded band on the level — which neither classical decomposition
 nor STL ever provided. Chapter 13 asked which trend was the correct
 one and concluded that none of the candidates could claim to be; here
 the trend at least carries an honest interval around it. This is a
-modest version of the idea Chapter 41's fuller unobserved-components
+modest version of the idea Chapter 52's fuller unobserved-components
 models take much further.
 
 ```@example ch31
@@ -267,7 +267,7 @@ vspan!([26,35]; alpha=0.15, color=:red)
 ```
 
 If only one chart from this chapter survives, it should be this one.
-Chapter 30's filter, seeing only the past, could do nothing but let its
+Chapter 34's filter, seeing only the past, could do nothing but let its
 uncertainty grow through a gap and stay grown until data resumed. The
 smoother's uncertainty grows through the gap too — and then *shrinks
 again* from the far side, because the observations that arrive after
@@ -319,4 +319,4 @@ matrices that stay fixed once chosen. Sometimes they should not — a
 regression coefficient that genuinely drifts, a seasonal pattern that
 evolves, a system whose own structure changes partway through.
 
-Chapter 32.
+Chapter 36.

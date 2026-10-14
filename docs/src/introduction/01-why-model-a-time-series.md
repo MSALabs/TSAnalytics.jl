@@ -101,7 +101,7 @@ years, fourteen for fourteen, no exceptions.
 
 The higher month is always the one the festival *missed*. Industrial
 production drops in the Diwali month, because Diwali is a holiday and
-plants shut — Chapter 36 measures the drop at about `4.8` index points
+plants shut — Chapter 40 measures the drop at about `4.8` index points
 and shows it holds in 13 of 15 years. (The consumer-facing surge
 everyone associates with the festival is real too, but it lives in
 retail sales, not in a production index.)
@@ -110,7 +110,7 @@ What matters here is the timing, not the sign. A model that assumes
 October is always October will be wrong every single year, alternating
 direction as the festival moves, and no amount of additional data will
 fix it — more years simply supply more alternation. That is a
-different kind of problem from the two series above, and Chapter 36 is
+different kind of problem from the two series above, and Chapter 40 is
 where it gets solved.
 
 ## The obvious attempt, and why it fails
@@ -306,7 +306,7 @@ one foreshadowing a rise in the other. Neither series explains itself.
 Each explains the other, displaced in time. Every method up to this
 point in the chapter has looked at one series in isolation, and this
 picture is the argument for the ones that will not — cross-correlation,
-and eventually the whole of Part VII, exist because of pairs like this
+and eventually the whole of Part VIII, exist because of pairs like this
 one.
 
 ```@example ch1

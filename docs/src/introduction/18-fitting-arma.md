@@ -147,7 +147,7 @@ their variances — computed by running the model forward through the
 data one observation at a time, predicting each value from everything
 before it, and scoring how far off each prediction was. That is the
 whole mechanism. What actually performs the running-forward is a piece
-of machinery this book will name properly in Part VI; for now it is
+of machinery this book will name properly in Part VII; for now it is
 enough to know that it exists and that it is what `fit_arma` calls once
 per candidate `(φ, θ)` to produce the surface above.
 

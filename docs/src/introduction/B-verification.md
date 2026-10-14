@@ -99,7 +99,7 @@ appear:
 
 Indian data is deliberately **not** one of these categories. It appears
 throughout as ordinary worked examples on the bundled `iip_india`
-series — Chapters 1, 5, 8, 14, 15, 20, 36 and 37 among others — rather
+series — Chapters 1, 5, 8, 14, 15, 20, 40 and 41 among others — rather
 than as a recurring aside, because a series is a series and the
 material stands on the same footing as `cmort` or `nyse`.
 

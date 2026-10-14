@@ -68,5 +68,5 @@ Stated plainly, because finding out by hitting it is worse:
 
 `development-sequence.md` in the repository is the full roadmap, and
 the last chapter of the Introduction,
-[The Frontier](../introduction/41-the-frontier.md), discusses where
+[The Frontier](../introduction/52-the-frontier.md), discusses where
 the field goes from here.

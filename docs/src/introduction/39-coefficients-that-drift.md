@@ -1,7 +1,7 @@
 # Coefficients That Drift
 
-Chapter 34 estimated one regression coefficient for the whole sample.
-Chapter 32 built the machinery to let a coefficient move. This chapter
+Chapter 38 estimated one regression coefficient for the whole sample.
+Chapter 36 built the machinery to let a coefficient move. This chapter
 joins the two — and finds that the two options are not two ways of
 computing the same thing. That distinction has real consequences, and
 missing it is an easy mistake to make.
@@ -36,8 +36,8 @@ A **simulated** series, built so the true coefficient genuinely wanders
 over the sample — a slow random walk starting at `2.0`, not a fixed
 number at all. A single fitted coefficient across the whole thing is
 necessarily a compromise between whatever the relationship happened to
-be early on and whatever it had become later — Chapter 32 already made
-this point with a rolling window; Chapter 34 fitted exactly this kind
+be early on and whatever it had become later — Chapter 36 already made
+this point with a rolling window; Chapter 38 fitted exactly this kind
 of model and quietly assumed the coefficient was fixed throughout.
 Those two chapters have been on a collision course, and this is it.
 
@@ -55,7 +55,7 @@ plot(m_tvss.beta_filtered[1,:]; label="filtered coefficient", linewidth=2)
 hline!([m_fixed.beta[1]]; label="fixed-coefficient estimate", linestyle=:dash, title="the coefficient's own path")
 ```
 
-Chapter 32 built exactly this construction. Here it has a genuine
+Chapter 36 built exactly this construction. Here it has a genuine
 purpose: `β` is not in the parameter list at all — only its *process
 variance*, `Q_beta = 0.00186`, is estimated directly. The coefficient
 itself is a latent state, recovered from the filtered path, and it
@@ -89,7 +89,7 @@ plot!(alpha_f[2,:]; ribbon=1.96 .* sqrt.([V_f[t][2,2] for t in 1:n]), label="smo
 
 Reconstructed as a genuine two-state system — one state for the AR
 component, one for the coefficient itself — and smoothed with Chapter
-31's own backward pass. Two details of the reconstruction matter and
+35's own backward pass. Two details of the reconstruction matter and
 are easy to get wrong: the AR state's own innovation variance has to
 be the model's actual fitted `sigma2`, not an arbitrary `1.0`, and the
 AR state should start at its *stationary* variance rather than a
@@ -105,7 +105,7 @@ starts at `1.96`, close to the true starting value of `2.0`, where the
 filtered path was still thrashing through its own diffuse start. And
 the smoothed and filtered paths now agree **exactly** at the final
 time point — `1.34977675...` either way, to nine decimal places —
-which is exactly Chapter 31's own endpoint identity, confirmed again
+which is exactly Chapter 35's own endpoint identity, confirmed again
 here on a genuinely different kind of system.
 
 ## How much drift is there really?
@@ -124,7 +124,7 @@ on this particular series with `150` observations. It is worth saying
 plainly that this profile is often much flatter on shorter samples,
 making "a little genuine drift" and "no drift at all" hard to tell
 apart from the data alone — the same identification difficulty
-Chapters 9 and 25 each met from a different direction.
+Chapters 9 and 29 each met from a different direction.
 
 ## Two models, not two methods
 
@@ -151,7 +151,7 @@ within a fraction of a percent. **The log-likelihoods do not** —
 `-251.33` against `-248.98`, a real gap of roughly `2.3` that does not
 close no matter how the comparison is framed.
 
-The reason is Chapter 33's: the drifting model treats the coefficient
+The reason is Chapter 37's: the drifting model treats the coefficient
 as a diffuse state with genuinely no prior, so it carries a diffuse
 phase the fixed model simply never has — the fixed model estimates the
 coefficient as an ordinary parameter from the start, with no
@@ -194,12 +194,12 @@ A coefficient that changes abruptly rather than gradually, fitted with
 the same drift construction: the model smears the change across
 several neighbouring periods, because a random walk cannot jump — it
 can only move a little at a time, however large its variance is
-allowed to be. Chapter 32 made this point about the underlying
+allowed to be. Chapter 36 made this point about the underlying
 machinery in the abstract; here it has a direct consequence for a real
 modelling decision. Gradual change and an abrupt break are genuinely
 different phenomena, and the right treatment for a *known* break is an
 intervention term — an ordinary dummy regressor at the known date,
-exactly Chapter 34's own material — which needs none of this chapter's
+exactly Chapter 38's own material — which needs none of this chapter's
 machinery at all.
 
 The pass-through from the RBI's own policy rate to bank lending
@@ -230,4 +230,4 @@ Every regressor met so far has been another measured series. Some of
 the most useful regressors are not measured at all. They are
 constructed directly from a calendar.
 
-Chapter 36.
+Chapter 40.

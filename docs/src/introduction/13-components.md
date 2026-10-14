@@ -74,7 +74,7 @@ together, tangled into one curve, which is why the careful name for it
 is **trend-cycle** rather than simply trend. Classical decomposition
 cannot separate the two pieces, and neither can STL in Chapter 15 — the
 cycle is slow, the trend is slower, and no filter distinguishes two
-things that differ only in degree, not in kind. Chapter 41's
+things that differ only in degree, not in kind. Chapter 52's
 unobserved-components models can, because they impose an explicit
 structure on the two pieces rather than filtering blindly, and that
 capability is a real reason to reach for them later in this book.

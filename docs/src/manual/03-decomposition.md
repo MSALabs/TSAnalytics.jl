@@ -184,5 +184,5 @@ benchmarking or already threading at a higher level.
 ## See also
 
 - [Chapters 13–16](../introduction/13-components.md) — what these components *mean*, and why the split is a modelling assumption rather than a fact
-- [Chapter 36](../introduction/36-calendar-effects.md) — when a moving holiday defeats every method on this page
+- [Chapter 40](../introduction/40-calendar-effects.md) — when a moving holiday defeats every method on this page
 - [API: Decomposition](../api/decomposition.md)

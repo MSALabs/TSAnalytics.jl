@@ -97,7 +97,7 @@ automatic model search R's `tbats()` wraps around it, or ARMA errors.
 stochastic seasonal, a cycle, each with its own variance, fitted
 jointly — are the other obvious state-space application that is not yet
 built. `fit_arimax(...; model=:tvss)` in
-[Chapter 35](35-coefficients-that-drift.md) is a special case of one,
+[Chapter 39](39-coefficients-that-drift.md) is a special case of one,
 and the diffuse filter it uses is the hard part.
 
 The appeal of a UC model over an ARIMA is interpretability: you get a
@@ -160,8 +160,8 @@ its default.
 Official seasonal adjustment — X-11's lineage, X-13ARIMA-SEATS, the
 diagnostics statistical agencies publish — is deliberately **not** here.
 It is a different package,
-[SeasonalAdjustment.jl](38-official-seasonal-adjustment.md), for the
-reasons Part VIII sets out: it is a different kind of activity, with
+[SeasonalAdjustment.jl](42-official-seasonal-adjustment.md), for the
+reasons Part IX sets out: it is a different kind of activity, with
 institutional requirements that have no analogue in exploratory
 modelling.
 

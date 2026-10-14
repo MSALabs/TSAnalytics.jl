@@ -204,6 +204,6 @@ over a direct likelihood.
 
 ## See also
 
-- [Part VI](../introduction/29-the-state-space-form.md) — the derivation, and why every model here reduces to this one
-- [Chapter 32](../introduction/32-time-varying-systems.md) — drifting coefficients worked end to end
+- [Part VII](../introduction/33-the-state-space-form.md) — the derivation, and why every model here reduces to this one
+- [Chapter 36](../introduction/36-time-varying-systems.md) — drifting coefficients worked end to end
 - [API: State Space](../api/state-space.md)

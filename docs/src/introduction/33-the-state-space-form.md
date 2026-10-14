@@ -1,6 +1,6 @@
 # The State Space Form
 
-Part VI opens, and where it opens is the book's most deliberate
+Part VII opens, and where it opens is the book's most deliberate
 structural choice. Some treatments put this material first, before any
 model has been fitted. This book puts it here, after dozens of ARMA
 models have already been fitted — because every one of those fits was
@@ -253,7 +253,7 @@ fitted regression variance collapses to essentially zero here, and
 correctly so: the coefficient in this constructed series really was
 fixed, and the shared routine recovered that from data without being
 told in advance. Components stack, and this composability is the
-framework's real payoff — it is what makes Chapter 41's combined
+framework's real payoff — it is what makes Chapter 52's combined
 models possible at all.
 
 ```@example ch29
@@ -310,4 +310,4 @@ forecast. What is needed is a systematic way to work out, at each point
 in time, what the hidden state probably is given everything observed
 so far.
 
-Chapter 30.
+Chapter 34.

@@ -1,6 +1,6 @@
 # Diffuse Initialisation
 
-The last chapter of Part VI, and the one carrying the strongest verified
+The last chapter of Part VII, and the one carrying the strongest verified
 disagreement in the whole book — a case where the obvious way to check
 an approximation gives an answer that is not merely imprecise, but
 points in the wrong direction entirely.
@@ -50,7 +50,7 @@ tenth observation, regardless of how far off the initial guess started
 — checked directly above, not merely asserted. The process has its own
 long-run distribution, the filter can be started from it, and even a
 poor guess washes out within a handful of steps. Every worked example
-across Chapters 29 to 32 relied on this quietly, without ever having
+across Chapters 33 to 36 relied on this quietly, without ever having
 to say so.
 
 ```@example ch33
@@ -87,7 +87,7 @@ all — the question "what should be believed before any data has been
 seen" simply has no principled answer, because the honest answer is
 *nothing*. This is not exotic. Every local level, every local linear
 trend, and every regression coefficient placed in the state the way
-Chapter 32 did has exactly this problem, and Chapter 41's combined
+Chapter 36 did has exactly this problem, and Chapter 52's combined
 models inherit it from every one of their pieces.
 
 ## Just make it enormous
@@ -221,7 +221,7 @@ The exact method treats the diffuse states as genuinely, entirely
 unknown at the start rather than as merely very uncertain, and resolves
 them the moment enough observations have arrived to pin them down —
 after which the filter is simply the ordinary recursion from Chapter
-30, unmodified. Flat at `2` across a hundredfold change in sample
+34, unmodified. Flat at `2` across a hundredfold change in sample
 size: the diffuse phase costs a fixed number of observations equal to
 the number of diffuse states, `O(d)`, never `O(n)`. That has a direct
 implementation consequence — a short prefix loop handles the diffuse
@@ -240,8 +240,8 @@ a decision that turned out to have no reliable default.
 ## What it is for
 
 A regression coefficient with no prior at all is exactly the situation
-this chapter solves, and Chapter 35 meets it again directly. Chapter
-41's unobserved-components models are built entirely from components
+this chapter solves, and Chapter 39 meets it again directly. Chapter
+52's unobserved-components models are built entirely from components
 that start this way.
 
 One more contrast worth a sentence: this package's exponential
@@ -258,10 +258,10 @@ familiar.
 
 ## Where this leaves you
 
-Part VI is finished. The state-space form, the recursion that fits it,
+Part VII is finished. The state-space form, the recursion that fits it,
 the backward pass that improves on it, matrices that move, and now a
 principled way to start when there is genuinely nothing to start from.
 
 Every model built across this whole Part has treated its series as
 arriving alone, with no outside information brought in at all. Part
-VII changes that.
+VIII changes that.

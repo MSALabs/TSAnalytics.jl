@@ -237,7 +237,7 @@ decomposes by fixed period, and a moving festival simply has no
 fixed period to give it. That is a real limit shared by everything
 built across Part III, and the remedy is not a decomposition
 parameter at all — it is a regressor built from the actual festival
-dates, which is Chapter 36.
+dates, which is Chapter 40.
 
 ## Where this leaves you
 

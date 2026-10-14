@@ -75,33 +75,33 @@ makedocs(;
                 "introduction/22-forecasting.md",
                 "introduction/23-evaluating-honestly.md",
             ],
-            "Part V -- Models That Get Turbulent" => [
-                "introduction/24-why-variance-changes.md",
-                "introduction/25-arch-and-garch.md",
-                "introduction/26-asymmetry.md",
-                "introduction/27-forecasting-volatility.md",
-                "introduction/28-realized-measures.md",
+            "Part VI -- Models That Get Turbulent" => [
+                "introduction/28-why-variance-changes.md",
+                "introduction/29-arch-and-garch.md",
+                "introduction/30-asymmetry.md",
+                "introduction/31-forecasting-volatility.md",
+                "introduction/32-realized-measures.md",
             ],
-            "Part VI -- The Machinery Underneath" => [
-                "introduction/29-the-state-space-form.md",
-                "introduction/30-the-kalman-filter.md",
-                "introduction/31-smoothing.md",
-                "introduction/32-time-varying-systems.md",
-                "introduction/33-diffuse-initialisation.md",
+            "Part VII -- The Machinery Underneath" => [
+                "introduction/33-the-state-space-form.md",
+                "introduction/34-the-kalman-filter.md",
+                "introduction/35-smoothing.md",
+                "introduction/36-time-varying-systems.md",
+                "introduction/37-diffuse-initialisation.md",
             ],
-            "Part VII -- Bringing in Outside Information" => [
-                "introduction/34-regression-with-arima-errors.md",
-                "introduction/35-coefficients-that-drift.md",
-                "introduction/36-calendar-effects.md",
-                "introduction/37-autoregressive-errors-with-changing-variance.md",
+            "Part VIII -- Bringing in Outside Information" => [
+                "introduction/38-regression-with-arima-errors.md",
+                "introduction/39-coefficients-that-drift.md",
+                "introduction/40-calendar-effects.md",
+                "introduction/41-autoregressive-errors-with-changing-variance.md",
             ],
-            "Part VIII -- What Statistical Agencies Do" => [
-                "introduction/38-official-seasonal-adjustment.md",
-                "introduction/39-x13-from-julia.md",
-                "introduction/40-adjusting-an-indian-series.md",
+            "Part IX -- What Statistical Agencies Do" => [
+                "introduction/42-official-seasonal-adjustment.md",
+                "introduction/43-x13-from-julia.md",
+                "introduction/44-adjusting-an-indian-series.md",
             ],
-            "Part IX -- The Frontier" => [
-                "introduction/41-the-frontier.md",
+            "Part XI -- The Frontier" => [
+                "introduction/52-the-frontier.md",
             ],
             "Appendices" => [
                 "introduction/A-checklist.md",

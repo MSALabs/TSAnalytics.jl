@@ -213,4 +213,4 @@ skipping it takes more effort than doing it.
 One thread stays open further out. This chapter's second chart showed
 volatility with real memory, and nothing built in this book yet models
 it directly. ARCH-LM is the test that sends the rest of the book there
-— Part V.
+— Part VI.

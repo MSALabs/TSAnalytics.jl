@@ -231,7 +231,7 @@ November in others, so the "annual" pattern is not repeating at a
 genuinely fixed lag every time. The ACF only knows about fixed lags,
 and it blurs anything that is not one — a real limitation of the tool
 rather than a fault in the data, and one reason the calendar
-regressors of Chapter 36 exist at all.
+regressors of Chapter 40 exist at all.
 
 ## Where this leaves you
 

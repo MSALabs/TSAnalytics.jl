@@ -1,6 +1,6 @@
 # Regression with ARIMA Errors
 
-Part VII opens. Everything in Parts IV to VI treated a series as
+Part VIII opens. Everything in Parts IV to VI treated a series as
 arriving entirely on its own. This chapter brings outside information
 in — and its disagreement box is the one place in this book where the
 textbook citation and the actual running code do not match.
@@ -173,7 +173,7 @@ println("Julia:  ar1≈", round(m_r_style.arma.ar[1],digits=4), "  beta≈", rou
 !!! disagreement "When Implementations Disagree"
     The standard citation for regression inside a state-space model is
     de Jong (1991), on diffuse filtering for regression coefficients —
-    exactly Chapter 33's own machinery, generalised. That is what a
+    exactly Chapter 37's own machinery, generalised. That is what a
     reader would reasonably expect both major reference
     implementations to use here.
 
@@ -208,15 +208,15 @@ println("Julia:  ar1≈", round(m_r_style.arma.ar[1],digits=4), "  beta≈", rou
     The diffuse machinery genuinely exists in `statsmodels` —
     `time_varying_regression=True` combined with
     `use_exact_diffuse=True` — and it exists for a different problem:
-    a coefficient that *moves*, which is Chapter 35's subject, not
+    a coefficient that *moves*, which is Chapter 39's subject, not
     this one. **The lesson worth drawing is not that either package is
     wrong. It is that a citation describes what a method makes
     possible, not necessarily what the code actually runs by
     default** — reading the source settled a question here that
     reading the documentation alone would not have.
 
-    Chapter 33's work is not wasted by any of this. It is exactly what
-    Chapter 35 needs, and exactly what Chapter 41's unobserved-components
+    Chapter 37's work is not wasted by any of this. It is exactly what
+    Chapter 39 needs, and exactly what Chapter 52's unobserved-components
     models are built from — just not what this particular, very common
     case turns out to require.
 
@@ -246,7 +246,7 @@ Outside information can now be brought into a model, with honest
 standard errors that account for whatever correlation is actually
 present in the errors — not the standard errors a naive regression
 would have quietly reported. The coefficient itself has been treated
-as one fixed number throughout this chapter. Chapter 32 already showed
+as one fixed number throughout this chapter. Chapter 36 already showed
 that sometimes it should not be.
 
-Chapter 35.
+Chapter 39.

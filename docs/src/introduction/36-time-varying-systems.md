@@ -26,7 +26,7 @@ A **constructed** case, deliberately unsubtle: the true relationship
 between `x` and `y` is `0.5` for the first half of the series and
 `2.5` for the second. A single fitted slope is a compromise between
 the two regimes, and the residuals show it plainly — systematically
-one sign in the first half, the other sign in the second. Chapter 34
+one sign in the first half, the other sign in the second. Chapter 38
 will fit regressions with ARIMA errors and will assume, throughout,
 that the coefficient is one fixed number. Sometimes it genuinely is
 not, and the failure is not subtle when it happens.
@@ -133,7 +133,7 @@ plot!(rolling_beta(x1, y1, 20); label="20-point rolling estimate", linestyle=:da
 ```
 
 The model's own path is smoother, comes with a genuine interval, and
-uses Chapter 31's backward pass, so it is not lagging behind the true
+uses Chapter 35's backward pass, so it is not lagging behind the true
 change the way the rolling window visibly does. Crucially, **the
 amount of drift is estimated rather than assumed** — the process
 variance `q` is a free parameter here, not a window length chosen by
@@ -178,7 +178,7 @@ model wearing the same name.
 
 **The log-likelihoods, on the other hand, do not match** — a real,
 reportable gap, not numerical noise. This looks like it should be a
-bug and it is not one; the reason is structural, and Chapter 35 takes
+bug and it is not one; the reason is structural, and Chapter 39 takes
 it up properly rather than here, because it is that chapter's own
 centrepiece. For now it is enough to have measured the gap honestly
 rather than asserting it away.
@@ -321,4 +321,4 @@ A local level has no such thing. A random walk's variance grows
 without bound, so there is no stationary distribution to start from at
 all — nothing to draw an honest first guess from.
 
-Chapter 33.
+Chapter 37.

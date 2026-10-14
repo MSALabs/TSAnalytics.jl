@@ -1,6 +1,6 @@
 # The Kalman Filter
 
-Chapter 29 built the notation. This chapter gives it an engine — and
+Chapter 33 built the notation. This chapter gives it an engine — and
 then tells the reader they have been running that engine since Chapter
 18, without knowing it.
 
@@ -191,13 +191,13 @@ that for themselves.
 ## What else it gives you
 
 Three things fall out for free once a model is written this way, and
-two of them have already been shown. Missing observations — Chapter 29
+two of them have already been shown. Missing observations — Chapter 33
 demonstrated this — cost nothing beyond skipping the correction step
 for the periods with no data. Forecasting is running the transition
 equation forward with no observations left to correct against, and the
 growing uncertainty band that produces comes out of the same recursion
 automatically, not from a separate formula bolted on afterward. The
-third — matrices that change over time — is Chapter 32's subject.
+third — matrices that change over time — is Chapter 36's subject.
 
 Honest cost: this recursion is sequential by construction. Step `t`
 needs the result of step `t-1`, so none of it can be vectorised across
@@ -224,7 +224,7 @@ version that worked.
     `ForwardDiff` overloads directly turned out to be the faster
     choice for this specific loop, the opposite of the usual advice.
 
-Checked directly in Chapter 29: this package's own bundled
+Checked directly in Chapter 33: this package's own bundled
 `iip_india` series has no missing months at all — the 2020 lockdown
 shows up there as an extreme *value* (`54.0` in April 2020), not an
 absence. Genuine gaps are still a real feature of Indian official
@@ -253,4 +253,4 @@ time 10 ought to improve: there are forty more observations that say
 something about what the state was back then, and everything built so
 far in this Part has ignored every one of them.
 
-Chapter 31.
+Chapter 35.

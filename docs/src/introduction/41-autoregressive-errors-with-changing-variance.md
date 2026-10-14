@@ -1,8 +1,8 @@
 # Autoregressive Errors with Changing Variance
 
-The last chapter of Part VII, and the one that joins it back to Part
-V. A regression can have errors that are correlated, Chapter 34's
-subject, and a variance that moves, Chapter 24's. Real series often
+The last chapter of Part VIII, and the one that joins it back to Part
+VI. A regression can have errors that are correlated, Chapter 38's
+subject, and a variance that moves, Chapter 28's. Real series often
 have both problems in the same series, and this chapter fits them
 together rather than one after the other.
 
@@ -27,9 +27,9 @@ println("resid ACF, lags 1-3:   ", round.(acf(resid_ols,1:3).values,digits=3))
 println("resid^2 ACF, lags 1-3: ", round.(acf(resid_ols.^2,1:3).values,digits=3))
 ```
 
-Chapter 34's own series, and both problems are visible in the same
+Chapter 38's own series, and both problems are visible in the same
 three panels. The residuals are autocorrelated — `0.52` at lag one,
-Chapter 34's own finding. Their squares are autocorrelated too — `0.51`
+Chapter 38's own finding. Their squares are autocorrelated too — `0.51`
 at lag one, decaying more slowly than a coincidence would. Chapter
 12's diagnostic panel would fail this series on two separate counts at
 once, and that is the normal state of weekly mortality data, not a
@@ -50,12 +50,12 @@ println("  filtered residual ACF, lag 1:   ", round(acf(std_ar,1:1).values[1],di
 println("  filtered residual^2 ACF, lag 1: ", round(acf(std_ar.^2,1:1).values[1],digits=3))
 ```
 
-Chapter 34's model, applied and checked rather than only fitted. The
+Chapter 38's model, applied and checked rather than only fitted. The
 AR(1) filter does real work — the raw regression residual's own
 lag-one correlation was `0.835` here (this filtered residual is a
 different quantity from the OLS residual above; the joint fit's own
 regression coefficient is `0.2424`, not OLS's `-0.4866`, exactly
-Chapter 34's sign-reversal result) — but it does not fall to zero. A
+Chapter 38's sign-reversal result) — but it does not fall to zero. A
 single AR(1) term captures most, not all, of a real series' own
 persistence, and the honest number, `-0.34`, is a real and
 statistically significant remainder rather than noise on `508`
@@ -75,14 +75,14 @@ println("  standardised residual ACF, lag 1:   ", round(acf(std_g,1:1).values[1]
 println("  standardised residual^2 ACF, lag 1: ", round(acf(std_g.^2,1:1).values[1],digits=3))
 ```
 
-The other direction: Chapter 25's own model, fitted directly to the
+The other direction: Chapter 29's own model, fitted directly to the
 OLS residuals with no AR filtering at all. The squared-residual
 correlation is essentially gone — `0.001` at lag one — GARCH does
 exactly what it is built to do. The plain residual correlation is
 untouched, `0.37`, because nothing in a GARCH variance equation has
 any way to touch the mean. Each fix addresses exactly one of the two
 problems and is silent about the other, and running them as two
-separate steps — the two-step habit Chapter 34 already warned against
+separate steps — the two-step habit Chapter 38 already warned against
 — estimates each stage under an assumption the other stage
 contradicts.
 
@@ -96,9 +96,9 @@ println(m_comb)
 The construction is a chain, and each link is something already met:
 
 ```
-nu_t = y_t − x_t·beta                          (regression residual, Chapter 34)
-e_t  = nu_t − phi·nu_{t−1}                      (AR innovation, Chapter 34)
-h_t  = omega + alpha·e_{t−1}² + garch_beta·h_{t−1}   (GARCH variance, Chapter 25)
+nu_t = y_t − x_t·beta                          (regression residual, Chapter 38)
+e_t  = nu_t − phi·nu_{t−1}                      (AR innovation, Chapter 38)
+h_t  = omega + alpha·e_{t−1}² + garch_beta·h_{t−1}   (GARCH variance, Chapter 29)
 loglik = −0.5 Σ [ log(2π h_t) + e_t²/h_t ]
 ```
 
@@ -166,7 +166,7 @@ ll_naive = naive_loglik(m_ar.beta, m_ar.arma.ar[1], m_ar.arma.sigma2, y, Xd)
 ll_correct = correct_loglik(m_ar.beta, m_ar.arma.ar[1], m_ar.arma.sigma2, y, Xd)
 println("shortcut (nu[1] treated as an ordinary innovation): ", round(ll_naive,digits=6))
 println("correct (nu[1] drawn from its own stationary variance): ", round(ll_correct,digits=6))
-println("chapter 34's own verified joint fit:  ", round(m_ar.loglik,digits=6))
+println("chapter 38's own verified joint fit:  ", round(m_ar.loglik,digits=6))
 println("gap, shortcut vs correct: ", round(ll_naive - ll_correct, digits=4))
 ```
 
@@ -221,7 +221,7 @@ sweep just did.
 ll_internal, _, _, ok = TSAnalytics._ar_garch_loglik(m_ar.beta, [m_ar.arma.ar[1]], m_ar.arma.sigma2,
                                                        Float64[0.0], Float64[0.0], y, Xd, 1)
 println("combined model's own machinery, GARCH degenerate (alpha=garch_beta=0): ", ll_internal)
-println("chapter 34's target: ", m_ar.loglik)
+println("chapter 38's target: ", m_ar.loglik)
 println("agreement to: ", abs(ll_internal - m_ar.loglik))
 ```
 
@@ -233,9 +233,9 @@ which is a different model from regression-then-AR-structured-errors,
 and SAS's `PROC AUTOREG` is the closest single reference and is not
 runnable here — correctness is established by collapsing the general
 model onto an already-trusted special case. Chapter 15 used this
-technique for STL's own edge behaviour. Chapter 32 used it for the
+technique for STL's own edge behaviour. Chapter 36 used it for the
 time-varying reduction test. Setting the GARCH parameters to exactly
-zero forces the combined likelihood back onto Chapter 34's own
+zero forces the combined likelihood back onto Chapter 38's own
 already-verified plain fit, and the two agree to machine precision —
 confirming, incidentally, that [`fit_autoreg_garch`](@ref) already
 implements the stationary first-observation treatment correctly
@@ -278,7 +278,7 @@ println("mean conditional variance: ", round(mean(h),digits=1),
         "   constant-variance model's own single value: ", round(const_sd^2,digits=1))
 ```
 
-Chapter 24 made exactly this point about GARCH alone; it applies here
+Chapter 28 made exactly this point about GARCH alone; it applies here
 to a regression model just as directly. Across the window shown, the
 conditional variance swings from close to its long-run average up to
 nearly five times that average — the constant-variance band is too
@@ -295,12 +295,12 @@ and that test is how you find out before committing to it.
 
 ## Where this leaves you
 
-Part VII is finished. Outside information — a measured regressor, a
+Part VIII is finished. Outside information — a measured regressor, a
 coefficient allowed to drift, a calendar, and now errors that are both
 correlated and heteroskedastic at once — can all be brought into a
 single model, each piece checked on its own terms rather than assumed
 to work because the pieces are each individually familiar.
 
-Part VIII turns to what national statistical offices actually do with
+Part IX turns to what national statistical offices actually do with
 all of this — a different problem, with a different standard of
 evidence than a single verified fit.

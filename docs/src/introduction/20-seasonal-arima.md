@@ -221,7 +221,7 @@ sign the model is working unusually hard to represent something it
 structurally cannot, worth recognising on its own rather than trusting
 only a residual test that the compensation can quietly satisfy. The
 fix is not a better seasonal order; it is a regressor built from the
-actual festival dates, which is Chapter 36's territory.
+actual festival dates, which is Chapter 40's territory.
 
 ## When one seasonal period is not the problem
 
