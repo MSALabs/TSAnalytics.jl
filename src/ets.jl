@@ -519,10 +519,21 @@ function fit_ets(y, period::Integer=1; error::Symbol=:add,
     # lands too, with a worse SSE than the interior optimum R finds. Restarting
     # from a small `gamma` and a lower `phi` recovers it. Deterministic rather
     # than randomized so a fit is reproducible without a seed.
+    #
+    # The last two starts sit in the high-alpha corner. The traditional
+    # region needs gamma <= 1 - alpha, so near alpha = 1 it is a thin wedge,
+    # and a simplex arriving from a low alpha runs into alpha = 1 with no room
+    # left for gamma and stops there -- `converged = false`, and on monthly
+    # IIP a log-likelihood 5.5 below the optimum at alpha = 0.977, gamma = 0,
+    # for all three additive seasonal forms (enough to change auto_ets's
+    # choice). Polishing restarts from that same corner, so only a start
+    # already inside the wedge reaches the optimum.
     START_GRID = [Dict(:alpha => 0.3,  :beta => 0.1,  :gamma => 0.1,    :phi => 0.95),
                   Dict(:alpha => 0.3,  :beta => 0.2,  :gamma => 0.0005, :phi => 0.92),
                   Dict(:alpha => 0.1,  :beta => 0.05, :gamma => 0.05,   :phi => 0.98),
-                  Dict(:alpha => 0.6,  :beta => 0.1,  :gamma => 0.3,    :phi => 0.88)]
+                  Dict(:alpha => 0.6,  :beta => 0.1,  :gamma => 0.3,    :phi => 0.88),
+                  Dict(:alpha => 0.95, :beta => 0.01, :gamma => 0.01,   :phi => 0.95),
+                  Dict(:alpha => 0.8,  :beta => 0.02, :gamma => 0.05,   :phi => 0.9)]
     sfree0 = if seasonal === :none
         Float64[]
     elseif seasonal === :mul
@@ -575,15 +586,21 @@ function fit_ets(y, period::Integer=1; error::Symbol=:add,
     fitted = Vector{Float64}(undef, n); resid = similar(fitted)
     lvl = similar(fitted); trd = zeros(n); ssn = zeros(n)
 
+    # The out-of-region penalty must exceed every feasible SSE. A fixed 1e10
+    # did not: India's GDP in US dollars has an SSE near 4e23, so stepping
+    # OUTSIDE the region was cheaper than any fit inside it, and the result
+    # came back with alpha = 1.0875 and `converged = true`. Scaled by the
+    # series, no feasible fit can undercut it.
+    PENALTY = 1e10 * max(1.0, sum(abs2, yv))
     function objective(x::AbstractVector)
         alpha, beta, gamma, phi, l0, b0, s0 = assemble(x)
-        _ets_in_region(alpha, beta, gamma, phi, trend, seasonal, constraint) || return 1e10
+        _ets_in_region(alpha, beta, gamma, phi, trend, seasonal, constraint) || return PENALTY
         f = Vector{Float64}(undef, n); r = Vector{Float64}(undef, n)
         lv = Vector{Float64}(undef, n); td = zeros(n); sn = zeros(n)
         sse = _ets_recursion!(f, r, lv, td, sn, yv, alpha, beta, gamma, phi,
                                l0, b0, seasonal === :none ? Float64[] : collect(s0),
                                trend, seasonal, error)
-        isfinite(sse) ? sse : 1e10
+        isfinite(sse) ? sse : PENALTY
     end
 
     res = if isempty(starts[1])

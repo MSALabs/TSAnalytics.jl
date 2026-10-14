@@ -587,13 +587,16 @@ function fit_tbats(y, periods; k=nothing, lambda=nothing, trend::Bool=true,
 
     fitted = Vector{Float64}(undef, n)
     resid = similar(fitted)
+    # scaled so that no feasible SSE can exceed it (see fit_ets: a fixed
+    # 1e10 is cheaper than any real fit on a series in the trillions)
+    PENALTY = 1e10 * max(1.0, sum(abs2, z))
     function objective(v)
         alpha, beta, phi, g1, g2, arc, mac = unpack(v)
-        inregion(alpha, beta, phi, g1, g2, arc, mac) || return 1e10
+        inregion(alpha, beta, phi, g1, g2, arc, mac) || return PENALTY
         x0 = _tbats_seed(z, alpha, beta, phi, g1, g2, arc, mac, per, kk, has_t)
         sse = _tbats_recursion!(fitted, resid, z, x0, alpha, beta, phi, g1, g2,
                                 arc, mac, per, kk, has_t)
-        isfinite(sse) ? sse : 1e10
+        isfinite(sse) ? sse : PENALTY
     end
 
     # A deterministic multi-start, for the same reason fit_ets has one: with a
@@ -605,7 +608,7 @@ function fit_tbats(y, periods; k=nothing, lambda=nothing, trend::Bool=true,
     # Every start must be ADMISSIBLE, which is not a detail. The region is
     # one-sided in gamma2 -- for a quarterly single-harmonic model, gamma2 < 0
     # is forecastable and gamma2 > 0 is not, whatever the magnitude -- so a
-    # start with the wrong sign makes the objective 1e10 everywhere the
+    # start with the wrong sign makes the objective PENALTY everywhere the
     # simplex can reach, and the fit silently returns the starting values.
     # That is exactly what happened on a two-period fit before this guard
     # existed: alpha, beta and both gammas came back as the start point, to
@@ -623,7 +626,7 @@ function fit_tbats(y, periods; k=nothing, lambda=nothing, trend::Bool=true,
         append!(v, fill(g20, nper))
         append!(v, fill(0.1, p))
         append!(v, fill(0.1, q))
-        objective(v) < 1e10 && push!(starts, v)
+        objective(v) < PENALTY && push!(starts, v)
     end
     if isempty(starts)
         # fall back to a scan over gamma magnitudes before giving up, so a
@@ -636,7 +639,7 @@ function fit_tbats(y, periods; k=nothing, lambda=nothing, trend::Bool=true,
             append!(v, fill(g, nper))
             append!(v, fill(0.1, p))
             append!(v, fill(0.1, q))
-            if objective(v) < 1e10
+            if objective(v) < PENALTY
                 push!(starts, v)
                 break
             end
@@ -685,7 +688,7 @@ function fit_tbats(y, periods; k=nothing, lambda=nothing, trend::Bool=true,
     fit_orig = lam === nothing ? copy(fitted) : boxcox_inv(fitted, lam)
 
     # `converged` also requires the final point to be forecastable: the
-    # objective is 1e10 outside the region, so an optimiser that never found
+    # objective is PENALTY outside the region, so an optimiser that never found
     # its way in would otherwise report success at its starting values.
     admissible = inregion(alpha, beta, phi, g1, g2, arc, mac)
     return TBATSModel(lam, alpha, has_t ? beta : nothing, damped ? phi : nothing,

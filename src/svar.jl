@@ -200,8 +200,12 @@ can be identified (Lütkepohl 2005, §9.1.2):
 - exactly `K(K+1)/2`: **just-identified** — `A⁻¹B(A⁻¹B)' = Σ_u` exactly,
   and there is nothing to test;
 - fewer: **over-identified** — the restrictions are testable, and
-  `lr_test` carries Lütkepohl's likelihood-ratio statistic
-  `T(ln|Σ̃_r| − ln|Σ̃_u|)` on `K(K+1)/2 − nfree` degrees of freedom.
+  `lr_test` carries the likelihood-ratio statistic
+  `2(ℓ_u − ℓ_r) = T(ln|Σ̃_r| − ln|Σ̃_u| + tr(Σ̃_r⁻¹Σ̃_u) − K)` on
+  `K(K+1)/2 − nfree` degrees of freedom. Lütkepohl's (and `vars`') form
+  drops the trace term, which is zero only when the structural variances
+  are free; where they are pinned the short form is not a likelihood ratio
+  and changes with the units of the data.
 
 The rank condition is checked too: a specification whose information
 matrix is singular is refused rather than handed to the optimizer.
@@ -210,7 +214,9 @@ matrix is singular is refused rather than handed to the optimizer.
     `A = [1 0; missing 1]` alone has **one** free parameter for a
     `2 × 2` `Σ_u`: it also forces both structural variances to one. It
     is the A-model `vars` and `statsmodels` are usually shown with, and
-    `[V]` on `var2_p1` `vars` itself rejects it (`LR = 121.6` on 2 df).
+    on `var2_p1` the likelihood ratio rejects it (`LR = 31.8` on 2 df).
+    `[V]` `vars` reports `121.6`: its short-form statistic, which here is
+    `−T ln|Σ_u|`.
     The just-identified recursive model is `A = [1 0; missing 1]` with a
     free diagonal `B`, or a lower-triangular free `B` — both reproduce
     the Cholesky factor exactly. (`statsmodels` reports the *reduced-form*
@@ -367,7 +373,13 @@ function fit_svar(m::VARModel; A=nothing, B=nothing, method::Symbol=:scoring,
     lr = nothing
     if nfree < nmax
         Sr = P * transpose(P)
-        stat = T * (logdet(cholesky(Hermitian(Sr))) - logdet(cholesky(Hermitian(S))))
+        # 2(ℓ_u − ℓ_r) in full. Lütkepohl's T(ln|Σ_r| − ln|Σ_u|) drops the
+        # tr(Σ_r⁻¹Σ_u) − K term, which is zero only when the structural
+        # variances are free to absorb scale; with them fixed (a unit-diagonal
+        # A and B = I) |Σ_r| = 1 and the short form is −T ln|Σ_u| -- a number
+        # that changes with the units of the data. `vars` uses the short form.
+        stat = T * (logdet(cholesky(Hermitian(Sr))) - logdet(cholesky(Hermitian(S))) +
+                    tr(Sr \ S) - K)
         df = nmax - nfree
         lr = (statistic=stat, df=df, pvalue=_chisq_ccdf(stat, df))
     end

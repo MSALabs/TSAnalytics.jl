@@ -400,3 +400,33 @@ end
         @test rel_b < rel_a
     end
 end
+
+@testset "fit_ets reaches the high-alpha corner (IIP regression)" begin
+    # On monthly IIP the optimum sits at alpha ~ 0.98, gamma = 0: a thin
+    # wedge of the traditional region (gamma <= 1 - alpha). From the four
+    # original starts every simplex ran into alpha = 1 and stopped, 5.5 below
+    # the maximum, for all three additive seasonal forms -- enough to change
+    # auto_ets's choice. Found writing book chapter 25.
+    y = dataset("iip_india").value
+    m = fit_ets(y, 12; seasonal=:add)
+    @test m.loglik ≈ -579.94 atol=0.01          # statsmodels 0.14.1 / 0.15.0 ETSModel
+    @test m.alpha < 1 && m.gamma <= 1 - m.alpha
+    @test fit_ets(y, 12; trend=:add, seasonal=:add).loglik ≈ -579.70 atol=0.01   # statsmodels
+    # R's forecast::ets 9.0.2 selects ETS(A,N,A) on this series
+    @test notation(auto_ets(y, 12)) == "ETS(A,N,A)"
+end
+
+@testset "fit_ets keeps alpha in the region on a large-magnitude series" begin
+    # The out-of-region penalty was a fixed 1e10; India's GDP in US dollars
+    # has an SSE near 4e23, so leaving the region was cheaper than any fit in
+    # it, and alpha came back 1.0875 with converged = true. Found writing
+    # book chapter 27.
+    g = dataset("global_economy")
+    y = g.GDP[findall(==("India"), g.Country)]
+    m = fit_ets(y; trend=:add)
+    @test 0 < m.alpha <= 1 && 0 < m.beta <= m.alpha
+    # and the fit is the scaled series' fit, rescaled
+    s = fit_ets(y ./ 1e9; trend=:add)
+    @test m.alpha ≈ s.alpha atol=1e-3
+    @test 0 < fit_theta(y).alpha <= 1
+end

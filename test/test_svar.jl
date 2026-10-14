@@ -13,7 +13,7 @@ using DelimitedFiles
 #
 # One handoff premise is corrected here: A = [1 0; missing 1] with B = I is
 # OVER-identified (one free parameter for three distinct elements of Σ) --
-# vars itself rejects it with LR = 121.6 on 2 df -- and statsmodels' SVAR
+# rejected by the likelihood ratio, LR = 31.8 on 2 df -- and statsmodels' SVAR
 # llf is the reduced form's whatever the restrictions, which is what made it
 # look just-identified.
 
@@ -82,14 +82,26 @@ end
     @test !isapprox(a.A[2, 1], -0.29375; atol=1e-6)
     # it cannot reproduce Σ: the structural variances are pinned at one
     @test !(a.P * a.P' ≈ _V2.sigma_df)
-    # the over-identification test, exactly as vars computes it
+    # the over-identification test is the likelihood ratio against the
+    # just-identified model, 2(l_u - l_r)
+    ju = fit_svar(_V2; A=[1.0 0.0; missing 1.0], B=[missing 0.0; 0.0 missing])
     @test a.lr_test.df == 2 == R["LR"]["par"]
-    @test a.lr_test.statistic ≈ R["LR"]["stat"] rtol=1e-12
+    @test a.lr_test.statistic ≈ 2 * (ju.loglik - a.loglik) rtol=1e-8
+    # vars (and Lutkepohl's short form) drop tr(Σ_r⁻¹Σ_u) - K, which is zero
+    # only when the structural variances are free. Here they are pinned at
+    # one, |Σ_r| = 1, and the short form is -T ln|Σ_u| -- unit-dependent.
+    # vars' 121.6 is that short form; this package no longer matches it.
     Sr = a.P * a.P'
-    @test a.lr_test.statistic ≈ _V2.T * (logdet(Sr) - logdet(_V2.sigma_df)) rtol=1e-12
-    # vars prints p = 0 (its 1 - CDF again); the tail is representable
+    @test R["LR"]["stat"] ≈ _V2.T * (logdet(Sr) - logdet(_V2.sigma_df)) rtol=1e-8
+    @test !isapprox(a.lr_test.statistic, R["LR"]["stat"]; rtol=0.01)
+    # rescaling the data changes the restriction's truth (variances fixed
+    # at one), not the arithmetic: the full statistic stays a valid LR
+    a100 = fit_svar(fit_var(100 .* _V2.Y, _V2.p); A=[1.0 0.0; missing 1.0])
+    j100 = fit_svar(fit_var(100 .* _V2.Y, _V2.p); A=[1.0 0.0; missing 1.0], B=[missing 0.0; 0.0 missing])
+    @test a100.lr_test.statistic ≈ 2 * (j100.loglik - a100.loglik) rtol=1e-6
+    # vars prints p = 0 (its 1 - CDF again)
     @test R["LR"]["p"] == 0
-    @test 1e-28 < a.lr_test.pvalue < 1e-26
+    @test 0 < a.lr_test.pvalue < 1e-6
     # its standard error is the expected-information one, as vars reports
     @test a.stderr_A[2, 1] ≈ _smat(R["Ase"])[2, 1] rtol=1e-12
     @test a.stderr_A[1, 1] == 0.0 && a.stderr_A[1, 2] == 0.0 && a.stderr_A[2, 2] == 0.0
