@@ -287,6 +287,9 @@ println("d selected testing the raw response directly: ", d_raw)
 println("d selected testing the OLS residuals instead:  ", d_resid)
 println("ADF p-value, raw response:  ", round(adf_test(y_reg).pvalue, digits=4))
 println("ADF p-value, OLS residuals: ", round(adf_test(TSAnalytics._ols_residuals(y_reg, X)).pvalue, digits=6))
+```
+
+```@example ch21
 p1 = plot(y_reg; title="response (trending)", legend=false)
 p2 = plot(resid_true; title="the actual stationary process underneath", legend=false)
 plot(p1, p2; layout=(2,1), size=(700,400))

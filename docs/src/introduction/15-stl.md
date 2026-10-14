@@ -235,6 +235,9 @@ d2 = dataset("vic_elec")
 r_single = stl_decompose(d2.Demand[1:2000], 48)
 lb = ljungbox_test(filter(!isnan, r_single.resid), [48, 336])
 println("remainder structure at the weekly lag, p = ", lb.pvalue)
+```
+
+```@example ch15
 plot(r_single.resid[1:1000]; title="remainder, single-period STL on a 3-period series", legend=false)
 ```
 

@@ -87,6 +87,9 @@ mu, sig = mean(r), std(r)
 kurt = mean(((r .- mu) ./ sig).^4) - 3
 skew = mean(((r .- mu) ./ sig).^3)
 println("excess kurtosis: ", round(kurt, digits=1), "   skewness: ", round(skew, digits=2))
+```
+
+```@example ch24
 sorted_r = sort(r)
 n3 = length(sorted_r)
 theoretical_q = [TSAnalytics._std_normal_quantile((i - 0.5) / n3) for i in 1:n3]

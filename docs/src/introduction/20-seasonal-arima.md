@@ -69,7 +69,9 @@ m = fit_sarima(logy, (0,1,1), (0,1,1,12))
 println("θ (regular MA) = ", round(m.theta[1], digits=4))
 println("Θ (seasonal MA) = ", round(m.Theta[1], digits=4))
 println("log-likelihood = ", round(m.loglik, digits=3), "   nobs = ", m.nobs)
+```
 
+```@example ch20
 f = forecast(m, 24)
 plot(1:length(logy), logy; label="log(passengers)", size=(700,350))
 plot!((length(logy)+1):(length(logy)+24), f.point; ribbon=1.96 .* f.se, label="forecast", color=:red)
@@ -105,6 +107,9 @@ end
 resid = sarima_resid(m, logy, 12)
 dp = diagnostic_plot(resid, m)
 println("Ljung-Box p-values, lags 3-36, minimum: ", round(minimum(dp.ljungbox_pvalues), digits=4))
+```
+
+```@example ch20
 plot(dp; size=(700,500))
 ```
 
@@ -128,6 +133,9 @@ d0 = diff(logy)                        # D = 0: only the regular difference
 d1 = diff(diff(logy), 12)              # D = 1
 println("acf at seasonal lags 12,24,36, D=0: ", round.(acf(d0, [12,24,36]).values, digits=3))
 println("acf at seasonal lags 12,24,36, D=1: ", round.(acf(d1, [12,24,36]).values, digits=3))
+```
+
+```@example ch20
 p1 = plot(acf(d0, 1:36); title="D = 0")
 p2 = plot(acf(d1, 1:36); title="D = 1")
 plot(p1, p2; layout=(2,1), size=(700,500))
@@ -186,6 +194,9 @@ below.
 d2 = diff(diff(diff(logy), 12), 12)   # D = 2: one seasonal difference too many
 println("acf at seasonal lag 12, D=1: ", round(acf(d1, [12]).values[1], digits=3))
 println("acf at seasonal lag 12, D=2: ", round(acf(d2, [12]).values[1], digits=3))
+```
+
+```@example ch20
 plot(acf(d2, 1:36); title="D = 2 (one seasonal difference too many)")
 ```
 
@@ -258,6 +269,9 @@ resid_shift = sarima_resid(m_shift, y_shift, 12)
 dp_shift = diagnostic_plot(resid_shift, m_shift)
 println("minimum Ljung-Box p-value: ", minimum(dp_shift.ljungbox_pvalues))
 println("residual ACF at seasonal lags 12,24: ", round.(acf(resid_shift, [12,24]).values, digits=3))
+```
+
+```@example ch20
 plot(dp_shift; size=(700,500))
 ```
 
@@ -290,6 +304,9 @@ resid_ve = sarima_resid(m_ve, y_ve, 48)
 dp_ve = diagnostic_plot(resid_ve, m_ve)
 println("minimum Ljung-Box p-value: ", minimum(dp_ve.ljungbox_pvalues))
 println("residual ACF at the weekly lag (48×7=336): ", round(acf(resid_ve, [336]).values[1], digits=3))
+```
+
+```@example ch20
 plot(acf(resid_ve, 1:400); title="residual ACF, single-period (daily) SARIMA fit to vic_elec")
 ```
 

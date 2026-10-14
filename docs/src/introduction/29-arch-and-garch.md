@@ -84,6 +84,9 @@ println("AIC:  ARCH(12)=", round(m12.aic,digits=1), "   GARCH(1,1)=", round(mg.a
 println("BIC:  ARCH(12)=", round(m12.bic,digits=1), "   GARCH(1,1)=", round(mg.bic,digits=1))
 using Statistics
 println("correlation between the two conditional-variance paths: ", round(cor(m12.sigma2, mg.sigma2), digits=3))
+```
+
+```@example ch25
 plot(sqrt.(m12.sigma2); label="ARCH(12)")
 plot!(sqrt.(mg.sigma2); label="GARCH(1,1)", title="ARCH(12) vs. GARCH(1,1), real NYSE returns")
 ```
@@ -149,6 +152,9 @@ a_raw = arch_lm_test(r)
 a_std = arch_lm_test(std_resid)
 println("ARCH-LM on raw returns:               stat=", round(a_raw.statistic,digits=2), "  p=", round(a_raw.pvalue,digits=4))
 println("ARCH-LM on standardised residuals:     stat=", round(a_std.statistic,digits=2), "  p=", round(a_std.pvalue,digits=4))
+```
+
+```@example ch25
 plot(acf(std_resid.^2, 1:30); title="ACF of squared standardised residuals", legend=false)
 ```
 

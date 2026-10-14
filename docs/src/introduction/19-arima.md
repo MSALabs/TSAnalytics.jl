@@ -72,6 +72,9 @@ different things about the future.
 ```@example ch19
 println("differenced-scale se:  h=1: ", round(f_diff.se[1], digits=3), "   h=", h, ": ", round(f_diff.se[end], digits=3))
 println("level-scale se:        h=1: ", round(f_level.se[1], digits=3), "   h=", h, ": ", round(f_level.se[end], digits=3))
+```
+
+```@example ch19
 p1 = plot(f_diff.point; ribbon=1.96 .* f_diff.se, label="differenced scale", title="prediction interval width")
 p2 = plot(f_level.point; ribbon=1.96 .* f_level.se, label="level scale", color=:red)
 plot(p1, p2; layout=(1,2), size=(800,320))
@@ -216,7 +219,9 @@ gdp = d.GDP[idx]
 logy = log.(gdp)
 println("ADF p-value, level: ", round(adf_test(logy).pvalue, digits=4))
 println("ADF p-value, first difference: ", round(adf_test(diff(logy)).pvalue, digits=6))
+```
 
+```@example ch19
 m_good = fit_arima(logy, (2,1,0))
 r_good = arima_resid(m_good)
 dp_good = diagnostic_plot(r_good, m_good)
@@ -242,6 +247,9 @@ r_over = arima_resid(m_over)
 dp_over = diagnostic_plot(r_over, m_over)
 println("minimum Ljung-Box p-value, correctly differenced (d=1): ", round(minimum(dp_good.ljungbox_pvalues), digits=4))
 println("minimum Ljung-Box p-value, over-differenced (d=2):      ", round(minimum(dp_over.ljungbox_pvalues), digits=6))
+```
+
+```@example ch19
 plot(dp_over; size=(700,500))
 ```
 

@@ -37,6 +37,9 @@ println("OLS slope: ", round(beta_ols[1], digits=4), "   intercept: ", round(bet
 dw = durbin_watson_test(resid_ols)
 println("Durbin-Watson: ", round(dw.statistic, digits=4))
 println("residual ACF, lags 1-5: ", round.(acf(resid_ols, 1:5).values, digits=3))
+```
+
+```@example ch34
 plot(acf(resid_ols, 1:20); title="OLS residual ACF")
 ```
 

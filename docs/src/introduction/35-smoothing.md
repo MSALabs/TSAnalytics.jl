@@ -41,7 +41,9 @@ end
 filt, Pfilt = run_filter_full(y, q_true, h_true, a0, P0)
 alpha, V, eta, eta_var, eps, eps_var, converged = kalman_smoother(tv, y, a0, P0)
 println("converged: ", converged)
+```
 
+```@example ch31
 plot(true_level; label="true state", linewidth=2)
 plot!(filt; label="filtered", linewidth=2)
 plot!(alpha[1,:]; label="smoothed", linewidth=2, title="simulated local level")
@@ -179,6 +181,9 @@ tv3 = TimeVaryingSSM{Float64}([T3], [Z3], [R3], [diagm([q1,q2,q2])], [reshape([h
 a03 = zeros(3); P03 = 1000.0 .* Matrix{Float64}(I,3,3)
 alpha3, V3, eta3, etavar3, eps3, epsvar3, conv3 = kalman_smoother(tv3, y_jj, a03, P03)
 println("converged: ", conv3)
+```
+
+```@example ch31
 p1 = plot(alpha3[1,:]; ribbon=1.96 .* sqrt.([V3[t][1,1] for t in eachindex(V3)]), label="smoothed level", title="log(Johnson & Johnson earnings)")
 p2 = plot(alpha3[2,:]; label="smoothed seasonal", title="quarterly component")
 plot(p1, p2; layout=(2,1), size=(700,450))

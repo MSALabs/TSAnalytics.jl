@@ -293,6 +293,9 @@ end
 r_final = sarima_resid(m_final, y, 4)
 dp_final = diagnostic_plot(r_final, m_final)
 println("minimum Ljung-Box p-value: ", minimum(dp_final.ljungbox_pvalues))
+```
+
+```@example ch23
 plot(dp_final; size=(700,500))
 ```
 

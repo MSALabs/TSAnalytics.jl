@@ -179,6 +179,9 @@ f_trend = fit_local_linear_trend(y_level)
 println("local level:        q=", round(f_level.q,digits=5), "  h=", round(f_level.h,digits=4), "  loglik=", round(f_level.loglik,digits=3))
 println("local linear trend:  q_level=", round(f_trend.q_level,sigdigits=3), "  q_slope=", round(f_trend.q_slope,sigdigits=3),
         "  h=", round(f_trend.h,digits=4), "  loglik=", round(f_trend.loglik,digits=3))
+```
+
+```@example ch29
 plot(y_level; label="observed", title="global land temperature anomaly", legend=:topleft)
 ```
 

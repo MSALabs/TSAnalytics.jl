@@ -70,6 +70,9 @@ end
 rv = [realized_variance(p) for p in periods]
 m = fit_garch(daily_returns, 1, 1)
 println("correlation, realized variance vs. fitted GARCH conditional variance: ", round(cor(rv, m.sigma2), digits=3))
+```
+
+```@example ch28
 plot(sqrt.(rv[400:500]); label="realized volatility")
 plot!(sqrt.(m.sigma2[400:500]); label="GARCH conditional volatility", title="600 simulated days: measured vs. modelled")
 ```
@@ -130,6 +133,9 @@ steadyday = randn(nbars)
 steadyday .*= sqrt(rv_target / realized_variance(steadyday))  # rescaled to match RV exactly
 println("steady day: RV=", realized_variance(steadyday), "  BV=", bipower_variation(steadyday))
 println("jump day:   RV=", realized_variance(jumpday),   "  BV=", bipower_variation(jumpday))
+```
+
+```@example ch28
 p1 = plot(cumsum(steadyday); title="steady volatility all day", legend=false)
 p2 = plot(cumsum(jumpday); title="one large jump, otherwise calm", legend=false)
 plot(p1, p2; layout=(2,1), size=(700,400))

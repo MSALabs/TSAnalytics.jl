@@ -51,6 +51,9 @@ println("drifting:  Q_beta=", round(m_tvss.Q_beta[1],digits=5), "  ar=", round(m
 println("filtered beta, first 5: ", round.(m_tvss.beta_filtered[1,1:5],digits=3))
 println("filtered beta, around t=50: ", round.(m_tvss.beta_filtered[1,46:54],digits=3))
 println("filtered beta, last 5: ", round.(m_tvss.beta_filtered[1,end-4:end],digits=3))
+```
+
+```@example ch35
 plot(m_tvss.beta_filtered[1,:]; label="filtered coefficient", linewidth=2)
 hline!([m_fixed.beta[1]]; label="fixed-coefficient estimate", linestyle=:dash, title="the coefficient's own path")
 ```
@@ -82,6 +85,9 @@ alpha_f, V_f, eta_f, etavar_f, eps_f, epsvar_f, conv_f = kalman_smoother(tv_full
 println("smoother converged: ", conv_f)
 println("smoothed beta, first 5: ", round.(alpha_f[2,1:5],digits=3), "  (true value there was 2.0)")
 println("smoothed endpoint vs filtered endpoint: ", alpha_f[2,end], "  vs  ", m_tvss.beta_filtered[1,end])
+```
+
+```@example ch35
 plot(m_tvss.beta_filtered[1,:]; label="filtered", linewidth=1.5)
 plot!(alpha_f[2,:]; ribbon=1.96 .* sqrt.([V_f[t][2,2] for t in 1:n]), label="smoothed", linewidth=2,
       title="filtered versus smoothed coefficient path")

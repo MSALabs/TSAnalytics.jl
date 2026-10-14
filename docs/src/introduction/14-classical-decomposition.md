@@ -35,6 +35,9 @@ oddly specific filter finally earns its keep.
 ```@example ch14
 println("total points: ", length(d.Beer))
 println("trend NaNs: ", count(isnan, r.trend))
+```
+
+```@example ch14
 plot(r.trend[1:15]; title="the trend estimate, first 15 quarters", marker=:circle, legend=false)
 ```
 

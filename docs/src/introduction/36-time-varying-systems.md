@@ -128,6 +128,9 @@ tv_fit = TimeVaryingSSM{Float64}([T_], Zseq, [R_], [reshape([q_hat],1,1)], [resh
 a0 = [0.0]; P0 = reshape([1000.0],1,1)
 alpha_b, V_b, eta_b, etavar_b, eps_b, epsvar_b, conv_b = kalman_smoother(tv_fit, y1, a0, P0)
 println("q=", round(q_hat,digits=4), "  h=", round(h_hat,digits=4))
+```
+
+```@example ch32
 plot(alpha_b[1,:]; ribbon=1.96 .* sqrt.([V_b[t][1,1] for t in 1:n1]), label="smoothed coefficient", linewidth=2)
 plot!(rolling_beta(x1, y1, 20); label="20-point rolling estimate", linestyle=:dash, title="model versus rolling window")
 ```

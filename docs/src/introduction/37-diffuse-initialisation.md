@@ -144,6 +144,9 @@ for kappa in (1e4, 1e6, 1e8, 1e10, 1e12)
     ll, v, F, conv = approx_ll(kappa)
     println("κ=", kappa, "  loglik=", round(ll, digits=6), "  diff from exact=", round(ll - loglik_exact, digits=4))
 end
+```
+
+```@example ch33
 plot([1e4,1e6,1e8,1e10,1e12], [approx_ll(k)[1] - loglik_exact for k in (1e4,1e6,1e8,1e10,1e12)];
      xscale=:log10, marker=:circle, xlabel="κ", ylabel="total log-likelihood minus exact", legend=false,
      title="reading this chart naively gives the wrong answer")

@@ -230,6 +230,9 @@ fx(name) = readdlm(joinpath(pkgdir(TSAnalytics), "test", "fixtures", "var", name
 st, nu = fx("var2_p1.csv"), fx("var2_nearunit.csv")
 println("largest roots: ", round(roots(fit_var(st, 1))[1], digits = 2), " and ",
         round(roots(fit_var(nu, 1))[1], digits = 2))
+```
+
+```@example var
 plot(plot(forecast(fit_var(st, 1), 40); history = st),
      plot(forecast(fit_var(nu, 1), 40); history = nu);
      layout = (1, 2), size = (800, 500), plot_title = "root 0.50 (left) and 0.97 (right)",

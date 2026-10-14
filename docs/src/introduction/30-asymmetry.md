@@ -25,6 +25,9 @@ println("mean volatility over the following $(h) days:")
 println("  after the ", length(vol_after_falls), " largest falls: ", round(mean(vol_after_falls), digits=5))
 println("  after the ", length(vol_after_rises), " largest rises: ", round(mean(vol_after_rises), digits=5))
 println("  ratio: ", round(mean(vol_after_falls)/mean(vol_after_rises), digits=3))
+```
+
+```@example ch26
 histogram(vol_after_falls; alpha=0.6, label="after the largest falls", bins=10)
 histogram!(vol_after_rises; alpha=0.6, label="after the largest rises", bins=10,
            title="volatility in the 20 days following the largest moves", xlabel="20-day standard deviation of returns")
@@ -222,6 +225,9 @@ its `γ` means the same thing.
 for (nm, m) in [("GARCH", mg), ("GJR", m_gjr), ("EGARCH", m_e)]
     println(nm, ": loglik=", round(m.loglik, digits=1), "  aic=", round(m.aic, digits=1), "  bic=", round(m.bic, digits=1))
 end
+```
+
+```@example ch26
 plot(sqrt.(mg.sigma2); label="GARCH", alpha=0.8)
 plot!(sqrt.(m_gjr.sigma2); label="GJR", alpha=0.8)
 plot!(sqrt.(m_e.sigma2); label="EGARCH", alpha=0.8, title="conditional volatility, all three, real NYSE returns")

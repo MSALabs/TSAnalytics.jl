@@ -48,6 +48,9 @@ mistake when reversing a differenced forecast.
 ```@example primitives
 ma = moving_average(y, 12)
 println("length: ", length(ma), "   first finite value at index: ", findfirst(!isnan, ma))
+```
+
+```@example primitives
 plot(y; label="observed", legend=:topleft)
 plot!(ma; label="12-month centred MA", linewidth=2)
 ```
@@ -133,6 +136,9 @@ soi = dataset("soi").value
 c = ccf(soi, rec, 16)
 println("peak at lag ", c.lags[argmax(abs.(c.values))],
         "   value ", round(c.values[argmax(abs.(c.values))], digits=4))
+```
+
+```@example primitives
 plot(c; title="SOI against Recruitment")
 ```
 
@@ -171,6 +177,9 @@ have the normalisation you expect.
 pg = periodogram(y)
 i = argmax(pg.spec)
 println("peak frequency: ", round(pg.freq[i], digits=5), "  →  period ", round(1/pg.freq[i], digits=2))
+```
+
+```@example primitives
 plot(pg; title="periodogram")
 ```
 
@@ -203,6 +212,9 @@ println("AR order chosen by AIC: ", f.order)
 println("spec_ar peak    : ", round(sa.freq[argmax(sa.spec)], digits=5))
 println("periodogram peak: ", round(periodogram(dy_s).freq[argmax(periodogram(dy_s).spec)], digits=5))
 println("1/12            : ", round(1/12, digits=5))
+```
+
+```@example primitives
 plot(sa)
 ```
 

@@ -60,6 +60,9 @@ println("  fitted SARIMA(0,1,1)(0,1,1)[4]:  ", round(rmse(test, f.point), digits
 println("  seasonal naive:                  ", round(rmse(test, f_sn.point), digits=2))
 println("MAE:   sarima=", round(mae(test, f.point), digits=2), "   seasonal naive=", round(mae(test, f_sn.point), digits=2))
 println("MAPE:  sarima=", round(mape(test, f.point), digits=2), "%   seasonal naive=", round(mape(test, f_sn.point), digits=2), "%")
+```
+
+```@example ch22
 plot(train[end-20:end]; label="observed", size=(700,350))
 plot!(21:(21+h-1), f.point; label="SARIMA forecast", color=:red, linewidth=2)
 plot!(21:(21+h-1), f_sn.point; label="seasonal naive", color=:green, linewidth=2)
@@ -84,6 +87,9 @@ watching only the SARIMA line would know it had lost.
 p1 = plot(train[end-20:end]; label="observed")
 plot!(21:(21+h-1), f_naive.point; ribbon=(1.96 .* f_naive.se, 1.96 .* f_naive.se), label="naive, 95%", color=:red)
 println("naive se by horizon: ", round.(f_naive.se, digits=1))
+```
+
+```@example ch22
 p1
 ```
 
@@ -97,6 +103,9 @@ accumulates without bound as the horizon grows.
 
 ```@example ch22
 println("seasonal naive se by horizon: ", round.(f_sn.se, digits=1))
+```
+
+```@example ch22
 plot(f_sn.point; ribbon=(1.96 .* f_sn.se, 1.96 .* f_sn.se), title="seasonal naive intervals", legend=false)
 ```
 
@@ -187,6 +196,9 @@ nothing about it announcing that fact.
 println("MAE:   sarima=", round(mae(test,f.point),digits=1), "  seasonal_naive=", round(mae(test,f_sn.point),digits=1), "  naive=", round(mae(test,f_naive.point),digits=1))
 println("RMSE:  sarima=", round(rmse(test,f.point),digits=1), "  seasonal_naive=", round(rmse(test,f_sn.point),digits=1), "  naive=", round(rmse(test,f_naive.point),digits=1))
 println("MAPE:  sarima=", round(mape(test,f.point),digits=2), "  seasonal_naive=", round(mape(test,f_sn.point),digits=2), "  naive=", round(mape(test,f_naive.point),digits=2))
+```
+
+```@example ch22
 bar(["sarima","seasonal naive","naive"], [mae(test,f.point), mae(test,f_sn.point), mae(test,f_naive.point)]; legend=false, title="MAE across three methods")
 ```
 

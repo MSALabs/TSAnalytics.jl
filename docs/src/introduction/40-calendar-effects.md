@@ -22,6 +22,9 @@ iip = dataset("iip_india")
 y, dt, n = iip.value, iip.date, length(iip.value)
 oct_years = count(yr -> diwali_month[yr]==10, 2011:2025)
 println("Diwali in October: ", oct_years, " years    in November: ", 15-oct_years)
+```
+
+```@example ch36
 plot(dt, y; label="iip_india (General Index)", title="India's industrial production, 2011-2026",
      ylabel="index, 2011-12 = 100")
 ```
@@ -104,6 +107,9 @@ y_td = 500.0 .+ 12.0 .* tdvec .+ 5.0 .* randn(length(tdvec))
 beta_td = (tdvec .- mean(tdvec)) \ (y_td .- mean(y_td))
 y_td_adj = y_td .- beta_td .* (tdvec .- mean(tdvec))
 println("std, raw: ", round(std(y_td),digits=2), "   std, trading-day-adjusted: ", round(std(y_td_adj),digits=2))
+```
+
+```@example ch36
 plot(y_td; label="raw", linewidth=1.5)
 plot!(y_td_adj; label="trading-day-adjusted", linewidth=2, title="some of the noise was arithmetic")
 ```
@@ -132,6 +138,9 @@ println("Easter 2024 (known: 31 March): ", easter_date(2024))
 println("Easter 2025 (known: 20 April): ", easter_date(2025))
 easter_months = [month(easter_date(yr)) for yr in 2005:2024]
 println("March: ", count(==(3),easter_months), "   April: ", count(==(4),easter_months), "  (2005-2024)")
+```
+
+```@example ch36
 histogram(easter_months; bins=2.5:1:4.5, xticks=(3:4,["March","April"]), legend=false,
           title="Easter's own twenty years")
 ```
@@ -149,6 +158,9 @@ that has no closed-form rule at all.
 ```@example ch36
 Xdiwali = Float64.([month(d)==diwali_month[year(d)] ? 1.0 : 0.0 for d in dt])
 println("Diwali-month indicator fires ", Int(sum(Xdiwali)), " times in ", n, " months")
+```
+
+```@example ch36
 plot(dt, Xdiwali; label="Diwali-month indicator", title="the regressor itself, drawn as a series")
 ```
 
