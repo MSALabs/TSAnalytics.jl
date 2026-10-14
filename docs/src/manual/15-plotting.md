@@ -155,8 +155,10 @@ their ACF; [`cointegration_plot`](@ref) draws the estimated equilibrium
 relations of a [`fit_vecm`](@ref) model or a [`johansen_test`](@ref).
 Impulse responses and variance decompositions plot directly:
 `plot(irf(m, h))`, `plot(fevd(m, h))`. See
-[Vector Autoregression](11-vector-autoregression.md) and
-[Cointegration](12-cointegration.md) for each in context.
+[Vector Autoregression](11-vector-autoregression.md),
+[Causality and Impulse Responses](12-causality-and-impulse-responses.md),
+[Cointegration and VECM](13-cointegration-and-vecm.md) and
+[Structural VAR](14-structural-var.md) for each in context.
 
 ## Seasonal subseries plot
 

@@ -206,4 +206,4 @@ piece needs before it can start.
 
 - [Appendix B](B-verification.md) — the standard every number here was held to
 - [Appendix C](C-further-reading.md) — where to read further on everything above
-- [Coming from R or Python](../manual/14-coming-from-r-python.md) — what to reach for in the meantime
+- [Coming from R or Python](../manual/16-coming-from-r-python.md) — what to reach for in the meantime

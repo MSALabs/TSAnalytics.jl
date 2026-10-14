@@ -482,7 +482,7 @@ Two of `ca.jo`'s arguments read as if they mean something they do not.
 And `ecdet = "none"` does **not** mean no deterministic terms: it still
 fits a constant, unrestricted, outside the cointegrating relation. It is
 `deterministic = :const`, which is `statsmodels`' `det_order = 0`. The
-full mapping is in [Cointegration](12-cointegration.md).
+full mapping is in [Cointegration](13-cointegration-and-vecm.md).
 
 ### Johansen critical values with an unrestricted constant
 

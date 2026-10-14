@@ -770,7 +770,7 @@ deseasonalised scale.
 
 The prediction intervals differ from both references in several further
 ways, three of which are defects in the references; they are enumerated
-in [Coming from R or Python](14-coming-from-r-python.md).
+in [Coming from R or Python](16-coming-from-r-python.md).
 
 ## TBATS: seasonality that ETS cannot represent
 
@@ -929,5 +929,5 @@ is one formula in R, not a different model.
 
 - [Fitting ARMA Models](04-fitting-arma-models.md) — the other way to model a seasonal series
 - [Forecasting and Accuracy](09-forecasting-and-accuracy.md) — evaluating what comes out of `forecast`
-- [Coming from R or Python](14-coming-from-r-python.md) — every documented divergence in one place
+- [Coming from R or Python](16-coming-from-r-python.md) — every documented divergence in one place
 - [API: Exponential Smoothing](../api/exponential-smoothing.md) — `fit_ets`, `auto_ets`, `fit_theta`, `fit_tbats`, `holt_winters`

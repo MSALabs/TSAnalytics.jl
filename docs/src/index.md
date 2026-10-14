@@ -104,7 +104,7 @@ Full detail on all of these lives in the repository README.
   -- the Introduction is written to be readable without Julia in front
   of you.
 - Coming from R or Python? The Manual's
-  [translation page](manual/14-coming-from-r-python.md) maps common
+  [translation page](manual/16-coming-from-r-python.md) maps common
   workflows directly.
 - Already know the task? The [Manual](manual/01-primitives.md) is
   organized around "how do I ..." questions, not a walkthrough.
@@ -122,11 +122,12 @@ documentation? Please open an issue at
   customizing your first model -- read it in order, once, the first
   time you use the package.
 - **[Manual](manual/01-primitives.md)** is task-oriented reference:
-  fourteen "how do I ..." pages, one per area (primitives, diagnostics,
+  sixteen "how do I ..." pages, one per area (primitives, diagnostics,
   decomposition, fitting ARMA models, automatic order selection, GARCH
   and volatility, state space and the Kalman filter, ARIMAX and
   regression, forecasting and accuracy, exponential smoothing, vector
-  autoregression, cointegration, plotting, and coming from R/Python)
+  autoregression, causality and impulse responses, cointegration and
+  the VECM, structural VARs, plotting, and coming from R/Python)
   -- come back to whichever page matches the task in front of
   you.
 - **[Introduction to Time Series Analysis](introduction/01-why-model-a-time-series.md)**

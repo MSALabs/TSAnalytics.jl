@@ -4,7 +4,7 @@ The estimated cointegrating relation between log GNP and log consumption
 in `econ5`, with its autocorrelation — the display that shows whether an
 "equilibrium" actually behaves like one, and one no Python library draws.
 The worked explanation is in
-[Manual: Cointegration and VECM](../manual/12-cointegration.md).
+[Manual: Cointegration and VECM](../manual/13-cointegration-and-vecm.md).
 
 ```@example apicoint
 using TSAnalytics, Plots

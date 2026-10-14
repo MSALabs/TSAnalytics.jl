@@ -3,7 +3,8 @@
 A fitted VAR's impulse responses, with analytic ±1.96 standard-error
 bands — the output most of this page exists to produce. The worked
 explanation is in
-[Manual: Vector Autoregression](../manual/11-vector-autoregression.md).
+[Manual: Vector Autoregression](../manual/11-vector-autoregression.md) and
+[Manual: Causality and Impulse Responses](../manual/12-causality-and-impulse-responses.md).
 
 ```@example apivar
 using TSAnalytics, Plots

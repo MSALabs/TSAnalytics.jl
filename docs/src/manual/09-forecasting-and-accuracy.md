@@ -42,7 +42,7 @@ different object:
 | [`ARXModel`](@ref) | a point vector, from `predict(m, h)` | the least-squares AR-X of Stage 5 has no `forecast` method or intervals |
 
 Every [`Forecast`](@ref) and [`VARForecast`](@ref) plots as a fan chart
-with `plot(f; history = y)` — see [Plotting](13-plotting.md#Forecasts).
+with `plot(f; history = y)` — see [Plotting](15-plotting.md#Forecasts).
 
 `StatsAPI.predict(m, h; level=level)` is exactly equivalent — the two are
 mechanical aliases and neither is deprecated. `forecast` exists for

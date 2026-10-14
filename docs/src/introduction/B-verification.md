@@ -225,9 +225,9 @@ agree with both references to `1e-10`; only the critical values differ.
 
 All of these are written up at their point of use — the exponential
 smoothing cases in [Exponential Smoothing](../manual/10-exponential-smoothing.md),
-the multivariate ones in [Vector Autoregression](../manual/11-vector-autoregression.md)
-and [Cointegration](../manual/12-cointegration.md) — and collected in
-[Coming from R or Python](../manual/14-coming-from-r-python.md).
+the multivariate ones in [Causality and Impulse Responses](../manual/12-causality-and-impulse-responses.md)
+and [Cointegration and VECM](../manual/13-cointegration-and-vecm.md) — and collected in
+[Coming from R or Python](../manual/16-coming-from-r-python.md).
 
 ## The honest limits
 
@@ -248,4 +248,4 @@ answer. That is what [Appendix A](A-checklist.md) is for.
 
 - [Appendix A](A-checklist.md) — the checklist
 - [Appendix C](C-further-reading.md) — the six reference books the policy is checked against, and the primary papers
-- [Coming from R or Python](../manual/14-coming-from-r-python.md) — every documented divergence in one place
+- [Coming from R or Python](../manual/16-coming-from-r-python.md) — every documented divergence in one place

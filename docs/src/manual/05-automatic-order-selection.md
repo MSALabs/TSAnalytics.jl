@@ -212,7 +212,7 @@ The remaining two searches are multivariate:
   Autoregression](11-vector-autoregression.md#Choosing-the-order).
 - [`coint_rank`](@ref) runs Johansen's sequence of tests and stops at
   the first rank not rejected — see
-  [Cointegration](12-cointegration.md).
+  [Cointegration](13-cointegration-and-vecm.md).
 
 And the differencing order itself is chosen by tests, not a criterion:
 [`nsdiffs`](@ref) for the seasonal `D`, which `auto_arima` calls when

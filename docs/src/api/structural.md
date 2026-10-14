@@ -3,7 +3,7 @@
 A Blanchard-Quah decomposition of GNP growth and unemployment: the
 supply shock is the one allowed a permanent effect on output, the demand
 shock is not. The worked explanation is in
-[Manual: Vector Autoregression](../manual/11-vector-autoregression.md#Structural-VARs).
+[Manual: Structural VAR](../manual/14-structural-var.md).
 
 ```@example apisvar
 using TSAnalytics, Plots
