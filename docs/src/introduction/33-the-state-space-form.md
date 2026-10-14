@@ -214,6 +214,9 @@ tv_gap = TimeVaryingSSM{Float64}([reshape([1.0],1,1)], [reshape([1.0],1,1)],
                                   [reshape([1.0],1,1)], [reshape([0.04],1,1)], [reshape([0.25],1,1)], 1)
 loglik_g, v_g, F_g, nd_g, converged_g = kalman_filter_diffuse(tv_gap, y_gap; diffuse_idx=[1])
 println("converged: ", converged_g)
+```
+
+```@example ch29
 P_g = F_g .- 0.25  # F = P + H, H constant here, so P is recovered by subtraction
 plot(1:n_gap, P_g; label="state uncertainty", xlabel="time", ylabel="variance",
      title="a gap in the middle of a local level")

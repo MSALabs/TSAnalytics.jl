@@ -75,6 +75,12 @@ makedocs(;
                 "introduction/22-forecasting.md",
                 "introduction/23-evaluating-honestly.md",
             ],
+            "Part V -- Models That Forget" => [
+                "introduction/24-weighting-the-recent-past.md",
+                "introduction/25-a-taxonomy-of-thirty.md",
+                "introduction/26-when-the-error-is-multiplicative.md",
+                "introduction/27-theta-and-seasonality-ets-cannot-represent.md",
+            ],
             "Part VI -- Models That Get Turbulent" => [
                 "introduction/28-why-variance-changes.md",
                 "introduction/29-arch-and-garch.md",
@@ -99,6 +105,15 @@ makedocs(;
                 "introduction/42-official-seasonal-adjustment.md",
                 "introduction/43-x13-from-julia.md",
                 "introduction/44-adjusting-an-indian-series.md",
+            ],
+            "Part X -- Series That Move Together" => [
+                "introduction/45-two-series-at-once.md",
+                "introduction/46-fitting-a-vector-autoregression.md",
+                "introduction/47-does-one-series-help-predict-another.md",
+                "introduction/48-tracing-a-shock.md",
+                "introduction/49-series-that-cannot-drift-apart.md",
+                "introduction/50-how-many-relations.md",
+                "introduction/51-shocks-with-names.md",
             ],
             "Part XI -- The Frontier" => [
                 "introduction/52-the-frontier.md",

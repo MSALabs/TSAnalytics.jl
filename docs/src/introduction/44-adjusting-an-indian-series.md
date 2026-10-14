@@ -165,11 +165,17 @@ its Moving Holidays chapter works this end to end, including the window
 choice this chapter flagged and the diagnostics for checking whether
 the adjustment worked.
 
-This book ends at the boundary. What you have from Part III is enough
-to decompose a series for your own understanding, and what
-[Chapter 40](40-calendar-effects.md) gives you is enough to model a
-moving holiday inside an ARIMA. Publishing an official adjusted series
-is a different job, and it has its own package and its own book.
+Seasonal adjustment, in this book, ends at that boundary. What you
+have from Part III is enough to decompose a series for your own
+understanding, and what [Chapter 40](40-calendar-effects.md) gives you
+is enough to model a moving holiday inside an ARIMA. Publishing an
+official adjusted series is a different job, and it has its own package
+and its own book.
+
+The book itself turns, in Part X, from one series to several: what two
+series that move together can tell you about each other, starting with
+India's imports and exports in
+[Chapter 45](45-two-series-at-once.md).
 
 ## See also
 

@@ -213,6 +213,7 @@ y_break, x_break = mkseries(vcat(fill(1.0,75), fill(3.0,75)))
 q_const = fit_and_report(y_const, x_const, "genuinely constant")
 q_drift = fit_and_report(y_drift, x_drift, "slowly drifting")
 q_break = fit_and_report(y_break, x_break, "a sharp break")
+nothing # hide
 ```
 
 Three series, three fitted process variances, in the order that should

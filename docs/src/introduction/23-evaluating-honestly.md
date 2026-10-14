@@ -321,8 +321,13 @@ choose its order automatically while knowing how often that automation
 is actually right, forecast with honestly widening intervals, and
 evaluate the result in a way that does not flatter it.
 
-Every model built across this Part has assumed constant variance.
-Chapter 11 showed a real series where that assumption was plainly
-false, and nothing built since has addressed it.
+Every model built across this Part also treats the whole past as
+evidence of one kind, weighed through fixed coefficients. Practitioners
+reach just as often for the other family — models that deliberately
+weight the recent past more heavily and let the old forget. That is
+[Part V](24-weighting-the-recent-past.md).
 
-Part VI does.
+And every model built so far has assumed constant variance.
+[Chapter 11](11-testing-distribution-and-variance.md) showed a real
+series where that assumption was plainly false, and nothing built since
+has addressed it. Part VI does.

@@ -376,7 +376,7 @@ pattern. Nothing in a plot of it says *this is corrupted*. Every result
 that had been computed from the bad copy had to be regenerated once
 this came to light.
 
-State the operating principle plainly, because the next forty chapters
+State the operating principle plainly, because the next fifty chapters
 lean on it: **check against a primary source, and do not trust a
 number because it arrived from somewhere reputable.** A file that has
 sat inside a project for a while, unquestioned, is not the same thing

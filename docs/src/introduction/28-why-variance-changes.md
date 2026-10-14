@@ -1,9 +1,12 @@
 # Why Variance Changes
 
 Every model in Part IV assumed the variance of the noise was a fixed
-number, quietly, without ever saying so out loud. Chapter 11 showed a
-series where that assumption was plainly false and nothing built since
-has done anything about it. This chapter picks the thread back up.
+number, quietly, without ever saying so out loud. Part V went one step
+further and let the noise grow with the level of the series — but the
+level is something the model already knows. A variance that moves *on
+its own*, quiet for months and then suddenly not, nothing built so far
+can represent. Chapter 11 showed a series where that was plainly the
+case. This chapter picks the thread back up.
 
 ## The residuals that passed
 

@@ -301,6 +301,7 @@ try
 catch e
     println("forecast(m_with, 3) -- ", typeof(e), " (no method exists for SarimaxModel)")
 end
+nothing # hide
 ```
 
 **A real gap, named rather than worked around.**
