@@ -224,6 +224,7 @@ try
 catch err
     println(sprint(showerror, err)[1:120], " …")
 end
+nothing # hide
 ```
 
 ### Forecast error variance decomposition

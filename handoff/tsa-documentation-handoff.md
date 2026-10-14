@@ -480,6 +480,8 @@ Items 1–5 are unblocked today. Only two pages and one appendix wait on decisio
 
 # Documentation debt, audited 2026-10-03
 
+**Resolved 2026-10-14.** All five gaps below are closed — Gap 1 by a new Part V (chapters 24–27), Gaps 2–5 in manual 05/09 and Appendices B/C — together with the Stage 10 documentation. See `development-sequence.md`, "Documentation for Stages 9 and 10".
+
 Stage 9 shipped `fit_ets`/`auto_ets` (all fifteen models in R's default
 space), `fit_theta` and `fit_tbats`. The audit below was run against the
 tree at `4bb66f3`. **Nothing here is a stub or a wrong number** — it is

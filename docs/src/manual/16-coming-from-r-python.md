@@ -377,8 +377,11 @@ period 4. Pass `deseasonalize=false` when you know better.
 
 This is the largest of the R divergences documented here, and the one most
 likely to matter in practice. For a **seasonal** TBATS model R's
-`forecast::tbats` uses `c_j = alpha` for every shock weight, where the
-correct weight is `w'F^(j-1)g`. At `h = 8` on the bundled quarterly
+`forecast::tbats` builds the shock weights `w'F^(j-1)g` from a `g` with the
+trend's `β` missing — `forecast.tbats` passes `object$beta.v`, a field a
+fitted `tbats` object does not carry, so `β` is `NULL` — and on this
+fixture, whose seasonal `γ`s are about `1e-4`, the weights reduce to
+little more than `alpha`. Without a trend the two agree. At `h = 8` on the bundled quarterly
 fixture R's standard error is `2.640`, against `7.31` from this package,
 from Python's `tbats` package, and from three million simulated paths of
 the model's own recursion. R's interval is **2.8 times too narrow**, and
@@ -527,8 +530,21 @@ Whatever the restrictions, `SVARResults.llf` is the unrestricted VAR's
 log-likelihood, so an over-identified model looks just-identified. The
 usual two-variable example, `A = [1 0; E 1]` with `B = I`, is
 over-identified — it also fixes both structural variances at one — and
-`vars` rejects it (`LR = 121.6` on 2 df). [`fit_svar`](@ref) reports the
-structural likelihood and the LR test.
+the likelihood ratio rejects it (`LR = 31.8` on 2 df on the bundled
+fixture). [`fit_svar`](@ref) reports the structural likelihood and that
+LR test.
+
+### `vars`' over-identification statistic is not a likelihood ratio here
+
+`vars` computes `T(ln|Σ_r| − ln|Σ_u|)`, Lütkepohl's short form, which
+drops `tr(Σ_r⁻¹Σ_u) − K`. That term is zero when the structural
+variances are free, so the two agree on most models. When they are
+pinned — the unit-diagonal `A` with `B = I` above — `|Σ_r| = 1` and the
+short form is `−T ln|Σ_u|`, which changes with the units of the data: on
+the same fixture `vars` prints `121.6`, and on India's trade VAR in
+[Chapter 51](../introduction/51-shocks-with-names.md) a negative
+`−4.30` with `p = 1`. [`fit_svar`](@ref) computes `2(ℓ_u − ℓ_r)` in
+full.
 
 ### Long-run effects of an unstable VAR
 

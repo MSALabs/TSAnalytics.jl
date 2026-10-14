@@ -1,6 +1,6 @@
 # Handoff: Documentation for Stage 9 — API reference, manual, and the book
 
-**Status: pending.** Unlike the Stage 10 documentation handoff, the code
+**Status: implemented (2026-10-14)** — see `development-sequence.md`, "Documentation for Stages 9 and 10", for what was built and where it departs from this document. *Originally:* pending. Unlike the Stage 10 documentation handoff, the code
 here is **already built and already partly documented** — so this is a
 restructuring and a gap-filling job, not a from-scratch one. Read §1
 before planning anything; what is missing is not what you would guess.

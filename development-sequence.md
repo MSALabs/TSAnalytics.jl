@@ -321,7 +321,7 @@ capacity.
 | 10.4b | Cointegration — Phillips-Ouliaris **✅ built** (`phillips_ouliaris_test`/`PhillipsOuliarisTest` — the `Pu` variance ratio and the normalization-invariant `Pz` trace statistic — plus `reject(t; level)`, which compares in each test's own tail direction by level *value*; in `src/cointegration.jl`). **Critical values transcribed from Phillips & Ouliaris (1990), Appendix B, Tables IIIa–IVc** (all seven sizes, m = 2…6), checked against all 90 of `urca::ca.po`'s hard-coded 10/5/1% values: 0 mismatches. `Pu` (all three deterministic cases) and `Pz` without deterministic terms match `ca.po` to `1e-10` on four fixtures. **A `urca` defect, not followed:** for `Pz` with a constant or trend the paper builds `M_zz` from the demeaned/detrended data (§3 remark (f)), which is what Tables IVb/IVc were simulated under; `ca.po` uses the raw `z'z`. Its statistic therefore changes when a constant is added to the data (71.86 → 38.84 on `coint2_yes`), and in 4000 simulations of independent random walks at n = 500 it rejected 0.25% (constant) and 0% (trend) of the time at the nominal 5%, against 4.3% and 4.2% for the paper's statistic. On `coint2_trend` the paper's `Pz` finds the cointegration at 1% where `ca.po`'s misses it at every level. The tests reproduce `ca.po`'s number by its raw-`M_zz` variant, so the divergence is pinned, not just asserted. Bandwidth `:short`/`:long` are `ca.po`'s rules at T = n − 1 (5 and 15 at n = 250); the handoff's 2 and 8 were `tseries::po.test`'s, a different statistic. No p-value (the paper tabulates quantiles): `pvalue` refuses by name — `tseries::po.test` reports its table bounds 0.01 and 0.15 as p-values. `tseries`' own Z statistic is not shipped. New `test/test_phillips_ouliaris.jl` (**405 tests**) | 2.1, 1.4 | `urca::ca.po`, `tseries::po.test` (R only) |
 | 10.5 | Cointegration — Johansen **✅ built** (`johansen_test`/`JohansenTest`, `coint_rank`, `normalize_beta`; in `src/cointegration.jl`). Trace and maximum-eigenvalue statistics, `r = 0` first with the ranks stored, **dual-verified**: they match `urca::ca.jo` (11 configurations, three `ecdet`, both `spec`, K = 2 and 3) and `statsmodels`' `coint_johansen` (9 configurations) to `≤ 1.3e-10`, eigenvalues to `≤ 5e-14`, and the normalized β and α reproduce `urca`'s `V`/`W` and `cajorls`' identity-normalized β. One `_mols` call for both auxiliary regressions; the eigenproblem in symmetric-definite form via `eigen(A, B)`, so eigenvalues are real by construction (`statsmodels` gets complex ones and discards the imaginary part with a warning on every call). **Five deterministic cases** (`:none`, `:const`, `:const_restricted`, `:trend`, `:trend_restricted`), each mapped in the docstring — `urca`'s `ecdet = "none"` is `:const`, an unrestricted constant, despite the name. **Critical values transcribed from Osterwald-Lenum (1992), Tables 0, 1, 1\*, 2, 2\*** (90/95/99%, p − r ≤ 11, so K ≤ 11); the 1\* and 2\* transcriptions equal `urca`'s exactly. **The handoff's table decision was reversed on reading the paper:** `:const` uses Table 1 (5% trace 3.76, 15.41, 29.68 …), which `statsmodels`' independently simulated table matches within simulation error; `urca`'s `ecdet = "none"` uses Table 1.1\* (8.18, 17.95, 31.52), the side case the paper calls superfluous under Johansen (1992) — and the `3.84` smallest block the handoff called a defect is what the theory gives (charter §5.13 item 18). No p-value (`pvalue` refuses by name); K > 11 and `lags = 0` refused (`statsmodels` returns NaN critical values at 13 series and accepts `k_ar_diff = 0`). Depends on 10.0, not 10.1 — Johansen never builds a `VARModel`. New `test/test_johansen.jl` (**940 tests**) | 10.0 | `urca::ca.jo` (R) · `statsmodels.tsa.vector_ar.vecm.coint_johansen` (Python) |
 | 10.6 | VECM **✅ built** (`fit_vecm`/`VECMModel`, `var_rep`, plus `normalize_beta`, `forecast`/`predict`, `irf`/`fevd`, `roots`, `is_stable` and `lr_effects` methods for it; new `src/vecm.jl`). **Three agreeing references, both estimators:** ML matches `statsmodels`' `VECM` on all seven configurations (β, α, Γ, Σ, log-likelihood, residuals, `var_rep`, forecasts, and **all three standard-error blocks**) to `≤ 1e-11`, `urca::cajorls` + `vars::vec2var` on five (β, α, constant, df-adjusted Σ, levels-VAR matrices, forecasts), and `tsDyn::VECM(estim = "ML")`; `method = :twostep` matches `tsDyn`'s `"2OLS"` coefficients to `1.6e-15`. Shares `_johansen_rrr` and the five-value `deterministic` vocabulary with `johansen_test`, and the identity-normalized β agrees between the two at every rank and case. β standard errors from Lütkepohl (2005, Prop. 7.6), verified by hand and against `statsmodels`. Forecasts and impulse responses delegate to the 10.1/10.3 recursions through the levels VAR (no second recursion); a test rebuilds the VECM's residuals from that VAR, and the `K − r` unit roots are asserted. **Two reference details resolved:** `cajorls`' lag coefficients are `ca.jo`'s default `spec = "longrun"` form, `Γ*_i = Γ_i + Π` — the handoff's §7.2 test compared them to Γ directly and would have failed; the identity is asserted instead. And `tsDyn`'s 2OLS runs the cointegrating regression **without an intercept** when `include = "const"` (the constant goes in the ECM) — so `:twostep` puts unrestricted terms in the ECM and restricted ones in the static regression. Refusals: rank 0 or ≥ K (`statsmodels` returns an empty β / the identity), `lags = 0`, `:twostep` above rank 1 (`tsDyn` silently switches to ML), `lr_effects` (unit roots by construction), analytic/bootstrap IRF uncertainty (the 10.3 formulas are for an unrestricted VAR), and `:first_unit` at rank > 1, which belongs to Johansen's eigenvector basis. New `test/test_vecm.jl` (**418 tests**) | 10.5 | `urca::cajorls`, `vars::vec2var`, `tsDyn` (R) · `statsmodels VECM` (Python) |
-| 10.7 | Structural VAR (SVAR) **✅ built** (`fit_svar`/`SVARModel` for the A-, B- and AB-models, `blanchard_quah`, and structural `irf`/`fevd` methods that reuse 10.3's recursion with `P = A⁻¹B`; new `src/svar.jl`). Free elements marked with `missing` (`NaN` refused by name — `statsmodels`' marker is the string `"E"` and `np.nan` silently estimates nothing). Concentrated likelihood at the df-adjusted Σ (what both references decompose); `:scoring` (Amisano-Giannini, the expected information) and `:mle` (`_optimize`) reach the same optimum; standard errors from the covariance-structure information. **Verified:** every just-identified scheme gives `P P' = Σ` to `1e-10`, the recursive ones reproduce the Cholesky factor, the two-parameter A- and B-models hit their analytic optimum `∓Σ₁₂/Σ₁₁` (to `1e-11`, where `vars` and `statsmodels` are within their own `~5e-9`), `vars`' standard errors and LR statistic match to `1e-12`, the trivariate A-model matches `vars` to `1e-6` with identical SEs, and Blanchard-Quah's B, long-run matrix, IRFs and FEVD match `vars::BQ` to `1e-12` with the long-run matrix's upper triangle exactly zero. **The handoff's identification premise was inverted:** `A = [1 0; NA 1]` with `B = I` has one free parameter for Σ's three distinct elements, so it is **over-identified** — `vars` itself rejects it, LR = 121.6 on 2 df (and prints p = 0; the tail is 3.9e-27) — and `statsmodels` reports the reduced form's log-likelihood as its SVAR `llf` whatever the restrictions, which is what made it look just-identified; the handoff's order-condition code also had the inequality backwards (more free parameters than K(K+1)/2 is under-identified). Order and rank conditions are both checked before optimizing. **An internal pitfall found here:** a ForwardDiff dual whose value is zero compares equal to zero, so the generic `\`, `det` and (on Julia 1.12) `lu` treated a free element at its zero start value as a structural zero and dropped its derivative — the information matrix came back singular, first on 1.9 and then, after an `lu` workaround, again on the 1.12 docs build. The score and the information matrix are now in closed form (Lütkepohl 2005, §9.3), with no automatic differentiation in the SVAR path at all. Blanchard-Quah refuses an unstable VAR (`vars::BQ` does not). Out, stated: sign restrictions, proxy SVARs, structural VECMs, and bands for structural IRFs. New `test/test_svar.jl` (**183 tests**) | 10.1, 10.3 | `vars::SVAR`, `vars::BQ` (R) · `statsmodels SVAR` (Python) |
+| 10.7 | Structural VAR (SVAR) **✅ built** (`fit_svar`/`SVARModel` for the A-, B- and AB-models, `blanchard_quah`, and structural `irf`/`fevd` methods that reuse 10.3's recursion with `P = A⁻¹B`; new `src/svar.jl`). Free elements marked with `missing` (`NaN` refused by name — `statsmodels`' marker is the string `"E"` and `np.nan` silently estimates nothing). Concentrated likelihood at the df-adjusted Σ (what both references decompose); `:scoring` (Amisano-Giannini, the expected information) and `:mle` (`_optimize`) reach the same optimum; standard errors from the covariance-structure information. **Verified:** every just-identified scheme gives `P P' = Σ` to `1e-10`, the recursive ones reproduce the Cholesky factor, the two-parameter A- and B-models hit their analytic optimum `∓Σ₁₂/Σ₁₁` (to `1e-11`, where `vars` and `statsmodels` are within their own `~5e-9`), `vars`' standard errors and LR statistic match to `1e-12`, the trivariate A-model matches `vars` to `1e-6` with identical SEs, and Blanchard-Quah's B, long-run matrix, IRFs and FEVD match `vars::BQ` to `1e-12` with the long-run matrix's upper triangle exactly zero. **The handoff's identification premise was inverted:** `A = [1 0; NA 1]` with `B = I` has one free parameter for Σ's three distinct elements, so it is **over-identified** — `vars` itself rejects it, LR = 121.6 on 2 df (and prints p = 0; the tail is 3.9e-27) — **corrected 2026-10-14:** that is `vars`' short-form statistic `T(ln|Σ_r| − ln|Σ_u|)`, which drops `tr(Σ_r⁻¹Σ_u) − K` and is not a likelihood ratio when the structural variances are pinned (here it is `−T ln|Σ_u|`, unit-dependent; on India's trade VAR it is negative, p = 1); `lr_test` now computes `2(ℓ_u − ℓ_r)` in full, `31.8` on this fixture — and `statsmodels` reports the reduced form's log-likelihood as its SVAR `llf` whatever the restrictions, which is what made it look just-identified; the handoff's order-condition code also had the inequality backwards (more free parameters than K(K+1)/2 is under-identified). Order and rank conditions are both checked before optimizing. **An internal pitfall found here:** a ForwardDiff dual whose value is zero compares equal to zero, so the generic `\`, `det` and (on Julia 1.12) `lu` treated a free element at its zero start value as a structural zero and dropped its derivative — the information matrix came back singular, first on 1.9 and then, after an `lu` workaround, again on the 1.12 docs build. The score and the information matrix are now in closed form (Lütkepohl 2005, §9.3), with no automatic differentiation in the SVAR path at all. Blanchard-Quah refuses an unstable VAR (`vars::BQ` does not). Out, stated: sign restrictions, proxy SVARs, structural VECMs, and bands for structural IRFs. New `test/test_svar.jl` (**183 tests**) | 10.1, 10.3 | `vars::SVAR`, `vars::BQ` (R) · `statsmodels SVAR` (Python) |
 | 10.8 | Multivariate residual diagnostics *(new row, added by the Stage 10 charter)* **✅ built** (`portmanteau_test`, `normality_test`, `bg_test`, `es_test`, a VAR method of `arch_lm_test`, and `var_diagnostics` running the set; result types `PortmanteauTest`, `MultivariateNormalityTest`, `BreuschGodfreyTest`, `EdgertonShukurTest`, `MultivariateARCHLMTest`; new `src/vardiagnostics.jl`). Definitions from Lütkepohl (2005) §4.4-4.5 and §16.5.1. **Every statistic and degrees of freedom matches `vars` on all seven fixtures** (K = 2, 3, 5, 6) to `≤ 2e-13` relative on the first run, including the Edgerton-Shukur denominator df — the one quantity with a single reference — `(20,364)`, `(20,370)`, `(45,666)`, `(100,736)`, `(75,622)`, `(8,36)`, `(108,2391)`; portmanteau (both forms) and multivariate JB **also match `statsmodels`**. The JB skewness and kurtosis halves, which only `vars` reports, sum to the joint statistic exactly — asserted on every fixture. **p-values never asserted against `vars`**, whose ten diagnostic p-values are all `1 − CDF`: on `climhyd` it prints 0 for BG and ES, where this package reports `4.3e-23` and `4.9e-32`. One handoff test was impossible: `climhyd`'s JB of 1850.9 on 12 df has a tail near `1e-391`, below `floatmin(Float64)`, so `0.0` is the honest answer (`statsmodels` returns 0.0 too); the test asserts that and that the skewness half's tail is positive. `arch_lm_test` gains a `VARModel` method rather than a second function, with its own result type, and the per-equation results reuse the existing `JarqueBeraTest`/`ARCHLMTest`. Refusals: portmanteau `lags ≤ p` (`vars` runs with `df ≤ 0`) and `lags ≥ T` (`statsmodels` accepts 300 on T = 198), infeasible ARCH and BG auxiliary regressions, any orthogonalization other than Cholesky. `C_0` factorized once, each lag two triangular solves. New `test/test_vardiag.jl` (**582 tests**) | 10.1 | `vars::serial.test`/`normality.test`/`arch.test` (R) · `test_whiteness`/`test_normality` (Python) |
 
 *This entire stage can start as soon as Stage 1 is done — it doesn't wait on the state-space engine at all. Worth running in parallel with Stage 6–8 if resourcing allows, since it's a fully independent dependency branch.*
@@ -1833,6 +1833,97 @@ Every modified chapter had its full `@example` block sequence
 extracted and re-run standalone, and the complete `docs/make.jl` build
 (doctests, cross-references, `checkdocs=:exports`, HTML rendering)
 completes clean.
+
+### Documentation for Stages 9 and 10 — ✅ built 2026-10-14
+
+From `handoff/stage-9-documentation-handoff.md` and
+`handoff/stage 10/stage-10-documentation-handoff.md`, plus the five gaps
+the 2026-10-03 audit recorded in `handoff/tsa-documentation-handoff.md`.
+
+**API reference.** `api/exponential-smoothing.md` (the ten Stage 9 entries
+moved, not copied, out of `api/arma-models.md`); `api/multivariate.md`
+split into `api/var.md`, `api/cointegration.md` and `api/structural.md`;
+`api/decomposition.md` no longer a stub. One orienting figure per page.
+The VAR residual tests sit on `api/var.md`, not `api/diagnostics.md` as
+proposed: with them, diagnostics rendered at 103.8 KiB, over Documenter's
+100 KiB warning — the threshold that once forced the `api.md` split.
+
+**Manual.** Chapter 10 (exponential smoothing) went from no figures to
+twelve, including ETS(M,N,M)'s exact class-3 interval against 200,000
+simulated paths. The multivariate material became four chapters — 11 VAR,
+12 Causality and Impulse Responses, 13 Cointegration and VECM, 14
+Structural VAR — with 24 figures; plotting and R/Python renumbered 15 and
+16. Manual 05 covers `auto_ets` and the other automatic searches; manual
+09's forecastable-types list is a table (it had named `ARXModel`, which
+has `predict` only).
+
+**The book: 41 chapters → 52, nine Parts → eleven.** A content-free
+renumbering commit first (chapters 24–40 → 28–44, 41 → 52), then:
+
+- Part V, *Models That Forget* (24–27): weighting the recent past;
+  the ETS taxonomy and likelihood; multiplicative errors and the two R
+  `forecast` bugs, settled in the chapter by simulation; Theta and TBATS,
+  with R's TBATS interval bug traced further than the manual had it
+  (`forecast.tbats` reads `object$beta.v`, a field a `tbats` object does
+  not have, so the trend's β drops out of `g`).
+- Part X, *Series That Move Together* (45–51): two series at once, fitting
+  and checking a VAR, Granger causality, impulse responses and the
+  ordering problem, residual-based cointegration, Johansen and the VECM,
+  structural identification.
+- Chapter 52 (*The Frontier*) rewritten: it said the package had no VAR.
+
+**The Indian-data decision (Stage 10 §5.5) was resolved without sourcing
+anything:** `global_economy` already holds India (GDP, CPI, imports and
+exports as % of GDP, 1960–2017), and Part X's Indian thread is built on
+it — honest that 58 annual points is short for a VAR.
+
+Each chapter was written to the chapter-writing guide by a subagent from
+the reviewed template (chapters 24 and 45 first), every figure rendered
+and looked at, every number quoted checked against the built output,
+every R/Python claim run.
+
+**Found and fixed by writing it** — documentation that executes found
+four package defects and one documentation-wide one:
+
+- `fit_ets` stopped short in the high-α corner. On monthly IIP the
+  optimum is α ≈ 0.98, γ = 0, a thin wedge of the traditional region
+  (γ ≤ 1 − α); from the four starts every simplex ran into α = 1 and
+  stopped 5.5 log-likelihood units low for all three additive seasonal
+  forms, so `auto_ets` chose ETS(A,Ad,A) where R and the corrected fit
+  choose ETS(A,N,A). Two starts inside the wedge fix it; regression test
+  pinned to `statsmodels`' −579.94.
+- `fit_ets` and `fit_tbats` returned α above 1 on large-magnitude series
+  with `converged = true`: the out-of-region penalty was a fixed `1e10`,
+  and India's GDP in US dollars has an SSE near 4e23, so leaving the
+  region was cheaper than any fit in it. The penalty now scales with the
+  series.
+- `fit_svar`'s over-identification statistic was Lütkepohl's (and
+  `vars`') short form `T(ln|Σ_r| − ln|Σ_u|)`, which drops
+  `tr(Σ_r⁻¹Σ_u) − K` — zero only when the structural variances are free.
+  For a unit-diagonal `A` with `B = I` it reduced to `−T ln|Σ_u|`,
+  unit-dependent: `−4.30`, `p = 1` on India's trade VAR. Now `2(ℓ_u −
+  ℓ_r)` in full; `vars`' `121.6` on `var2_p1` was the short form, the
+  likelihood ratio is `31.8`.
+- The cointegration manual's VECM equation rendered as `lpha eta'`: an
+  edit script had turned `\a` and `\b` into control characters.
+- **Documenter dropped printed output from 47 `@example` blocks** that
+  printed and then ended with a plot (or a displayed value), across 19
+  book chapters and two manual pages — prose quoted numbers the reader
+  never saw. Each was split; the new chapters were written to avoid it.
+
+**Open, recorded rather than fixed:**
+
+- `fit_tbats` cannot fit half-hourly `vic_elec` with periods `[48, 336]`
+  at any `k` tried: its start grid tries only negative `γ₂`, and the
+  admissible points need positive values. R's `tbats` fits four weeks in
+  about a minute. Chapter 27 says so and uses daily data.
+- ETS(A,Ad,A) on IIP still ends 0.38 log-likelihood units below
+  `statsmodels` — a flat valley in `φ`, not the corner above.
+- `converged = false` can print at a genuine optimum on surfaces this
+  flat; chapter 25 shows the profile likelihood as the check.
+- Length: several new chapters run past the guide's 6–8 pages, mostly in
+  simulation code that settles a claim on the page (26 is the longest at
+  ~550 lines).
 
 ---
 

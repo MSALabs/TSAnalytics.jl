@@ -70,6 +70,7 @@ try
 catch e
     println(e.msg)
 end
+nothing # hide
 ```
 
 A multiplicative component divides by a fitted value, so those models
@@ -232,12 +233,15 @@ notation(best_iip) == notation(fits[o[1]])
 ```
 
 The chart has three tiers, and they are worth reading. Every
-**non-seasonal** model is nearly 70 points behind or more — IIP has a monthly
+**non-seasonal** model is more than 75 points behind — IIP has a monthly
 pattern, and a model without one is simply wrong. The **multiplicative**
-forms sit 33 to 42 behind: the series' seasonal swing does not grow
+forms sit 40 to 50 behind: the series' seasonal swing does not grow
 with its level, so a seasonal factor or error that scales with it is
 the wrong shape. And among the three additive seasonal models the
-margins are small; the damped trend wins by about three points.
+simplest wins: no trend at all, about four points ahead of a linear
+trend and eight ahead of a damped one. IIP's growth is slow enough
+that a level updated at `α ≈ 0.98` follows it without a slope, and the
+slope's extra parameters do not pay for themselves.
 
 What the bottom tier gets wrong is visible directly. Here are the last
 five years of one-step fitted values from the winner and from the same
@@ -722,6 +726,7 @@ try
 catch e
     println(e.msg)
 end
+nothing # hide
 ```
 
 ### Forecasting
@@ -899,10 +904,13 @@ worse.
 
 ### R's seasonal TBATS intervals are too narrow by a factor of 2.8
 
-This is the sharpest of the reference divergences in this chapter. For a
-seasonal TBATS model R uses `alpha` as every shock weight, where the
-correct weight is `w'F^(j-1)g` — so its intervals ignore the trend and
-seasonal contributions to forecast uncertainty entirely.
+This is the sharpest of the reference divergences in this chapter. The
+shock weights are `w'F^(j-1)g` in R as here, but R builds `g` without the
+trend's `β`: `forecast.tbats` passes `object$beta.v`, a field a fitted
+`tbats` object does not have, so `β` arrives as `NULL` and drops out. The
+trend's contribution to forecast uncertainty is lost; on the fixture
+below, whose seasonal `γ`s are about `1e-4`, what remains is little more
+than `α` alone. A seasonal TBATS model *without* a trend is unaffected.
 
 At `h = 8` on the bundled quarterly fixture R's standard error is `2.640`.
 This package, Python's `tbats` package and three million simulated paths

@@ -1,6 +1,6 @@
 # Handoff: Documentation for Stage 10 — API reference, manual, and the book
 
-**Status: pending.** Lands after the Stage 10 code; §2's build constraints
+**Status: implemented (2026-10-14)** — see `development-sequence.md`, "Documentation for Stages 9 and 10", for what was built and where it departs from this document. *Originally:* pending. Lands after the Stage 10 code; §2's build constraints
 mean the API pages are **not optional** — the docs build fails without
 them.
 

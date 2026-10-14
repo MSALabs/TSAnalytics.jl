@@ -195,8 +195,9 @@ Three such cases were found in R's `forecast` package:
 
 The first two are one fault: a seasonal shock counted one period early,
 `floor(h/m)` elapsed seasonal innovations where the correct count is
-`floor((h−1)/m)`. The last uses `α` as every shock's weight where the
-correct weight is `w′F^(j−1)g`.
+`floor((h−1)/m)`. The last builds its shock weights `w′F^(j−1)g` without the trend's `β`:
+R's `forecast.tbats` reads a field, `beta.v`, that a fitted `tbats`
+object does not carry.
 
 In each case R's **neighbouring** branch is correct: trended ETS,
 non-seasonal damped ETS, non-seasonal `bats`. That is how each fault was
