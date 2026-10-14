@@ -108,6 +108,14 @@ println("roots      : ", round.(roots(m1)[1:3], digits=6))
 println("is_stable  : ", is_stable(m1))
 ```
 
+[`roots_plot`](@ref) shows the companion eigenvalues against the unit
+circle — the VAR(2) on the same data has one just outside it:
+
+```@example var
+using Plots
+plot(roots_plot(m2); size = (420, 420))
+```
+
 !!! warning "The two references mean different things by `roots`"
     This is the one convention in this chapter most likely to cause real
     harm, because getting it wrong silently **inverts** a stability test.
@@ -128,6 +136,12 @@ println("is_stable  : ", is_stable(m1))
 f = forecast(m2, 4)
 println("point is ", size(f.point), ", bands are ", size(f.lower))
 println("unemp: ", round.(f.point[:, 1], digits=4))
+```
+
+`plot` draws a [`VARForecast`](@ref) as one fan chart per variable:
+
+```@example var
+plot(forecast(m2, 12); history = dataset("econ5"), size = (700, 900))
 ```
 
 A VAR forecast is `horizon × K` points with `horizon × K × levels`
@@ -203,6 +217,12 @@ r = irf(mw, 8)
 round.(r.orth[2]; digits = 3)        # one period after the shock
 ```
 
+`plot(r)` draws the whole `response × impulse` grid:
+
+```@example var
+plot(irf(mw, 12; boot = true, runs = 200); size = (800, 650))
+```
+
 ### The ordering is an assumption, not a formatting choice
 
 The orthogonalized responses — the ones with a "one standard deviation
@@ -264,6 +284,10 @@ axis, and nothing aligns them silently.
 ```@example var
 f = fevd(mw, 8)
 round.(f.decomp[:, 8, :]; digits = 3)    # [variable, shock] at the 8-step horizon
+```
+
+```@example var
+plot(f; size = (650, 650))
 ```
 
 Both [`IRFResult`](@ref) and [`FEVDResult`](@ref) have plot recipes:
@@ -331,6 +355,14 @@ d.portmanteau
 
 ```@example var
 d.normality
+```
+
+The picture to read beside the tests is `diagnostic_plot(m)`: each
+equation's residuals, and their autocorrelations against the white-noise
+band.
+
+```@example var
+plot(diagnostic_plot(mw); size = (800, 650))
 ```
 
 The p-values are this package's own upper tails. `vars` computes every

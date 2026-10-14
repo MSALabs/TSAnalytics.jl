@@ -945,6 +945,42 @@ function _ets_class3_moments(lN, bN, sN::AbstractVector, alpha, beta, gamma, phi
     return mu, va
 end
 
+"`_ets_final_seasonal(model)` -- the seasonal buffer as it stood after the
+last observation, oldest first: `sN[k]` is `s_{n-m+k}`, so `sN[1]` is the
+next one a forecast uses. Shared by the forecast and by
+`state_decomposition`, so the plotted seasonal state and the one the
+forecast starts from cannot disagree.
+
+Each `s_t` is `s_{t-m}` -- stored as `seasonal_component[t]`, the term that
+entered observation `t` -- plus the fitter's own update, recomputed from
+the stored fit: with the **additive** error `e = y - yhat` (in every model,
+as `_ets_recursion!` uses it; for a multiplicative error the stored `resid`
+is the relative `e / yhat`, so `e = resid * fitted`),
+
+    additive season:        s_t = s_{t-m} + gamma * e
+    multiplicative season:  s_t = s_{t-m} + gamma * e / lt,   lt = fitted / s_{t-m}
+
+This replaced a replay of `s + gamma * resid` that used the stored residual
+directly. That was exact for additive errors only: for ETS(M,.,A) it
+started forecasts from seasonal states off by over 100 on AirPassengers
+(found building `state_decomposition`, 2026-10-14), and for ETS(M,.,M) it
+was off by a factor of the seasonal state in the update, small only
+because gamma is."
+function _ets_final_seasonal(model::ETSModel)
+    model.seasonal === :none && return Float64[]
+    gamma = model.gamma === nothing ? 0.0 : model.gamma
+    n = model.nobs
+    p = length(model.s0)
+    sN = Vector{Float64}(undef, p)
+    for k in 1:p
+        t = n - p + k
+        se = model.seasonal_component[t]
+        e = model.error === :mul ? model.resid[t] * model.fitted[t] : model.resid[t]
+        sN[k] = model.seasonal === :mul ? se + gamma * e * se / model.fitted[t] : se + gamma * e
+    end
+    return sN
+end
+
 """
     forecast(m::ETSModel, horizon; level=[80.0, 95.0]) -> Forecast
     predict(m::ETSModel, horizon; level=[80.0, 95.0]) -> Forecast
@@ -1077,18 +1113,7 @@ function StatsAPI.predict(model::ETSModel, horizon::Integer;
     mseas = length(model.s0)
     lN = model.level[end]
     bN = model.trend === :none ? 0.0 : model.trend_component[end]
-    sN = if model.seasonal === :none
-        Float64[]
-    else
-        # rebuild the buffer as it stood after observation n: re-run to collect it
-        sb = collect(model.s0)
-        si = 1
-        for t in 1:n
-            sb[si] = sb[si] + gamma * model.resid[t]
-            si = si == mseas ? 1 : si + 1
-        end
-        circshift(sb, -(si - 1))        # rotate so index 1 is next to be used
-    end
+    sN = _ets_final_seasonal(model)
 
     # Class 3 needs its mean as well as its variance from the moment
     # recursion: past the first seasonal cycle the level and seasonal factors

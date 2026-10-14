@@ -441,14 +441,304 @@ frame.
     end
 end
 
+"_decimate_minmax(x, y, maxpoints) -- for plotting a time path only: if
+`length(x) > maxpoints`, splits it into `maxpoints ÷ 2` bins and keeps both
+the smallest and the largest point of each bin, in time order. A line
+chart needs its troughs as much as its peaks, which is why this is not
+`_decimate_local_max` (which keeps maxima only, right for a spectrum and
+wrong for a series): either extreme of any bin is always drawn."
+function _decimate_minmax(x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, maxpoints::Integer)
+    n = length(x)
+    n <= maxpoints && return collect(x), collect(y)
+    nb = max(1, maxpoints ÷ 2)
+    binsize = n / nb
+    xo = Vector{eltype(x)}(); yo = Vector{eltype(y)}()
+    sizehint!(xo, 2nb); sizehint!(yo, 2nb)
+    for b in 1:nb
+        lo = floor(Int, (b - 1) * binsize) + 1
+        hi = max(lo, min(n, floor(Int, b * binsize)))
+        v = view(y, lo:hi)
+        i1 = lo - 1 + argmin(v); i2 = lo - 1 + argmax(v)
+        for i in (i1 <= i2 ? (i1, i2) : (i2, i1))
+            push!(xo, x[i]); push!(yo, y[i])
+        end
+    end
+    return xo, yo
+end
+
+const _PLOT_MAXPOINTS = 5_000
+
+# One forecast fan on the current subplot: one ribbon per level, widest
+# first so narrower ones draw on top, then (optionally) the history, then
+# the point path. Shared by the Forecast and VARForecast recipes.
+function _fan_series!(series, t, point, lower, upper, levels, history; sp=1, labels=true)
+    order = sortperm(levels; rev=true)
+    for (k, j) in enumerate(order)
+        push!(series, (; subplot=sp, seriestype=:line, fillrange=upper[:, j],
+                       fillalpha=0.12 + 0.10 * (k - 1), linealpha=0.0, color=:steelblue,
+                       label=labels ? string(Int(round(levels[j])), "%") : "",
+                       x=t, y=lower[:, j]))
+    end
+    if history !== nothing
+        n0 = length(history)
+        hx, hy = _decimate_minmax(collect(1:n0), history, _PLOT_MAXPOINTS)
+        push!(series, (; subplot=sp, seriestype=:line, fillrange=nothing, fillalpha=nothing,
+                       linealpha=1.0, color=:black, label=labels ? "observed" : "",
+                       x=hx, y=hy))
+    end
+    push!(series, (; subplot=sp, seriestype=:line, fillrange=nothing, fillalpha=nothing,
+                   linealpha=1.0, color=:steelblue, label=labels ? "forecast" : "",
+                   x=t, y=point))
+    return series
+end
+
+_history_values(h) = h === nothing ? nothing : Float64.(collect(tsvalues(h)))
+
+"""
+    @recipe f(fc::Forecast)
+
+Fan chart of a [`Forecast`](@ref): the point forecast with one shaded
+ribbon per prediction-interval level, widest outermost. Pass the series
+it came from as `history` to draw it to the left of the forecast origin,
+which is what makes a fan chart readable:
+
+    plot(fc; history = y)
+
+Without `history` the x-axis is the horizon `1 … h`; with it, the series
+sits at `1 … n` and the forecast at `n+1 … n+h`. Long histories are
+thinned for display by min-max decimation (both extremes of every bin
+are kept). `[S]` Matches R's `forecast:::plot.forecast`; Python has no
+model-level equivalent (`plot_predict` needs a pandas index and draws one
+band). One recipe serves every forecasting model in the package.
+"""
+@recipe function f(fc::Forecast)
+    history = _history_values(pop!(plotattributes, :history, nothing))
+    legend --> :topleft
+    title --> fc.model_name
+    n0 = history === nothing ? 0 : length(history)
+    xlabel --> (history === nothing ? "horizon" : "")
+    t = collect((n0 + 1):(n0 + fc.horizon))
+    for s in _fan_series!(NamedTuple[], t, fc.point, fc.lower, fc.upper, fc.levels, history)
+        @series begin
+            seriestype := s.seriestype
+            s.fillrange === nothing || (fillrange := s.fillrange)
+            s.fillalpha === nothing || (fillalpha := s.fillalpha)
+            linealpha := s.linealpha
+            color --> s.color
+            label := s.label
+            s.x, s.y
+        end
+    end
+end
+
+"""
+    @recipe f(fc::VARForecast)
+
+One fan chart per variable, stacked with a shared x-axis — the
+[`Forecast`](@ref) recipe's fan, from the same helper. `history` takes
+the data matrix (or anything [`tsmatrix`](@ref) accepts). `[S]` R's
+`plot.varprd`/`vars::fanchart`; `statsmodels`' `plot_forecast`.
+"""
+@recipe function f(fc::VARForecast)
+    hist = pop!(plotattributes, :history, nothing)
+    H = hist === nothing ? nothing : Float64.(tsmatrix(hist))
+    K = length(fc.names)
+    H === nothing || size(H, 2) == K || throw(ArgumentError(
+        "plot(::VARForecast): history has $(size(H, 2)) columns for $K variables"))
+    layout --> (K, 1)
+    link --> :x
+    legend --> false
+    n0 = H === nothing ? 0 : size(H, 1)
+    t = collect((n0 + 1):(n0 + fc.horizon))
+    for i in 1:K
+        h = H === nothing ? nothing : H[:, i]
+        for s in _fan_series!(NamedTuple[], t, fc.point[:, i], fc.lower[:, i, :],
+                              fc.upper[:, i, :], fc.levels, h; sp=i, labels=false)
+            @series begin
+                subplot := i
+                title := string(fc.names[i])
+                seriestype := s.seriestype
+                s.fillrange === nothing || (fillrange := s.fillrange)
+                s.fillalpha === nothing || (fillalpha := s.fillalpha)
+                linealpha := s.linealpha
+                color --> s.color
+                s.x, s.y
+            end
+        end
+    end
+end
+
+"""
+    @recipe f(vf::VolatilityForecast)
+
+The forecast conditional **standard deviation** `σ` — the square root of
+the stored variance, labelled as such — across the horizon. When the
+forecast was simulated (`variance_paths` present), a shaded 5–95% band of
+the simulated `σ` paths is drawn behind it; the analytic forecast has no
+interval, and none is invented. Pass `history` (e.g. the fitted
+conditional standard deviations) to draw it before the forecast origin.
+"""
+@recipe function f(vf::VolatilityForecast)
+    history = _history_values(pop!(plotattributes, :history, nothing))
+    legend --> :topleft
+    title --> "volatility forecast ($(vf.method))"
+    ylabel --> "σ (conditional standard deviation)"
+    n0 = history === nothing ? 0 : length(history)
+    t = collect((n0 + 1):(n0 + vf.horizon))
+    if vf.variance_paths !== nothing
+        S = sqrt.(max.(vf.variance_paths, 0.0))
+        lo = [quantile(view(S, :, h), 0.05) for h in 1:vf.horizon]
+        hi = [quantile(view(S, :, h), 0.95) for h in 1:vf.horizon]
+        @series begin
+            seriestype := :line
+            fillrange := hi
+            fillalpha := 0.2
+            linealpha := 0.0
+            color := :steelblue
+            label := "5–95% of simulated paths"
+            t, lo
+        end
+    end
+    if history !== nothing
+        @series begin
+            seriestype := :line
+            color := :black
+            label := "observed"
+            _decimate_minmax(collect(1:n0), history, _PLOT_MAXPOINTS)
+        end
+    end
+    @series begin
+        seriestype := :line
+        color := :steelblue
+        linewidth --> 2
+        label := "forecast σ"
+        t, sqrt.(max.(vf.variance, 0.0))
+    end
+end
+
+"""
+    @recipe f(d::StateDecomposition)
+
+Stacked panels sharing the x-axis: observed, level, slope (if any), and
+one season panel per seasonal period — `[S]` the panels of R's
+`plot.ets`/`plot.tbats`, titled "Decomposition by …" as R does.
+"""
+@recipe function f(d::StateDecomposition)
+    npan = 2 + (d.slope !== nothing) + length(d.seasonal)
+    layout --> (npan, 1)
+    legend --> false
+    link --> :x
+    plot_title --> "Decomposition by " * d.model_name
+    plot_titlefontsize --> 11
+    panels = Tuple{String,Vector{Float64}}[("observed", d.observed), ("level", d.level)]
+    d.slope === nothing || push!(panels, ("slope", d.slope))
+    for (i, s) in enumerate(d.seasonal)
+        lab = length(d.seasonal) == 1 ? "season" :
+              "season $(isinteger(d.periods[i]) ? Int(d.periods[i]) : d.periods[i])"
+        push!(panels, (lab, s))
+    end
+    for (k, (lab, v)) in enumerate(panels)
+        @series begin
+            subplot := k
+            seriestype := :line
+            ylabel := lab
+            _decimate_minmax(d.t, v, _PLOT_MAXPOINTS)
+        end
+    end
+end
+
+"""
+    @recipe f(r::ARMARootsResult)
+
+The inverse AR and MA roots against the unit circle, equal axis scales —
+`[S]` R's `plot.Arima`/`autoplot.Arima`. A polynomial with no roots emits
+no series at all, rather than an empty one.
+"""
+@recipe function f(r::ARMARootsResult)
+    aspect_ratio --> :equal
+    legend --> :topright
+    title --> "Inverse roots: $(r.model_name)"
+    xlabel --> "real"
+    ylabel --> "imaginary"
+    @series begin
+        seriestype := :path          # :line would sort by x and zigzag across the circle
+        color := :gray
+        linestyle := :dash
+        label := ""
+        θ = range(0, 2pi; length=361)
+        cos.(θ), sin.(θ)
+    end
+    if !isempty(r.ar_inverse)
+        @series begin
+            seriestype := :scatter
+            markershape := :circle
+            label := "AR"
+            real.(r.ar_inverse), imag.(r.ar_inverse)
+        end
+    end
+    if !isempty(r.ma_inverse)
+        @series begin
+            seriestype := :scatter
+            markershape := :utriangle
+            label := "MA"
+            real.(r.ma_inverse), imag.(r.ma_inverse)
+        end
+    end
+end
+
+"""
+    @recipe f(d::TSDisplayResult)
+
+The series across the top, its ACF and PACF side by side beneath —
+`[S]` R's `forecast::ggtsdisplay`. Each correlogram is drawn exactly as
+the [`ACFResult`](@ref) recipe draws it (band, zero line, sticks).
+"""
+@recipe function f(d::TSDisplayResult)
+    layout --> @layout [a{0.5h}; b c]
+    legend --> false
+    @series begin
+        subplot := 1
+        seriestype := :line
+        _decimate_minmax(d.t, d.x, _PLOT_MAXPOINTS)
+    end
+    for (sp, r) in ((2, d.acf), (3, d.pacf))
+        @series begin
+            subplot := sp
+            seriestype := :line
+            fillrange := r.upper
+            fillalpha := 0.15
+            linealpha := 0
+            color := :steelblue
+            r.lags, r.lower
+        end
+        @series begin
+            subplot := sp
+            seriestype := :hline
+            linestyle := :dash
+            color := :gray
+            [0.0]
+        end
+        @series begin
+            subplot := sp
+            seriestype := :sticks
+            marker := :circle
+            ylabel := (r.kind == :pacf ? "PACF" : "ACF")
+            r.lags, r.values
+        end
+    end
+end
+
 """
     @recipe f(r::IRFResult)
 
-A `responses × impulses` grid of impulse responses against horizon, one
-panel per pair, titled `impulse → response`, with a zero line. The
-orthogonalized responses are drawn, since they are the ones with a
-one-standard-deviation interpretation; when `r` carries bootstrap bands
-(`irf(...; boot=true)`) they are shaded behind the line.
+A `responses × impulses` grid (row = response, column = impulse) of
+impulse responses against horizon, titled `impulse → response`, with a
+zero line. The orthogonalized (or structural) responses are drawn. When
+the result carries uncertainty its band is shaded and **labelled by
+method** — a bootstrap percentile band, or `±z·se` from the analytic
+standard errors — since the two differ and a bare "95%" would hide which
+one it is. `[S]` The one-figure grid is `statsmodels`' `IRAnalysis.plot`
+layout; R's `plot.varirf` pages one impulse at a time.
 """
 @recipe function f(r::IRFResult)
     nr, ni = length(r.responses), length(r.impulses)
@@ -456,26 +746,35 @@ one-standard-deviation interpretation; when `r` carries bootstrap bands
     legend --> false
     titlefontsize --> 8
     hz = collect(r.horizons)
+    band = r.method === :bootstrap ? (r.lower, r.upper, "$(r.level)% bootstrap") :
+           (r.method === :analytic && r.stderr_orth !== nothing) ?
+           ([P .- 1.96 .* S for (P, S) in zip(r.orth, r.stderr_orth)],
+            [P .+ 1.96 .* S for (P, S) in zip(r.orth, r.stderr_orth)], "±1.96 se (analytic)") :
+           nothing
     for a in 1:nr, b in 1:ni
         sp = (a - 1) * ni + b
-        if r.lower !== nothing
+        ttl = "$(r.impulses[b]) → $(r.responses[a])"
+        if band !== nothing
             @series begin
                 subplot := sp
+                title := ttl
                 seriestype := :line
-                fillrange := [M[a, b] for M in r.upper]
+                fillrange := [M[a, b] for M in band[2]]
                 fillalpha := 0.2
                 linealpha := 0.0
-                hz, [M[a, b] for M in r.lower]
+                label := band[3]
+                hz, [M[a, b] for M in band[1]]
             end
         end
         @series begin
             subplot := sp
             seriestype := :line
-            title := "$(r.impulses[b]) → $(r.responses[a])"
+            title := ttl
             hz, [M[a, b] for M in r.orth]
         end
         @series begin
             subplot := sp
+            title := ttl
             seriestype := :hline
             linestyle := :dash
             color := :gray
@@ -488,27 +787,179 @@ end
     @recipe f(f::FEVDResult)
 
 One panel per variable, its forecast error variance split by shock as
-stacked shares from `0` to `1` across horizons `1 … h`.
+**stacked bars** summing to one, horizons `1 … h` — `[V]` the display of
+both R's `plot.varfevd` and `statsmodels`' `FEVD.plot`. Core Plots has no
+working `bar_position = :stack` (`[V]` GR ignores it with a warning), so
+the stack is built explicitly: each shock's bar sits on the cumulative
+share of the shocks before it.
 """
 @recipe function f(fv::FEVDResult)
     K = size(fv.decomp, 1)
     h = collect(fv.horizons)
     layout --> (K, 1)
     ylims --> (0.0, 1.0)
+    legend --> :outerright
     for i in 1:K
         base = zeros(length(h))
         for j in 1:K
             top = base .+ fv.decomp[i, :, j]
             @series begin
                 subplot := i
-                seriestype := :line
+                seriestype := :bar
                 fillrange := copy(base)
-                fillalpha := 0.6
+                bar_width --> 0.8
                 title := "FEVD of $(fv.names[i])"
-                label := string(fv.names[j])
+                label := i == 1 ? string(fv.names[j]) : ""
                 h, top
             end
             base = top
+        end
+    end
+end
+
+"""
+    @recipe f(r::RootsPlotResult)
+
+A VAR's companion eigenvalues in the complex plane against the unit
+circle, equal axis scales.
+"""
+@recipe function f(r::RootsPlotResult)
+    aspect_ratio --> :equal
+    legend --> false
+    title --> string(r.model_name, r.stable ? ": stable" : ": not stable")
+    xlabel --> "real"
+    ylabel --> "imaginary"
+    @series begin
+        seriestype := :path          # :line would sort by x and zigzag across the circle
+        color := :gray
+        linestyle := :dash
+        θ = range(0, 2pi; length=361)
+        cos.(θ), sin.(θ)
+    end
+    @series begin
+        seriestype := :scatter
+        markersize --> 5
+        real.(r.eigenvalues), imag.(r.eigenvalues)
+    end
+end
+
+"""
+    @recipe f(r::VARDiagnosticPlotResult)
+
+A `K × 4` grid, one row per equation: standardized residuals, their ACF,
+a normal Q-Q plot, and Ljung-Box p-values — the
+[`DiagnosticPlotResult`](@ref) panels, drawn the same way, per equation.
+"""
+@recipe function f(r::VARDiagnosticPlotResult)
+    K = length(r.names)
+    layout --> (K, 4)
+    legend --> false
+    titlefontsize --> 8
+    size --> (1100, 260 * K)
+    for (i, d) in enumerate(r.equations)
+        sp = 4 * (i - 1)
+        nm = r.names[i]
+        @series begin
+            subplot := sp + 1
+            seriestype := :line
+            title := "$nm: standardized residuals"
+            1:length(d.std_resid), d.std_resid
+        end
+        @series begin
+            subplot := sp + 2
+            seriestype := :sticks
+            marker := :circle
+            title := "$nm: residual ACF"
+            d.acf_lags, d.acf
+        end
+        @series begin
+            subplot := sp + 3
+            seriestype := :scatter
+            markersize := 2
+            title := "$nm: normal Q-Q"
+            d.qq_theoretical, d.qq_sample
+        end
+        @series begin
+            subplot := sp + 3
+            seriestype := :line
+            linestyle := :dash
+            color := :gray
+            title := "$nm: normal Q-Q"
+            lo, hi = extrema(d.qq_theoretical)
+            [lo, hi], [lo, hi]
+        end
+        @series begin
+            subplot := sp + 4
+            seriestype := :scatter
+            markersize := 2
+            ylims := (0.0, 1.0)
+            title := "$nm: Ljung-Box p-values"
+            d.lb_lags, d.ljungbox_pvalues
+        end
+        @series begin
+            subplot := sp + 4
+            seriestype := :hline
+            linestyle := :dash
+            color := :blue
+            title := "$nm: Ljung-Box p-values"
+            [0.05]
+        end
+    end
+end
+
+"""
+    @recipe f(r::CointegrationPlotResult)
+
+One row per cointegrating relation: the relation over time with its mean,
+and its ACF beside it — a real equilibrium wanders around a fixed level
+and its autocorrelations die out.
+"""
+@recipe function f(r::CointegrationPlotResult)
+    nr = size(r.relations, 2)
+    layout --> (nr, 2)
+    legend --> false
+    titlefontsize --> 9
+    for j in 1:nr
+        v = r.relations[:, j]
+        @series begin
+            subplot := 2j - 1
+            seriestype := :line
+            title := "cointegrating relation $j"
+            _decimate_minmax(r.t, v, _PLOT_MAXPOINTS)
+        end
+        @series begin
+            subplot := 2j - 1
+            seriestype := :hline
+            linestyle := :dash
+            color := :gray
+            title := "cointegrating relation $j"
+            [sum(v) / length(v)]
+        end
+        a = r.acfs[j]
+        @series begin
+            subplot := 2j
+            title := "relation $j: ACF"
+            seriestype := :line
+            fillrange := a.upper
+            fillalpha := 0.15
+            linealpha := 0
+            color := :steelblue
+            a.lags, a.lower
+        end
+        @series begin
+            subplot := 2j
+            title := "relation $j: ACF"
+            seriestype := :hline
+            linestyle := :dash
+            color := :gray
+            [0.0]
+        end
+        @series begin
+            subplot := 2j
+            seriestype := :sticks
+            marker := :circle
+            title := "relation $j: ACF"
+            a.lags, a.values
         end
     end
 end

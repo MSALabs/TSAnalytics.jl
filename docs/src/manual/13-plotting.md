@@ -96,6 +96,68 @@ profile = boxcox_profile_plot(x)
 plot(profile.lambdas, profile.loglik; xlabel="lambda", ylabel="log-likelihood", legend=false, title="Box-Cox profile")
 ```
 
+## Forecasts
+
+Any [`Forecast`](@ref) — from ARIMA, ETS, Theta, TBATS or a benchmark —
+plots as a fan chart: one shaded band per interval level, widest
+outermost. A forecast does not carry the series it came from, so pass it
+as `history` to draw it before the forecast origin. A
+[`VARForecast`](@ref) gives one panel per variable, and a
+[`VolatilityForecast`](@ref) plots the forecast `σ`, with a band only
+when it was simulated.
+
+```@example plots
+m = fit_ets(y, 12; trend = :add, seasonal = :add)
+plot(forecast(m, 24); history = y)
+```
+
+## State decomposition
+
+[`state_decomposition`](@ref) gives the panels of R's `plot.ets` and
+`plot.tbats`: observed, level, slope if there is one, and one seasonal
+panel per period.
+
+```@example plots
+plot(state_decomposition(m); size = (700, 600))
+```
+
+## First look and ARIMA roots
+
+[`ts_display`](@ref) is the series with its ACF and PACF beneath — R's
+`ggtsdisplay`. [`arma_roots`](@ref) puts a fitted ARIMA's inverse AR and
+MA roots against the unit circle: inside means stationary and invertible.
+
+```@example plots
+plot(ts_display(y); size = (700, 500))
+```
+
+```@example plots
+plot(arma_roots(fit_arima(y, (2, 0, 1))); size = (420, 420))
+```
+
+## Seasonal and lag plots: data only
+
+[`seasonal_plot`](@ref) and [`lag_plot`](@ref) return the data and stop
+there, like [`seasonal_subseries_plot`](@ref): each has several equally
+standard renderings (lines or a polar plot; a scatter grid or convex
+hulls), so the package does not pick one for you.
+
+```@example plots
+c = seasonal_plot(y, 12)
+plot([pos for pos in c.positions], c.cycles; legend = false, xlabel = "month")
+```
+
+## VAR stability, residuals and cointegration
+
+[`roots_plot`](@ref) puts a VAR's companion eigenvalues against the unit
+circle; `diagnostic_plot(m::VARModel)` gives each equation's residuals and
+their ACF; [`cointegration_plot`](@ref) draws the estimated equilibrium
+relations of a [`fit_vecm`](@ref) model or a [`johansen_test`](@ref).
+Impulse responses and variance decompositions plot directly:
+`plot(irf(m, h))`, `plot(fevd(m, h))`. See
+[Vector Autoregression](11-vector-autoregression.md) and
+[Cointegration](12-cointegration.md) for each in context.
+
 ## Seasonal subseries plot
 
 fpp3's own signature "subseries plot" — [`seasonal_subseries_plot`](@ref)

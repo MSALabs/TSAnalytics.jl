@@ -28,6 +28,7 @@ using Dates: Date
     include("test_johansen.jl")         # Stage 10.5
     include("test_vecm.jl")             # Stage 10.6
     include("test_svar.jl")             # Stage 10.7
+    include("test_plotdata.jl")         # plot data for Stages 9-10 (counts in test_recipes.jl)
     include("test_stattools.jl")
     include("test_ccf.jl")
     include("test_unitroot.jl")

@@ -108,6 +108,16 @@ println("trend[1:3]    : ", round.(m.trend_component[1:3], digits=6))
 println("seasonal[1:4] : ", round.(m.seasonal_component[1:4], digits=4))
 ```
 
+They read better as a picture. [`state_decomposition`](@ref) stacks
+the observed series over each fitted state path — the panels of R's
+`plot.ets` — and the flat slope and the moving seasonal pattern described
+above are both visible at once:
+
+```@example ets
+using Plots
+plot(state_decomposition(m); size = (700, 600))
+```
+
 ### Pinning parameters
 
 `fixed` takes a `NamedTuple` and removes those parameters from the
@@ -185,6 +195,14 @@ fc = forecast(best, 8)
 println("point : ", round.(fc.point[1:4], digits=4))
 println("levels: ", fc.levels)
 println("se    : ", round.(fc.se[1:4], digits=4))
+```
+
+`plot` draws any [`Forecast`](@ref) as a fan chart — a shaded band per
+interval level — and `history` puts the data before it, which is the
+chart most people actually want from a forecast:
+
+```@example ets
+plot(fc; history = y)
 ```
 
 `predict(m, h)` is the same function. Because this series was logged,

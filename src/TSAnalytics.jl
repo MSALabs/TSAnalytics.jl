@@ -8,7 +8,7 @@ using StatsBase: StatsBase, CoefTable
 using Optim: Optim, optimize, LBFGS, BFGS, NelderMead
 using ForwardDiff: ForwardDiff
 using FFTW: fft
-using RecipesBase: RecipesBase, @recipe, @series
+using RecipesBase: RecipesBase, @recipe, @series, @layout
 
 include("interface.jl")
 include("dataset_catalogue.jl")
@@ -62,6 +62,7 @@ include("autoregarch.jl")
 include("garchforecast.jl")
 include("realizedvol.jl")
 include("diagnosticplot.jl")
+include("plotdata.jl")       # plot data for Stages 9-10: after diagnosticplot.jl (diagnostic_plot) and svar.jl
 include("recipes.jl")
 
 export TimeSeriesModel, StateSpaceModel, UnivariateModel, HypothesisTest

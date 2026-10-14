@@ -766,14 +766,22 @@ forecast(model::TBATSModel, horizon::Integer; level::Vector{<:Real}=[80.0, 95.0]
 "`_tbats_final_state(m)` -- the state after the last observation, from
 re-running the fitted recursion. Cheaper to recompute than to store, and it
 cannot drift out of step with `seed_states` this way."
-function _tbats_final_state(m::TBATSModel)
+_tbats_final_state(m::TBATSModel) = _tbats_state_path(m)[end, :]
+
+"`_tbats_state_path(m)` -- every state of the fitted recursion,
+`(nobs + 1) × nstate`: row 1 is the seed, row `t + 1` the state after
+observation `t`. One loop serves both this and `_tbats_final_state`, so the
+components plot and the forecast cannot disagree about the state."
+function _tbats_state_path(m::TBATSModel)
     has_t = m.beta !== nothing
     beta = has_t ? m.beta : 0.0
     phi = m.phi === nothing ? 1.0 : m.phi
     K = sum(m.k)
     p, q = length(m.ar), length(m.ma)
-    # the recursion does not expose its final state, so step it here
+    # the recursion does not expose its states, so step it here
     x = copy(m.seed_states)
+    path = Matrix{Float64}(undef, m.nobs + 1, length(x))
+    path[1, :] .= x
     cosl, sinl, gi = _tbats_angles(m)
     i0 = 1 + (has_t ? 1 : 0)
     for t in 1:m.nobs
@@ -810,8 +818,9 @@ function _tbats_final_state(m::TBATSModel)
         end
         q >= 1 && (xn[i0 + 2K + p + 1] = e)
         x = xn
+        path[t + 1, :] .= x
     end
-    return x
+    return path
 end
 
 "`_tbats_angles(m)` -- the per-harmonic cosines, sines and owning period

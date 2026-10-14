@@ -438,6 +438,39 @@ either a newer local Julia install or authenticated CI log access.
 
 ---
 
+## Plot recipes (cross-cutting, not a numbered stage) — ✅ built 2026-10-14
+
+From `handoff/stage 10/plot-recipes-handoff.md`, in its build order. `RecipesBase` only — no plotting
+dependency — following the package's four established patterns (A: a recipe on an existing result
+type; B: a multi-panel recipe on stored fields; C: a computing function, a panel struct, a recipe;
+D: data only, deliberately no recipe). Numbers are tested in `test/test_plotdata.jl`, series counts in
+`test/test_recipes.jl` — every count asserted, never just non-emptiness.
+
+| # | What | Pattern | Notes |
+|---|---|---|---|
+| 1 | **`Forecast` fan chart** — `plot(fc; history = y)` ✅ | A | One ribbon per level, widest first; one recipe for every forecasting family (ARIMA, ETS, Theta, TBATS, benchmarks). `history` is taken from the plot attributes rather than as a recipe keyword, because RecipesBase's keyword handling needs a loaded backend (`is_key_supported` is defined by Plots) and the backend-free tests would fail. Long histories thinned by a new **min-max** decimation — `_decimate_local_max` keeps maxima only, right for a spectrum and wrong for a line, which needs its troughs too. |
+| 2 | **`state_decomposition`** (ETS, TBATS, Holt-Winters) → `StateDecomposition` ✅ | C | R's `plot.ets` panels exactly — at most four, the seasonal one being the current state `s1` (`[S]` verified in `forecast:::plot.ets`). **The handoff's TBATS claim was corrected:** `plot.tbats` does not take one harmonic per period (that is `plot.bats`); it calls `tbats.components`, which sums the period's harmonics through the measurement vector from the state one step back — matched, and pinned by the identity *one-step mean = lagged level + slope + Σ seasonal panels*. Observed is rebuilt from the model (`fitted ⊙ (1 + resid)` for M-error ETS, `boxcox(fitted) + resid` for TBATS, whose fitted values are back-transformed but residuals are not). `_tbats_state_path` factored out of `_tbats_final_state` (one loop for both). |
+| 3 | **`ts_display`** ✅ and **`arma_roots`** ✅ | C | `ggtsdisplay` (7 series); inverse AR/MA roots of the full multiplied-out SARIMA polynomials via `combined_ar_ma` (an empty polynomial emits no series). |
+| 4 | **`seasonal_plot`, `lag_plot`** ✅ | D | Data only, with the refusal in `seasonal_subseries_plot`'s words. |
+| 5 | **`VolatilityForecast`** ✅ | A | Plots σ, labelled as such; a 5–95% band only when simulated paths exist — the analytic forecast has no interval and none is invented. |
+| 6 | **Stage 10:** `IRFResult` (band labelled by method — bootstrap percentile or ±1.96 se analytic), `FEVDResult` (stacked bars), `VARForecast` (shared fan helper), `diagnostic_plot(::VARModel)` (K × 4, a `DiagnosticPlotResult` per equation), `cointegration_plot` (relations + ACF), `roots_plot` (VAR/VECM companion eigenvalues) ✅ | A/C | **FEVD:** the handoff's `bar_position = :stack` is a no-op in core Plots (`[V]` GR warns and ignores it), so the stack is built by hand — each shock's bar on the cumulative share below it, rendered and inspected. `coint_relations(t, r)` as specified could not work (a `JohansenTest` keeps no data): `cointegration_plot(Y, t)` and `cointegration_plot(m::VECMModel)`. |
+
+**A real bug found here, in Stage 9's ETS forecast.** The forecast rebuilt the final seasonal buffer
+as `s + γ·resid`, but the fitter updates with the **additive** error, and for a multiplicative-error
+model the stored residual is the relative one. ETS(M,A,A) and ETS(M,N,A) forecasts therefore started
+from seasonal states off by over 100 on AirPassengers — h = 1…12 points off by up to **128** and
+**157** on a series ending at 432 — and ETS(M,·,M) was off by a factor of the seasonal state in the
+update (negligible there only because γ is tiny). `_ets_final_seasonal` now takes `s_{t−m}` from the
+stored path plus the fitter's own update; a regression test runs the fitter one step past the data
+and requires the one-step forecast to equal its fitted value at `n + 1` for eleven model forms — the
+independent check that none of the Stage 9 tests had made. Found because the decomposition's seasonal
+panel and the forecast's starting state had to agree.
+
+Not built, stated: structural-break/CUSUM panels (`vars::plot.varstabil` — a test wearing a plot's
+clothing; no break machinery exists), Sims-Zha IRF bands, interactive output. **Correction of record:**
+an earlier remark in this project's conversation (not the repo) said `plot.ets` draws one panel per
+state; it draws at most four, using `s1` alone.
+
 ## Stage 9B Tier 1 — finishing what was started (cross-cutting)
 
 **✅ built (2026-10-01)** (`handoff/stage-9B-nonets-handoff.md`, whose

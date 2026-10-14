@@ -112,6 +112,15 @@ coint_rank(johansen_test(r1; lags = 1)), coint_rank(j), coint_rank(johansen_test
 
 One, two and none: the three designs, recovered.
 
+[`cointegration_plot`](@ref) shows what was found: each estimated
+relation `β'y` over time. A real equilibrium wanders around a fixed level
+and keeps coming back.
+
+```@example coint
+using Plots
+plot(cointegration_plot(r2, j); size = (700, 450))
+```
+
 ### `lags` counts differenced lags
 
 `lags` is the number of lagged **differences** in the error-correction

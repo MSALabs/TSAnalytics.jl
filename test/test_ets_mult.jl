@@ -341,3 +341,30 @@ using DelimitedFiles
         @test auto_ets(ap, 12).error === :mul
     end
 end
+
+@testset "forecasts start from the fitter's own final state (fixed 2026-10-14)" begin
+    # The forecast rebuilt the final seasonal buffer as s + gamma*resid. The
+    # fitter updates with the ADDITIVE error, and for an M-error model the
+    # stored resid is RELATIVE, so ETS(M,.,A) forecasts started from seasonal
+    # states off by over 100 on AirPassengers (h = 1..12 points off by up to
+    # 128 and 157 for (M,A,A) and (M,N,A)). Independent check: run the fitter
+    # one step past the data; its fitted value at n+1 IS the one-step mean.
+    y = Float64.(readdlm(TSAnalytics.AIR_PASSENGERS, ','; skipstart=1)[:, end])
+    n, p = length(y), 12
+    for (e, tr, s) in ((:add, :add, :add), (:add, :damped, :add), (:add, :none, :add),
+                       (:mul, :add, :add), (:mul, :none, :add), (:mul, :damped, :add),
+                       (:mul, :add, :mul), (:mul, :none, :mul), (:mul, :damped, :mul),
+                       (:add, :add, :none), (:mul, :add, :none))
+        m = fit_ets(y, p; error=e, trend=tr, seasonal=s)
+        fit = zeros(n + 1); res = zeros(n + 1); lv = zeros(n + 1); td = zeros(n + 1); sn = zeros(n + 1)
+        TSAnalytics._ets_recursion!(fit, res, lv, td, sn, vcat(y, y[end]), m.alpha,
+            something(m.beta, 0.0), something(m.gamma, 0.0), something(m.phi, 1.0),
+            m.l0, something(m.b0, 0.0), m.s0, m.trend, m.seasonal, m.error)
+        @test forecast(m, 1).point[1] ≈ fit[n + 1] rtol=1e-12
+        if s !== :none
+            # and the buffer continues the fitter's own seasonal path
+            sN = TSAnalytics._ets_final_seasonal(m)
+            @test sn[n + 1] ≈ sN[1] rtol=1e-12             # the season entering n+1
+        end
+    end
+end
