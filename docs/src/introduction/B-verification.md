@@ -52,8 +52,8 @@ checks — the seasonal state-space bulk suite alone covers 364 cases.
 
 `test_data/` holds the internal benchmark series — Nile,
 AirPassengers, sunspots — used as validation fixtures. That is a
-separate thing from `data/`, which is the public catalogue of 90
-textbook datasets reached through [`dataset`](@ref). Internal fixtures
+separate thing from `data/`, which is the public catalogue of 84
+bundled textbook datasets reached through [`dataset`](@ref). Internal fixtures
 are not public API, and the two are deliberately not conflated.
 
 ## The two recurring asides
@@ -173,6 +173,62 @@ implementation — a package can be wrong, a definition cannot — but it is
 a different kind of check, and a reader comparing numbers across
 languages should know which one they are relying on.
 
+## When a reference is simply wrong
+
+The two asides above cover two situations: the references disagree with
+each other, or they share a limitation this package shares too. The
+exponential-smoothing and multivariate work needed a third — **one
+reference is simply wrong**, and no second reference exists to outvote
+it. Those cases were settled by a different method: simulate the
+model's own recursion millions of times and see which number the
+simulation agrees with. A simulation cannot be wrong in the way an
+implementation can, because it uses nothing but the model's definition.
+
+Three such cases were found in R's `forecast` package:
+
+| What | R gives | Simulation gives | This package |
+|---|---|---|---|
+| ETS(A,N,A) interval variance at `h = 4`, as a multiple of `σ²` | `3.0536` | `2.5808` (4,000,000 paths) | `2.5808` |
+| ETS(M,N,A) intervals at `h = 4`, from R's own fitted state | 25.6% too wide | within 0.09% of this package at every horizon (6,000,000 paths) | — |
+| ETS(M,Ad,M) point forecast | damping summed as `1 + φ + … + φ^(h−1)` | `φ + … + φ^h`, which R's own one-step recursion implies (8,000,000 paths) | `φ + … + φ^h` |
+| Seasonal TBATS interval half-width at `h = 8` | `2.640` | `7.31` (3,000,000 paths; Python's `tbats` agrees) | `7.31` |
+
+The first two are one fault: a seasonal shock counted one period early,
+`floor(h/m)` elapsed seasonal innovations where the correct count is
+`floor((h−1)/m)`. The last uses `α` as every shock's weight where the
+correct weight is `w′F^(j−1)g`.
+
+In each case R's **neighbouring** branch is correct: trended ETS,
+non-seasonal damped ETS, non-seasonal `bats`. That is how each fault was
+localised to a few lines rather than written off as "R is wrong", and it
+is what makes the claim credible: a package that is right next door is
+not being accused of general carelessness, only of one specific slip.
+
+The multivariate work found two more, of a different kind — not a wrong
+model, but a wrong number:
+
+- **`vars::causality` reports p = 0** for any moderately strong
+  rejection, because it computes the p-value as `1 − CDF` and the
+  subtraction underflows. `statsmodels` uses the survival function and
+  agrees with this package.
+- **`statsmodels`' `test_inst_causality` raises an error** whenever both
+  the causing and the caused block have more than one variable — an
+  indexing fault, verified at three block sizes. It never returns a
+  wrong answer, but for a general block `vars` is the only reference.
+
+And one that is not an error on either side but would read like one: for
+the Johansen test with an unrestricted constant, `urca` uses
+Osterwald-Lenum's Table 1.1\*, which assumes the data have no drift,
+where the paper assigns Table 1. `statsmodels`' own simulations agree
+with Table 1, and so does this package. The trace statistics themselves
+agree with both references to `1e-10`; only the critical values differ.
+
+All of these are written up at their point of use — the exponential
+smoothing cases in [Exponential Smoothing](../manual/10-exponential-smoothing.md),
+the multivariate ones in [Vector Autoregression](../manual/11-vector-autoregression.md)
+and [Cointegration](../manual/12-cointegration.md) — and collected in
+[Coming from R or Python](../manual/14-coming-from-r-python.md).
+
 ## The honest limits
 
 Verification establishes agreement with a reference. It does not
@@ -191,5 +247,5 @@ answer. That is what [Appendix A](A-checklist.md) is for.
 ## See also
 
 - [Appendix A](A-checklist.md) — the checklist
-- [Appendix C](C-further-reading.md) — the six reference books the policy is checked against
+- [Appendix C](C-further-reading.md) — the six reference books the policy is checked against, and the primary papers
 - [Coming from R or Python](../manual/14-coming-from-r-python.md) — every documented divergence in one place

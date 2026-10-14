@@ -474,6 +474,16 @@ observations — returns without complaint from both. [`fit_var`](@ref)
 refuses that, along with `p < 1`, `NaN` input, `K = 1` and an
 unrecognised `deterministic`, each by name and naming the fix.
 
+### Johansen's lag count and deterministic names are traps in `urca`
+
+Two of `ca.jo`'s arguments read as if they mean something they do not.
+`K` is the order of the **levels** VAR, so `K = 2` is `lags = 1` here —
+`statsmodels`' `k_ar_diff` counts differenced lags, as this package does.
+And `ecdet = "none"` does **not** mean no deterministic terms: it still
+fits a constant, unrestricted, outside the cointegrating relation. It is
+`deterministic = :const`, which is `statsmodels`' `det_order = 0`. The
+full mapping is in [Cointegration](12-cointegration.md).
+
 ### Johansen critical values with an unrestricted constant
 
 The statistics agree with `urca` and `statsmodels` to `1e-10`; the

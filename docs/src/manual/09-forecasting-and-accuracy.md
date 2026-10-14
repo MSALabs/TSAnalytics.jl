@@ -25,9 +25,24 @@ println("point[1:3]: ", round.(f.point[1:3], digits=3))
 ```
 
 **`forecast(m, h)` is the signature on every forecastable type** —
-`ArmaModel`, `ArimaModel`, `SarimaModel` and `ARXModel` all retain the
-series they were fitted to. `SarimaModel` also accepts
-`forecast(m, y, h)` if you want to state which series you mean.
+`ArmaModel`, `ArimaModel`, `SarimaModel`, `ETSModel`, `ThetaModel` and
+`TBATSModel` all retain the series they were fitted to, and all return
+the same [`Forecast`](@ref), so everything below applies to each of them
+unchanged. `SarimaModel` also accepts `forecast(m, y, h)` if you want to
+state which series you mean.
+
+Three model families return something else, because their forecast is a
+different object:
+
+| Model | `forecast` returns | Why |
+|---|---|---|
+| [`VARModel`](@ref), [`VECMModel`](@ref) | [`VARForecast`](@ref) | `horizon × K` points, one column per variable — see [Vector Autoregression](11-vector-autoregression.md#Forecasting) |
+| [`GarchModel`](@ref) | use [`forecast_volatility`](@ref) | it forecasts the conditional variance, not the series — see [GARCH and Volatility](06-garch-and-volatility.md) |
+| [`ArimaxModel`](@ref), [`SarimaxModel`](@ref) | [`Forecast`](@ref) | but they need the future regressors, below |
+| [`ARXModel`](@ref) | a point vector, from `predict(m, h)` | the least-squares AR-X of Stage 5 has no `forecast` method or intervals |
+
+Every [`Forecast`](@ref) and [`VARForecast`](@ref) plots as a fan chart
+with `plot(f; history = y)` — see [Plotting](13-plotting.md#Forecasts).
 
 `StatsAPI.predict(m, h; level=level)` is exactly equivalent — the two are
 mechanical aliases and neither is deprecated. `forecast` exists for

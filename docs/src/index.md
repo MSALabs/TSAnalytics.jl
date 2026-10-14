@@ -1,9 +1,10 @@
 # TSAnalytics.jl
 
 TSAnalytics.jl is a native Julia package for time series analysis --
-ARMA and ARIMA models, the GARCH family for volatility, state-space
-methods and the Kalman filter, regression with ARIMA errors, and the
-diagnostic and decomposition tools that sit around all of them.
+ARMA and ARIMA models, exponential smoothing (ETS, Theta, TBATS), the
+GARCH family for volatility, state-space methods and the Kalman filter,
+regression with ARIMA errors, vector autoregression and cointegration,
+and the diagnostic and decomposition tools that sit around all of them.
 
 Fitting a seasonal ARIMA model, checking whether a series has a unit
 root, or estimating a GARCH(1,1) are all common, well-understood tasks
@@ -34,14 +35,15 @@ Log-likelihood: 245.61   AIC: -483.22   BIC: -471.69
 This is real, directly-run output (`test_data/airpassengers.csv`, the
 classic Box-Jenkins airline series, fit on the log scale -- the
 standard treatment for its multiplicative seasonality). This package
-also ships 90 real textbook datasets you can explore directly via
-[`dataset`](@ref) -- see [Primitives](manual/01-primitives.md).
-Diagnostics and
-forecasting for models fit this way are covered in the
-[Manual](manual/01-primitives.md) and [Getting Started](getting-started/03-was-it-any-good.md);
-`residuals`/`forecast` are implemented for [`ARXModel`](@ref)/[`GarchModel`](@ref)
-today, with the same for the ARMA/ARIMA/SARIMA family tracked as
-follow-up work in `development-sequence.md`.
+also ships 84 real textbook datasets (91 catalogued, 7 of them
+pointers to data that cannot be redistributed) you can explore directly
+via [`dataset`](@ref) -- see [Primitives](manual/01-primitives.md).
+Diagnostics and forecasting for models fit this way are covered in the
+[Manual](manual/01-primitives.md) and
+[Getting Started](getting-started/03-was-it-any-good.md): every
+forecasting model -- the ARIMA family, ARIMAX, ETS, Theta, TBATS, the VAR
+and the VECM -- has `forecast`, and a GARCH model forecasts its variance
+with [`forecast_volatility`](@ref).
 
 **This package does reimplement these methods natively in Julia.**
 That is a deliberate choice, not a shortcut avoided: every stage was
@@ -73,10 +75,13 @@ Full detail on all of these lives in the repository README.
     MSTL), AR-X and classical exponential smoothing, ARMA/ARIMA/SARIMA,
     the GARCH family, state-space methods and the Kalman filter,
     regression with ARIMA errors (ARIMAX/SARIMAX, both the `:mle` and
-    `:tvss` estimation paths), the linear ETS family with AICc
-    selection over the full fifteen-model space, the Theta method and
-    TBATS are complete. Vector
-    autoregression, cointegration, structural time series, and the
+    `:tvss` estimation paths), the ETS family with AICc selection over
+    the full fifteen-model space, the Theta method, TBATS, and the
+    multivariate track -- VAR, Granger causality, impulse responses and
+    variance decomposition, Engle-Granger, Phillips-Ouliaris and
+    Johansen cointegration tests, the VECM, structural VARs and
+    multivariate residual diagnostics -- are complete. Structural time
+    series (unobserved components), regime-switching models and the
     companion TSFeatures.jl package are planned but not yet started.
     See [`development-sequence.md`](https://github.com/MSALabs/TSAnalytics.jl/blob/main/development-sequence.md)
     in the repository root for the complete, current, staged roadmap.
@@ -117,20 +122,24 @@ documentation? Please open an issue at
   customizing your first model -- read it in order, once, the first
   time you use the package.
 - **[Manual](manual/01-primitives.md)** is task-oriented reference:
-  eleven "how do I ..." pages, one per area (primitives, diagnostics,
+  fourteen "how do I ..." pages, one per area (primitives, diagnostics,
   decomposition, fitting ARMA models, automatic order selection, GARCH
   and volatility, state space and the Kalman filter, ARIMAX and
-  regression, forecasting and accuracy, plotting, and coming from
-  R/Python) -- come back to whichever page matches the task in front of
+  regression, forecasting and accuracy, exponential smoothing, vector
+  autoregression, cointegration, plotting, and coming from R/Python)
+  -- come back to whichever page matches the task in front of
   you.
 - **[Introduction to Time Series Analysis](introduction/01-why-model-a-time-series.md)**
-  is a conceptual, textbook-style treatment -- 41 chapters across nine
-  parts, plus a diagnostic checklist and a further-reading appendix,
+  is a conceptual, textbook-style treatment -- 52 chapters across eleven
+  parts, plus a diagnostic checklist, the verification standard and a
+  further-reading appendix,
   readable without a Julia session open, for understanding *why* a
   method works, not just how to call it.
 - **[API Reference](api/primitives.md)** is the complete function-level
   documentation, split by topic (primitives, diagnostics, decomposition,
-  ARMA models, GARCH, state space, ARIMAX, forecasting, plotting) rather
+  ARMA models, exponential smoothing, GARCH, state space, ARIMAX, vector
+  autoregression, cointegration, structural VARs, forecasting, plotting)
+  rather
   than one long alphabetical list.
 
 ## Citing
@@ -147,7 +156,9 @@ documentation? Please open an issue at
 Work leaning on a specific method should also cite its primary source
 directly -- Hamilton (1994) for ARMA/state-space theory, Durbin &
 Koopman (2012) for the Kalman filter and diffuse initialization, Tsay
-(2010) for the GARCH family. The
+(2010) for the GARCH family, Hyndman et al. (2008) for exponential
+smoothing, Lütkepohl (2005) for vector autoregression and Johansen
+(1995) for cointegration. The
 [Further Reading](introduction/C-further-reading.md) appendix carries
 the complete list.
 

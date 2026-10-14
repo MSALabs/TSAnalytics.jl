@@ -173,9 +173,55 @@ Selecting an order is not the same as validating one. The criterion
 ranked this model above the others it tried; it says nothing about
 whether *any* of them left white-noise residuals. Run the diagnostics.
 
+## The other automatic searches
+
+`auto_arima` is one of four searches in the package, and the other three
+follow the same rule: an ordinary fitted object comes back, and anything
+it chose you can reproduce by calling the underlying fitter yourself.
+
+[`auto_ets`](@ref) searches the exponential-smoothing family instead of
+the ARIMA one — up to fifteen ETS forms, ranked by **AICc**, the same
+space R's `ets()` searches by default:
+
+```@example auto
+e = auto_ets(y, 12)
+println(notation(e), "   AICc = ", round(e.aicc, digits=2))
+```
+
+On this series it picks a multiplicative error, an additive trend and a
+multiplicative season. Do **not** compare that AICc with
+`auto_arima`'s: an ARIMA likelihood is computed on the differenced
+series and an ETS likelihood on the levels, so the two criteria are not
+on the same scale. Compare the families out of sample instead:
+
+```@example auto
+test = dataset("cardox").value[241:252]
+mae(f) = sum(abs.(f.point .- test)) / length(test)
+println(rpad(forecast(ms, 12).model_name, 26), " MAE = ", round(mae(forecast(ms, 12)), digits=3))
+println(rpad(forecast(e, 12).model_name, 26), " MAE = ", round(mae(forecast(e, 12)), digits=3))
+```
+
+One year, one series — evidence, not a verdict. [Forecasting and
+Accuracy](09-forecasting-and-accuracy.md) does this properly, with
+rolling origins and benchmarks.
+
+The remaining two searches are multivariate:
+
+- [`var_select`](@ref) chooses a VAR's lag order by AIC, HQ, SC and FPE
+  together, on a sample held fixed across lags — see [Vector
+  Autoregression](11-vector-autoregression.md#Choosing-the-order).
+- [`coint_rank`](@ref) runs Johansen's sequence of tests and stops at
+  the first rank not rejected — see
+  [Cointegration](12-cointegration.md).
+
+And the differencing order itself is chosen by tests, not a criterion:
+[`nsdiffs`](@ref) for the seasonal `D`, which `auto_arima` calls when
+`D` is omitted, and the unit-root tests of [Diagnostics](02-diagnostics.md)
+for `d`.
+
 ## See also
 
 - [Fitting ARMA Models](04-fitting-arma-models.md) — what the search calls underneath
 - [Diagnostics](02-diagnostics.md) — checking the model it picked
 - [Chapter 21](../introduction/21-choosing-an-order.md) — why automatic selection works at all, and when it does not
-- [API: ARMA Models](../api/arma-models.md)
+- [API: ARMA Models](../api/arma-models.md) and [API: Exponential Smoothing](../api/exponential-smoothing.md)
