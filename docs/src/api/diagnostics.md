@@ -50,3 +50,8 @@ nyblom_test
 SignBiasTest
 NyblomTest
 ```
+
+The residual tests for a fitted VAR — multivariate portmanteau,
+normality, Breusch-Godfrey, Edgerton-Shukur and multivariate ARCH-LM —
+are on [API: Vector Autoregression](var.md#Residual-diagnostics), with
+the model they test.

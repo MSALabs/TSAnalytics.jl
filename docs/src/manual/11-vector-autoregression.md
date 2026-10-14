@@ -429,4 +429,5 @@ instantaneous_causality(C; cause = [:Temp, :DewPt, :CldCvr])
 
 - [Forecasting and Accuracy](09-forecasting-and-accuracy.md) — evaluating what comes out of `forecast`
 - [Coming from R or Python](14-coming-from-r-python.md) — every documented divergence in one place
-- [API: Multivariate](../api/multivariate.md)
+- [API: Vector Autoregression](../api/var.md)
+- [API: Structural VAR](../api/structural.md)

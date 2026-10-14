@@ -702,4 +702,4 @@ is one formula in R, not a different model.
 - [Fitting ARMA Models](04-fitting-arma-models.md) — the other way to model a seasonal series
 - [Forecasting and Accuracy](09-forecasting-and-accuracy.md) — evaluating what comes out of `forecast`
 - [Coming from R or Python](14-coming-from-r-python.md) — every documented divergence in one place
-- [API: ARMA Models](../api/arma-models.md) — `fit_ets`, `auto_ets`, `fit_theta`, `fit_tbats`, `holt_winters`
+- [API: Exponential Smoothing](../api/exponential-smoothing.md) — `fit_ets`, `auto_ets`, `fit_theta`, `fit_tbats`, `holt_winters`

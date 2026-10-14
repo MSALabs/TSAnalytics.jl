@@ -151,4 +151,32 @@ end
     @test _nrec(cointegration_plot(fit_vecm(_rfx("coint3_r1.csv"); lags=1, rank=1))) == 5
     @test _nrec(cointegration_plot(_rfx("coint3_r2.csv"), johansen_test(_rfx("coint3_r2.csv"); lags=1))) == 10
     @test _nrec(irf(blanchard_quah(v), 6)) == 8
+    # titles: a structural impulse is named as a shock, not as the variable
+    _ttl(r) = [x.plotattributes[:title] for x in RecipesBase.apply_recipe(Dict{Symbol,Any}(), r)]
+    @test _ttl(irf(v, 6))[1] == "y1 → y1"
+    @test _ttl(irf(blanchard_quah(v), 6))[3] == "shock 2 → y1"
+    @test _ttl(irf(v, 6; impulse=:y2, cumulative=true))[1] == "cumulative: y2 → y1"
+    @test all(startswith("shock"), _ttl(irf(fit_svar(v; A=[1.0 0.0; missing 1.0],
+                                                     B=[missing 0.0; 0.0 missing]), 4)))
+end
+
+@testset "recipes: a constant state draws flat" begin
+    y = _ap()
+    # ETS(A,A,N) on a seasonal series: beta goes to ~0, slope ~ constant
+    m = fit_ets(y, 12; trend=:add, seasonal=:add)
+    d = state_decomposition(m)
+    rec = RecipesBase.apply_recipe(Dict{Symbol,Any}(), d)
+    lo, hi = extrema(d.slope)
+    if hi - lo <= 1e-6 * max(abs((lo + hi) / 2), 1.0)
+        yl = rec[3].plotattributes[:ylims]
+        @test yl[1] < lo && yl[2] > hi && yl[2] - yl[1] >= 1.0
+    end
+    # a moving state keeps the backend's own limits
+    @test !haskey(rec[2].plotattributes, :ylims)
+    flat = TSAnalytics.StateDecomposition(collect(1:5), ones(5), fill(0.3173838, 5),
+                                          0.3173838 .+ 1e-12 .* (1:5), Vector{Float64}[],
+                                          Float64[], "test")
+    r2 = RecipesBase.apply_recipe(Dict{Symbol,Any}(), flat)
+    @test all(r2[3].plotattributes[:ylims] .≈ (0.3173838 - 1.0, 0.3173838 + 1.0))
+    @test r2[1].plotattributes[:ylims] == (0.0, 2.0)               # constant observed, too
 end

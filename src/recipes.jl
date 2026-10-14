@@ -638,10 +638,16 @@ one season panel per seasonal period — `[S]` the panels of R's
         push!(panels, (lab, s))
     end
     for (k, (lab, v)) in enumerate(panels)
+        lo, hi = extrema(v)
+        c = (lo + hi) / 2
+        # a state the fit held constant draws flat, not as its rounding
+        # error magnified to fill the panel
+        flat = hi - lo <= 1e-6 * max(abs(c), 1.0)
         @series begin
             subplot := k
             seriestype := :line
             ylabel := lab
+            flat && (ylims := (c - max(abs(c), 1.0), c + max(abs(c), 1.0)))
             _decimate_minmax(d.t, v, _PLOT_MAXPOINTS)
         end
     end
@@ -753,7 +759,11 @@ layout; R's `plot.varirf` pages one impulse at a time.
            nothing
     for a in 1:nr, b in 1:ni
         sp = (a - 1) * ni + b
-        ttl = "$(r.impulses[b]) → $(r.responses[a])"
+        # a structural impulse is a shock, not a variable: shock j is the one
+        # ordered j-th, which the variable's name would misdescribe
+        imp = r.factorization in (:structural, :blanchard_quah) ?
+              "shock $(findfirst(==(r.impulses[b]), r.names))" : string(r.impulses[b])
+        ttl = (r.cumulative ? "cumulative: " : "") * "$imp → $(r.responses[a])"
         if band !== nothing
             @series begin
                 subplot := sp

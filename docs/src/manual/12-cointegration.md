@@ -222,4 +222,4 @@ for reasons Phillips & Ouliaris (1990, §6) set out.
 
 - [Vector Autoregression](11-vector-autoregression.md) — the stationary case
 - [Coming from R or Python](14-coming-from-r-python.md) — the reference divergences in one place
-- [API: Multivariate](../api/multivariate.md)
+- [API: Cointegration and VECM](../api/cointegration.md)

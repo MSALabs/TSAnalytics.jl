@@ -12,21 +12,6 @@ SarimaModel
 auto_arima
 ```
 
-## Exponential smoothing
-
-```@docs
-holt_winters
-ExponentialSmoothingModel
-fit_ets
-auto_ets
-ETSModel
-notation
-fit_theta
-ThetaModel
-fit_tbats
-TBATSModel
-```
-
 ## Model-fitting infrastructure
 
 ```@docs
