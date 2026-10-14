@@ -1,0 +1,10 @@
+import numpy as np, warnings; warnings.filterwarnings("ignore")
+from statsmodels.tsa.statespace.dynamic_factor import DynamicFactor
+y = np.loadtxt("dfm/fixtureA.csv", delimiter=",", skiprows=1)
+print("shape", y.shape, "sum %.10f" % y.sum(), "sumsq %.10f" % (y**2).sum())
+z = (y - y.mean(0)) / y.std(0, ddof=1)
+m = DynamicFactor(z, k_factors=1, factor_order=1)
+r = m.fit(disp=False)
+print("llf = %.13f" % r.llf, " (agent reported -1049.5334081297972)")
+print("Lambda =", np.round(r.params[:5], 8))
+print("A =", round(r.params[-1] if False else float(r.params[m.param_names.index('L1.f1.f1')]), 8))

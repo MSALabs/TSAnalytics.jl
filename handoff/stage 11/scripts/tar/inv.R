@@ -1,0 +1,16 @@
+suppressMessages(library(tsDyn))
+ex <- ls("package:tsDyn")
+cat("N_EXPORTS:", length(ex), "\n")
+cat(paste(ex, collapse=" "), "\n\n")
+# all objects incl internal
+ns <- asNamespace("tsDyn")
+all <- ls(ns, all.names=TRUE)
+cat("N_NAMESPACE_OBJS:", length(all), "\n")
+isfn <- sapply(all, function(n) is.function(get(n, envir=ns)))
+fns <- all[isfn]
+cat("N_FUNCTIONS:", length(fns), "\n")
+L <- sapply(fns, function(n) length(deparse(get(n, envir=ns))))
+o <- order(-L)
+cat("\n--- ALL FUNCTIONS BY DEPARSE LINES ---\n")
+for (i in o) cat(sprintf("%6d  %s\n", L[i], fns[i]))
+cat("\nTOTAL_DEPARSE_LINES:", sum(L), "\n")

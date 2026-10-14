@@ -1,0 +1,8 @@
+library(dfms); library(collapse); options(digits=10)
+y <- as.matrix(read.csv("fixtureB.csv"))
+m <- DFM(y, r=2L, p=1L, em.method="BM", max.iter=5000L, tol=1e-10, min.iter=0L)
+s <- summary(m)
+cat("### summary(m)$R2 (per-series R2 on factors):\n"); print(s$R2)
+cat("\n### summary(m)$R2_stats:\n"); print(s$R2_stats)
+cat("\n### summary(m)$F_cov:\n"); print(s$F_cov)
+cat("\n### summary(m)$R_diag:\n"); print(s$R_diag)
