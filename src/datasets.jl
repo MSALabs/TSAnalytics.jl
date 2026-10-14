@@ -19,6 +19,16 @@ example (Durbin & Koopman (2012), ch. 2).
 const NILE = joinpath(dirname(@__DIR__), "test_data", "nile.csv")
 
 """
+    TSAnalytics.LYNX
+
+Absolute path to `lynx.csv`: annual Canadian lynx trappings in the
+Mackenzie River district, 1821-1934 (R's `datasets::lynx`, n = 114). The
+canonical threshold-autoregression example, usually taken in `log10`
+(Tong 1990). Not the 91-point "Lynx" of [`dataset`](@ref)'s catalogue.
+"""
+const LYNX = joinpath(dirname(@__DIR__), "test_data", "lynx.csv")
+
+"""
     TSAnalytics.AIR_PASSENGERS
 
 Absolute path to `airpassengers.csv`: monthly US airline passenger

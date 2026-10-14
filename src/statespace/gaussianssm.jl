@@ -171,23 +171,8 @@ every one, with or without this flag -- but the flag is
 belt-and-braces, not redundant, once an optimizer explores parameter
 space more adversarially than a uniform sweep.
 """
-function stationary_cov(ssm::GaussianSSM{S}; tol::Real=1e-15, maxiter::Integer=60) where {S<:Real}
-    Q = ssm.R * ssm.R'
-    A = copy(ssm.T)
-    converged = false
-    for _ in 1:maxiter
-        Qn = Q + A * Q * A'
-        all(isfinite, Qn) || return (Qn, false)
-        if maximum(abs, Qn .- Q) <= tol * max(maximum(abs, Qn), one(S))
-            Q = Qn
-            converged = true
-            break
-        end
-        Q = Qn
-        A = A * A
-    end
-    return ((Q .+ Q') ./ 2, converged)
-end
+stationary_cov(ssm::GaussianSSM{S}; tol::Real=1e-15, maxiter::Integer=60) where {S<:Real} =
+    _stationary_cov(ssm.T, ssm.R * ssm.R'; tol=tol, maxiter=maxiter)
 
 """
     kalman_filter(ssm::GaussianSSM, y::AbstractVector{<:Real}) -> (loglik, sigma2, v, F, converged)

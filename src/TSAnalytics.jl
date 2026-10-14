@@ -15,6 +15,9 @@ include("dataset_catalogue.jl")
 include("statespace/gaussianssm.jl")
 include("statespace/timevaryingssm.jl")
 include("statespace/diffuseinit.jl")
+include("statespace/ssminit.jl")     # Stage 11.0c: partitioned initialisation
+include("statespace/multivariate.jl") # Stage 11.0a/b: sequential multivariate filter and smoother
+include("statespace/stationaryvar.jl") # Stage 11.0d: stationary VAR reparameterisation
 include("abstract.jl")
 include("datasets.jl")
 include("differencing.jl")
@@ -57,6 +60,10 @@ include("vardiagnostics.jl") # Stage 10.8: after irf.jl and diagnostics.jl (Jarq
 include("cointegration.jl")  # Stage 10.4-10.5: after unitroot.jl (adf_test, MacKinnon tables, _bartlett_lrv) and var.jl
 include("vecm.jl")           # Stage 10.6: after cointegration.jl (_johansen_rrr) and irf.jl
 include("svar.jl")           # Stage 10.7: after irf.jl (the MA recursion, _impact_ma_rep) and optim.jl
+include("uc.jl")             # Stage 11.1: after svar.jl; uses ssminit.jl, timevaryingssm.jl, monahan.jl (partrans), forecast.jl
+include("dfm.jl")            # Stage 11.2: after uc.jl and var.jl (VARForecast, _companion)
+include("markovswitching.jl") # Stage 11.3: after unitroot.jl (_ols), monahan.jl (partrans), optim.jl
+include("tar.jl")              # Stage 11.4: after unitroot.jl (_companion), optim.jl
 include("garch.jl")
 include("autoregarch.jl")
 include("garchforecast.jl")

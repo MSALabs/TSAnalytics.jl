@@ -481,3 +481,47 @@ end
         @test isfinite(TSAnalytics._bartlett_lrv(u, 20))
     end
 end
+
+@testset "_ols / _mols: zero weights exclude rows (Stage 11.0e)" begin
+    # EM M-steps weight by smoothed regime probabilities, which reach
+    # exactly zero. A zero weight must EXCLUDE the row -- coefficients,
+    # residuals on the retained rows and standard errors all equal the
+    # regression on the subset -- not be clamped to a tiny positive value.
+    rng = MersenneTwister(11)
+    n, k = 40, 3
+    X = hcat(ones(n), randn(rng, n, k - 1))
+    y = X * [1.0, -0.5, 2.0] .+ 0.3 .* randn(rng, n)
+    w = rand(rng, n) .+ 0.1
+    zero_at = [3, 7, 8, 20, 33]
+    w[zero_at] .= 0
+    keep = setdiff(1:n, zero_at)
+    for method in (:qr, :cholesky)
+        b, r, se = TSAnalytics._ols(X, y; weights=w, method=method)
+        bs, rs, ses = TSAnalytics._ols(X[keep, :], y[keep]; weights=w[keep], method=method)
+        @test b ≈ bs rtol=1e-12
+        @test r[keep] ≈ rs rtol=1e-10
+        @test se ≈ ses rtol=1e-10
+    end
+    # the matrix-response form excludes the same rows
+    Y = hcat(y, 2 .* y .+ randn(rng, n))
+    B, E, S, _ = TSAnalytics._mols(X, Y; weights=w)
+    Bs, Es, Ss, _ = TSAnalytics._mols(X[keep, :], Y[keep, :]; weights=w[keep])
+    @test B ≈ Bs rtol=1e-12
+    @test E[keep, :] ≈ Es rtol=1e-10
+    @test S ≈ Ss rtol=1e-10
+    # too few positive weights: refused, naming the count
+    w2 = zeros(n); w2[1:3] .= 1.0
+    e = try TSAnalytics._ols(X, y; weights=w2) catch err; err end
+    @test e isa ArgumentError && occursin("only 3 of $n weights are positive", sprint(showerror, e))
+    @test_throws ArgumentError TSAnalytics._ols(X, y; weights=zeros(n))
+    @test_throws ArgumentError TSAnalytics._mols(X, Y; weights=w2)
+    # negative weights are still refused
+    w3 = copy(w); w3[5] = -0.1
+    @test_throws ArgumentError TSAnalytics._ols(X, y; weights=w3)
+    @test_throws ArgumentError TSAnalytics._mols(X, Y; weights=w3)
+    # all-positive weights: unchanged behaviour
+    wp = rand(rng, n) .+ 0.5
+    b1, _, se1 = TSAnalytics._ols(X, y; weights=wp)
+    Xw = X .* sqrt.(wp); yw = y .* sqrt.(wp)
+    @test b1 ≈ Xw \ yw rtol=1e-12
+end

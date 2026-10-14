@@ -379,3 +379,33 @@ function boxcox_profile_plot(x, lambdas=range(-1.0, 2.0, length=50))
     end
     return (lambdas=collect(lambdas), loglik=ll)
 end
+
+export standardize
+
+"""
+    standardize(X) -> Matrix{Float64}
+
+Each column of `X` centred on its mean and divided by its standard deviation
+with `n − 1` in the denominator, ignoring `NaN`s (which stay `NaN`). Accepts
+anything [`tsmatrix`](@ref) does.
+
+Kept as a separate step on purpose: [`fit_dfm`](@ref) does **not**
+standardise inside the fit, because the likelihood is not scale-invariant and
+a standardisation buried in the fitter makes it incomparable. The references
+differ here -- R's `dfms` always standardises (with `n − 1`), statsmodels'
+`DynamicFactor` never does, and `DynamicFactorMQ` does with a denominator that
+depends on whether the input is a pandas DataFrame (`n − 1`) or a NumPy array
+(`n`), a 2.5 log-likelihood shift on the same data.
+"""
+function standardize(X)
+    M = Matrix{Float64}(tsmatrix(X))
+    out = similar(M)
+    for j in axes(M, 2)
+        c = filter(!isnan, view(M, :, j))
+        length(c) >= 2 || throw(ArgumentError("standardize: column $j has fewer than 2 observed values"))
+        s = std(c)
+        s > 0 || throw(ArgumentError("standardize: column $j is constant"))
+        out[:, j] = (view(M, :, j) .- mean(c)) ./ s
+    end
+    return out
+end

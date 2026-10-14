@@ -16,6 +16,7 @@ summarized here for convenience.
 | File | Series | Period | Original source |
 |---|---|---|---|
 | `nile.csv` | Annual flow of the Nile at Aswan (10^8 m^3) | 1871-1970 | Durbin & Koopman (2012), ch. 2 -- the canonical local-level-model example |
+| `lynx.csv` | Annual Canadian lynx trappings, Mackenzie River (R `datasets::lynx`) | 1821-1934 | Tong (1990) -- the canonical threshold-autoregression example (Stage 11.4) |
 | `airpassengers.csv` | Monthly US airline passenger totals | 1949-1960 | Box & Jenkins (1976); the canonical multiplicative-seasonality example |
 | `sunspot_year.csv` | Yearly sunspot numbers | 1700-1988 | Federal Reserve Bank of St Louis / H. Tong (1996) -- classic nonlinear/AR benchmark |
 | `uschange.csv` | Quarterly % changes: consumption, income, production, savings, unemployment | 1960-2016 | Hyndman & Athanasopoulos, *Forecasting: Principles and Practice* -- multivariate/VAR and regression-with-ARIMA-errors benchmark |

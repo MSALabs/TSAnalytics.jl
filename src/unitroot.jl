@@ -53,9 +53,20 @@ function _ols(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real};
               method::Symbol=:qr)
     method in (:qr, :cholesky) || throw(ArgumentError("method must be :qr or :cholesky"))
     n, k = size(X)
+    # A zero weight EXCLUDES its row (sqrt(0) zeroes it in X'X and in the
+    # residual sum), so the degrees of freedom count only positive weights.
+    # Zero weights arise routinely -- an EM M-step weights by smoothed regime
+    # probabilities, which reach exactly 0 -- and are excluded rather than
+    # clamped to a tiny positive number, which would still add a row to the
+    # degrees of freedom (statsmodels clamps at 1e-20).
+    npos = n
     if weights !== nothing
         length(weights) == n || throw(ArgumentError("weights must have length n"))
-        all(>(0), weights) || throw(ArgumentError("weights must be positive"))
+        all(>=(0), weights) || throw(ArgumentError("weights must be non-negative"))
+        npos = count(>(0), weights)
+        npos > k || throw(ArgumentError(
+            "_ols: only $npos of $n weights are positive, and $k regressors need " *
+            "more than $k positive-weight rows; zero-weight rows are excluded"))
         sw = sqrt.(weights)
         Xw = X .* sw
         yw = y .* sw
@@ -64,7 +75,7 @@ function _ols(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real};
         yw = y
     end
 
-    dof = n - k
+    dof = npos - k
     dof > 0 || throw(ArgumentError("not enough observations for the requested regression"))
 
     local beta, XtX_inv
@@ -163,13 +174,15 @@ function _mols(Z::AbstractMatrix{<:Real}, X::AbstractMatrix{<:Real};
         "_mols: Z has $T rows but X has $(size(X, 1))"))
     K = size(X, 2)
     K >= 1 || throw(ArgumentError("_mols: X must have at least one column"))
-    dof = T - q
+    npos = weights === nothing ? T : count(>(0), weights)
+    dof = npos - q
     dof > 0 || throw(ArgumentError(
-        "_mols: not enough observations -- $T rows for $q regressors per equation"))
+        "_mols: not enough observations -- $npos positive-weight rows for $q " *
+        "regressors per equation (zero-weight rows are excluded)"))
 
     if weights !== nothing
         length(weights) == T || throw(ArgumentError("weights must have length T"))
-        all(>(0), weights) || throw(ArgumentError("weights must be positive"))
+        all(>=(0), weights) || throw(ArgumentError("weights must be non-negative"))
         sw = sqrt.(weights)
         Zw = Z .* sw
         Xw = X .* sw

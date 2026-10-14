@@ -137,7 +137,9 @@ _const_last(B) = vcat(B[2:end, :], B[1:1, :])
         end
         @test !isapprox(Bw, a[1]; rtol=1e-6)            # weights did something
         @test_throws ArgumentError T._mols(X, Y; weights=ones(99))
-        @test_throws ArgumentError T._mols(X, Y; weights=vcat(0.0, ones(99)))
+        # a zero weight is accepted since Stage 11.0e and excludes its row
+        # (the zero-weight tests are in test_unitroot.jl); negatives refuse
+        @test_throws ArgumentError T._mols(X, Y; weights=vcat(-1.0, ones(99)))
     end
 
     @testset "REDUCTION: a k=1 VAR(p) with a constant is stats::ar.ols" begin

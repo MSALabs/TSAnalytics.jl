@@ -29,6 +29,11 @@ using Dates: Date
     include("test_vecm.jl")             # Stage 10.6
     include("test_svar.jl")             # Stage 10.7
     include("test_plotdata.jl")         # plot data for Stages 9-10 (counts in test_recipes.jl)
+    include("test_ssm_multivariate.jl") # Stage 11.0a/b/d
+    include("test_uc.jl")               # Stage 11.1 (and 11.0c/11.0e)
+    include("test_dfm.jl")              # Stage 11.2
+    include("test_markovswitching.jl")  # Stage 11.3
+    include("test_tar.jl")              # Stage 11.4
     include("test_stattools.jl")
     include("test_ccf.jl")
     include("test_unitroot.jl")
