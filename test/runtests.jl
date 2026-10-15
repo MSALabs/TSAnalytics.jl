@@ -71,6 +71,8 @@ using Dates: Date
     include("test_scoring.jl")
     include("test_combine.jl")
     include("test_tscv.jl")
+    include("test_lagregression.jl")    # Stage 12.3
+    include("test_intermittent.jl")     # Stage 12.1
     include("test_holtwinters.jl")
     include("test_ets.jl")         # after test_holtwinters.jl: the ETS(A,A,A) reduction reuses it
     include("test_ets_mult.jl")   # after test_ets.jl: multiplicative error, classes 2 and 3

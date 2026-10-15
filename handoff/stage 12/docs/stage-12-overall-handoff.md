@@ -262,6 +262,10 @@ Stage 11 ended at D18. Every one below found by execution.
 | **D32** | `forecast` | **`accuracy()`'s MASE denominator silently depends on whether the input was a `ts`.** On a bare numeric vector it uses mean absolute deviation about the mean, not a naive forecast: MASE 1.3400472874157467 against the correct 1.0885456588355449. | [V] |
 | **D33** | `mlforecast` | **`date_features_as_dummies=True` produces a rank-deficient design** (12 month dummies with no baseline dropped plus an implicit intercept — rank 14 of 15, condition 1.686e+17) and sklearn returns a silent minimum-norm solution. `arx`'s explicit rank check would throw. | [V] |
 
+| **D34** | `mlforecast` | *Appended 2026-10-15, building 12.3.* **`predict(h, X_df=…)` with fewer future rows than `h` silently forecasts anyway**: with 3 of 6 rows of `x_known`/`x_past` it returns six numbers, the last three differing from the full-X forecast (3.4255 against 4.9844 at h = 4) with no warning -- although it raises loudly when `X_df` is absent or missing a column. TSAnalytics refuses, naming the columns and the shortfall. | [V] `ground-truth/exog_py.txt` case (d) |
+
+| **D35** | `utilsforecast` | *Appended 2026-10-15, building 12.1.* **`cfe`'s sign contradicts its own docstring.** The docstring says "Positive values mean under forecast"; the code computes `sum(model − target)`, so a total under-forecast of 2 returns **−2.0** (forecasts 1,1,1 against actuals 2,0,3). TSAnalytics' `cfe` is `sum(actual − predicted)`, positive for under-forecasting, as documented there. | [V] executed on utilsforecast as installed with statsforecast 2.1.1; [S] `losses.py:241` |
+
 **D19, D20, D21 and D24 are the four that change what gets built.**
 
 ---

@@ -1,4 +1,4 @@
-export mae, rmse, mape, smape, mase, accuracy
+export mae, rmse, mape, smape, mase, accuracy, mdape, rmsse, cfe, spis
 
 """
     mae(actual, predicted) -> Float64
@@ -99,6 +99,99 @@ function smape(actual, predicted; as_percentage::Bool=true)
     epsval = eps(Float64)
     v = sum(abs.(a .- p) ./ max.((abs.(a) .+ abs.(p)) ./ 2, epsval)) / length(a)
     return as_percentage ? 100 * v : v
+end
+
+"""
+    mdape(actual, predicted; as_percentage=true) -> Float64
+
+Median absolute percentage error: `median(|actual − predicted| / max(|actual|, eps))`,
+the median counterpart of [`mape`](@ref), on the same scale (a percentage
+by default, `sktime`'s fraction with `as_percentage=false`). One large
+relative error -- a near-zero actual -- moves the mean and not the median.
+
+```jldoctest
+julia> mdape([100.0, 200.0, 300.0], [110.0, 190.0, 0.0])
+10.0
+```
+"""
+function mdape(actual, predicted; as_percentage::Bool=true)
+    a = tsvalues(actual)
+    p = tsvalues(predicted)
+    length(a) == length(p) || throw(ArgumentError("actual and predicted must have the same length"))
+    isempty(a) && throw(ArgumentError("mdape: no observations"))
+    v = median(abs.(a .- p) ./ max.(abs.(a), eps(Float64)))
+    return as_percentage ? 100 * v : v
+end
+
+"""
+    rmsse(actual, predicted, train; sp::Integer=1) -> Float64
+
+Root mean squared scaled error: the out-of-sample root mean squared error
+divided by the in-sample root mean squared error of the (seasonal-)naive
+forecast on `train` -- the squared-error counterpart of [`mase`](@ref), and
+the M5 competition's metric. `sktime`'s
+`mean_squared_scaled_error(square_root=True)`.
+
+```jldoctest
+julia> rmsse([3.0, 5.0], [2.0, 5.0], [1.0, 2.0, 4.0])
+0.4472135954999579
+```
+"""
+function rmsse(actual, predicted, train; sp::Integer=1)
+    a = tsvalues(actual)
+    p = tsvalues(predicted)
+    tr = tsvalues(train)
+    length(a) == length(p) || throw(ArgumentError("actual and predicted must have the same length"))
+    sp >= 1 || throw(ArgumentError("sp must be >= 1"))
+    length(tr) > sp || throw(ArgumentError("train must have more than sp observations"))
+    msd = sum(abs2, tr[(sp + 1):end] .- tr[1:(end - sp)]) / (length(tr) - sp)
+    return sqrt((sum(abs2, a .- p) / length(a)) / max(msd, eps(Float64)))
+end
+
+"""
+    cfe(actual, predicted) -> Float64
+
+Cumulative forecast error, `sum(actual − predicted)`: the signed total, so
+**positive means the forecasts were too low** in total, negative too high.
+The bias measure for intermittent demand, where a forecast that is
+systematically too high or too low costs stock-outs or holding, and the
+one that shows what SBA corrects -- MASE cannot see bias.
+`utilsforecast`'s `cfe` computes the opposite sign, `sum(predicted − actual)`,
+while documenting this one.
+
+```jldoctest
+julia> cfe([2.0, 0.0, 3.0], [1.0, 1.0, 1.0])
+2.0
+```
+"""
+function cfe(actual, predicted)
+    a = tsvalues(actual)
+    p = tsvalues(predicted)
+    length(a) == length(p) || throw(ArgumentError("actual and predicted must have the same length"))
+    return sum(a .- p)
+end
+
+"""
+    spis(actual, predicted, train) -> Float64
+
+Scaled periods in stock: the sum of absolute forecast errors divided by
+the mean demand over `train`, so that it is free of the series' scale and
+can be compared and averaged across items -- `utilsforecast`'s `spis`.
+
+```jldoctest
+julia> spis([2.0, 0.0, 3.0], [1.0, 1.0, 1.0], [0.0, 4.0, 2.0])
+2.0
+```
+"""
+function spis(actual, predicted, train)
+    a = tsvalues(actual)
+    p = tsvalues(predicted)
+    tr = tsvalues(train)
+    length(a) == length(p) || throw(ArgumentError("actual and predicted must have the same length"))
+    isempty(tr) && throw(ArgumentError("spis: train is empty"))
+    m = mean(tr)
+    m > 0 || throw(ArgumentError("spis: the training demand has mean zero, so nothing scales it"))
+    return sum(abs.(a .- p)) / m
 end
 
 """

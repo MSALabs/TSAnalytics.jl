@@ -25,6 +25,10 @@ rmse
 mape
 smape
 mase
+mdape
+rmsse
+cfe
+spis
 accuracy
 pinball_loss
 crps_normal
@@ -40,5 +44,6 @@ combine_forecasts
 ```@docs
 expanding_window_split
 sliding_window_split
+blocked_window_split
 tscv
 ```

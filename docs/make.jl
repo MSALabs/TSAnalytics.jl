@@ -157,6 +157,7 @@ makedocs(;
             "api/dynamic-factors.md",
             "api/regime-switching.md",
             "api/threshold-models.md",
+            "api/intermittent-demand.md",
             "api/arimax.md",
             "api/var.md",
             "api/cointegration.md",

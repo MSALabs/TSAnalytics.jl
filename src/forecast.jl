@@ -30,7 +30,8 @@ Throws a clear error for `exog` columns (`\"x1\"`, ...) rather than
 silently zeroing them or guessing -- forecasting an AR-X model with
 exogenous regressors needs *future* exog values this function has no way
 to know, a real, deliberate gap, not an oversight."
-function _arx_forecast_row(names::Vector{String}, t::Integer, yext::Vector{Float64})
+function _arx_forecast_row(names::Vector{String}, t::Integer, yext::Vector{Float64},
+                          xext=nothing, pext=nothing, extra=nothing)
     row = Vector{Float64}(undef, length(names))
     for (i, nm) in enumerate(names)
         row[i] = if nm == "const"
@@ -44,15 +45,52 @@ function _arx_forecast_row(names::Vector{String}, t::Integer, yext::Vector{Float
         elseif startswith(nm, "y.L")
             lag = parse(Int, nm[4:end])
             yext[t - lag]
+        elseif startswith(nm, "past")
+            m = match(r"^past(\d+)\.L(\d+)$", nm)
+            pext[t - parse(Int, m.captures[2]), parse(Int, m.captures[1])]
         elseif startswith(nm, "x")
-            throw(ArgumentError("predict: cannot forecast a model fit with `exog` -- " *
-                                 "future exog values are needed and aren't available " *
-                                 "(not supported)"))
+            xext[t, parse(Int, nm[2:end])]
+        elseif extra !== nothing && haskey(extra, nm)
+            extra[nm](yext, t)
         else
             error("predict: unrecognized ARXModel coefficient name \"$nm\"")
         end
     end
     return row
+end
+
+# The regressors over the forecast horizon, appended to the in-sample ones.
+# Known-future (contemporaneous) regressors need a value at every step; a
+# past-only regressor needs one only from its smallest lag onwards. Missing
+# values are refused, naming the column and the shortfall -- never
+# extrapolated (sktime pads them with the last value, silently: D23).
+function _arx_future_regressors(hist, future, horizon, minlag, what, kw)
+    hist === nothing && future !== nothing && throw(ArgumentError(
+        "forecast: `$kw` given, but the model has no $what"))
+    hist === nothing && return nothing
+    k = size(hist, 2)
+    need = max(horizon - minlag, 0)
+    F = if future === nothing
+        need == 0 || throw(ArgumentError(
+            "forecast: the model has $k $(k == 1 ? replace(what, "regressors" => "regressor") : what) " *
+            "(column$(k == 1 ? "" : "s") $(join(1:k, ", "))); " *
+            "forecasting $horizon step$(horizon == 1 ? "" : "s") ahead needs $need future " *
+            "row$(need == 1 ? "" : "s") of them in `$kw`"))
+        zeros(0, k)
+    else
+        fv = tsvalues(future)
+        fv isa AbstractMatrix ? Matrix{Float64}(fv) : reshape(collect(Float64, fv), :, 1)
+    end
+    size(F, 2) == k || throw(ArgumentError(
+        "forecast: `$kw` has $(size(F, 2)) column$(size(F, 2) == 1 ? "" : "s"), the model has $k"))
+    size(F, 1) >= need || throw(ArgumentError(
+        "forecast: `$kw` has $(size(F, 1)) row$(size(F, 1) == 1 ? "" : "s"); h = $horizon needs " *
+        "$need (column$(k == 1 ? "" : "s") $(join(1:k, ", ")) of the $what)"))
+    any(!isfinite, view(F, 1:need, :)) && throw(ArgumentError(
+        "forecast: `$kw` has missing/non-finite values within the horizon"))
+    # rows past the need are padded with NaN, which no row builder reads
+    pad = fill(NaN, max(horizon - size(F, 1), 0), k)
+    return vcat(hist, F[1:min(size(F, 1), horizon), :], pad)
 end
 
 """
@@ -64,21 +102,23 @@ documenting a `StatsAPI` extension's *exported* wrapper, not the bare
 extension method itself -- `StatsAPI.coef`/`vcov` on `ARXModel`, Stage
 5.1, likewise carry no separate docstring of their own).
 """
-function StatsAPI.predict(model::ARXModel, horizon::Integer; level::Vector{<:Real}=[80.0, 95.0])
+function StatsAPI.predict(model::ARXModel, horizon::Integer; level::Vector{<:Real}=[80.0, 95.0],
+                          newexog=nothing, newpast=nothing)
     horizon >= 1 || throw(ArgumentError("horizon must be >= 1"))
     isempty(level) && throw(ArgumentError("level must be non-empty"))
     all(0 .< level .< 100) || throw(ArgumentError("level entries must be in (0, 100)"))
-    any(nm -> startswith(nm, "x"), model.names) &&
-        throw(ArgumentError("predict: cannot forecast a model fit with `exog` -- " *
-                             "future exog values are needed and aren't available " *
-                             "(not supported)"))
+    xext = _arx_future_regressors(model.exog, newexog, horizon, 0, "known-future regressors",
+                                  "newexog")
+    pext = _arx_future_regressors(model.past_exog, newpast, horizon,
+                                  isempty(model.past_lags) ? 0 : minimum(model.past_lags),
+                                  "past-only regressors", "newpast")
 
     n = length(model.y)
     yext = copy(model.y)
     point = Vector{Float64}(undef, horizon)
     for h in 1:horizon
         t = n + h
-        row = _arx_forecast_row(model.names, t, yext)
+        row = _arx_forecast_row(model.names, t, yext, xext, pext)
         yhat = dot(row, model.coef)
         push!(yext, yhat)
         point[h] = yhat
@@ -110,7 +150,8 @@ function StatsAPI.predict(model::ARXModel, horizon::Integer; level::Vector{<:Rea
 end
 
 """
-    forecast(model::ARXModel, horizon; level=[80.0, 95.0]) -> Forecast
+    forecast(model::ARXModel, horizon; level=[80.0, 95.0], newexog=nothing, newpast=nothing) -> Forecast
+    forecast(model::ARXModel, newexog, horizon; level=[80.0, 95.0], newpast=nothing) -> Forecast
 
 Forecast `horizon` steps ahead from a fitted AR-X model, with prediction
 intervals at each level in `level` (percentages, e.g. `95.0` for a 95%
@@ -131,10 +172,16 @@ build its design matrix, walking `model.names` (see [`ARXModel`](@ref))
 column by column at each future time step, feeding each step's own
 forecast back in as pseudo-history once the horizon exceeds the original
 sample -- so it generalizes correctly to a lag *subset* (e.g. `[1,3]`),
-`trend`/`seasonal` continuation, and any combination thereof. Throws a
-clear `ArgumentError` for models fit with `exog` (future exog values
-would be needed and aren't available) rather than silently ignoring the
-regressor.
+`trend`/`seasonal` continuation, and any combination thereof.
+
+**Regressors.** A model fit with `exog` (known-future regressors) needs
+their values over the horizon: pass `newexog` with at least `horizon`
+rows, one column per regressor -- [`fourier_terms`](@ref)`(…; h=horizon)`
+supplies exactly this for Fourier seasonality. A model fit with
+`past_exog` needs future values only beyond its smallest lag, as
+`newpast`. A shortfall is refused, naming the regressor columns and how
+many rows are missing; nothing is extrapolated. The intervals treat the
+regressors' future values as known, as every reference does.
 
 # Examples
 ```jldoctest
@@ -154,6 +201,12 @@ true
 ```
 """
 forecast(model, horizon; level::Vector{<:Real}=[80.0, 95.0]) = StatsAPI.predict(model, horizon; level=level)
+forecast(model::ARXModel, horizon::Integer; level::Vector{<:Real}=[80.0, 95.0], newexog=nothing,
+         newpast=nothing) =
+    StatsAPI.predict(model, horizon; level=level, newexog=newexog, newpast=newpast)
+forecast(model::ARXModel, newexog, horizon::Integer; level::Vector{<:Real}=[80.0, 95.0],
+         newpast=nothing) =
+    StatsAPI.predict(model, horizon; level=level, newexog=newexog, newpast=newpast)
 
 function Base.show(io::IO, f::Forecast)
     println(io, f.model_name, " forecast, ", f.horizon, " steps ahead")

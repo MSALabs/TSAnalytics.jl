@@ -9,9 +9,9 @@ trend/seasonal terms first, then lags (`"y.L1"`, `"y.L2"`, ...), then any
 `exog` columns (`"x1"`, `"x2"`, ...) -- matching `statsmodels.tsa.ar_model.AutoReg`'s
 own column order and naming exactly (verified by execution, not assumed).
 
-`y` (the full original series) and `period` (the `seasonal=true` period,
-`nothing` otherwise) are stored specifically so [`forecast`](@ref) has
-something to forecast *from* -- without them there is no way to seed a
+`y` (the full original series), `period` (the `seasonal=true` period,
+`nothing` otherwise) and the regressors `exog`/`past_exog` are stored
+specifically so [`forecast`](@ref) has something to forecast *from* -- without them there is no way to seed a
 forecast recursion's initial lagged values or continue the trend/seasonal
 terms past the fitted sample, a real gap the first version of this
 struct (Stage 5.1) had (it only kept `resid`, not `y`).
@@ -30,6 +30,9 @@ struct ARXModel <: UnivariateModel
     trend::Symbol
     y::Vector{Float64}
     period::Union{Nothing,Int}
+    exog::Union{Nothing,Matrix{Float64}}       # known-future regressors, in-sample rows
+    past_exog::Union{Nothing,Matrix{Float64}}  # past-only regressors, in-sample rows
+    past_lags::Vector{Int}
 end
 
 StatsAPI.coef(m::ARXModel) = m.coef
@@ -43,7 +46,7 @@ StatsAPI.bic(m::ARXModel) = m.bic
 
 """
     arx(y, lags; trend=:c, seasonal=false, period=nothing, exog=nothing,
-        hold_back=nothing, method=:qr) -> ARXModel
+        past_exog=nothing, past_lags=1, hold_back=nothing, method=:qr) -> ARXModel
 
 Autoregressive model with optional exogenous regressors ("AR-X"), fit by
 conditional least squares. Argument names follow Python's
@@ -72,7 +75,18 @@ across `trend` values, an `exog` regressor, a lag *subset* (not just
   category, so genuinely different coefficient values, not just a
   cosmetic naming difference). Requires `period`.
 - `exog`: optional exogenous regressor vector/matrix -- the "X" in AR-X.
-  Must have the same number of rows as `y`.
+  Must have the same number of rows as `y`. These enter
+  **contemporaneously** (`x_t` explains `y_t`), so they must be *known in
+  the future* to forecast: [`forecast`](@ref) takes their future values as
+  `newexog` and refuses, naming the column and the shortfall, when they are
+  missing -- never extrapolating them (`sktime` pads them with the last
+  value, silently).
+- `past_exog`, `past_lags`: regressors that enter **lagged only** --
+  `x_{t-l}` for each `l` in `past_lags` (an integer `L` means `1:L`; lag 0
+  is refused, since it would be contemporaneous) -- named `"past1.L1"`,
+  ... A past-only regressor needs no future values up to its smallest lag;
+  beyond it, [`forecast`](@ref) needs `newpast`. The lags shorten the
+  sample exactly as `y`'s do: `hold_back` covers the largest of both.
 - `hold_back`: number of initial observations to exclude from the fit;
   defaults to `maximum(lags)`, and must be at least that (matching
   `AutoReg`'s own validation, confirmed by execution:
@@ -126,7 +140,9 @@ true
 function arx(y, lags::Union{Integer,AbstractVector{<:Integer}};
              trend::Symbol=:c, seasonal::Bool=false, period::Union{Nothing,Integer}=nothing,
              se_type::Symbol=:hessian,
-             exog=nothing, hold_back::Union{Nothing,Integer}=nothing,
+             exog=nothing, past_exog=nothing,
+             past_lags::Union{Integer,AbstractVector{<:Integer}}=1,
+             hold_back::Union{Nothing,Integer}=nothing,
              method::Symbol=:qr)
     trend in (:n, :c, :t, :ct) || throw(ArgumentError("trend must be :n, :c, :t, or :ct"))
     se_type in (:hessian, :robust) ||
@@ -135,56 +151,22 @@ function arx(y, lags::Union{Integer,AbstractVector{<:Integer}};
     seasonal && period === nothing && throw(ArgumentError("seasonal=true requires period"))
     seasonal && period !== nothing && period < 2 && throw(ArgumentError("period must be >= 2"))
 
-    lagset = lags isa Integer ? collect(1:lags) : collect(Int, lags)
-    isempty(lagset) && throw(ArgumentError("lags must be non-empty"))
-    all(>=(1), lagset) || throw(ArgumentError("every lag must be >= 1"))
-    maxlag = maximum(lagset)
-
     yv = tsvalues(y)
     n = length(yv)
     any(!isfinite, yv) && throw(ArgumentError("arx: missing/non-finite values not supported in y"))
+    lagset = _arx_lagset(lags, "lags")
+    ex_mat = _arx_regressors(exog, n, "exog")
+    pex = _arx_regressors(past_exog, n, "past_exog")
+    plags = pex === nothing ? Int[] : _arx_lagset(past_lags, "past_lags")
+    maxlag = max(maximum(lagset), isempty(plags) ? 0 : maximum(plags))
 
     hb = hold_back === nothing ? maxlag : hold_back
-    hb >= maxlag || throw(ArgumentError("hold_back must be >= maximum(lags) ($maxlag)"))
+    hb >= maxlag || throw(ArgumentError("hold_back must be >= the largest lag ($maxlag)"))
     n > hb || throw(ArgumentError("not enough observations after hold_back=$hb (n=$n)"))
 
-    resp = collect(Float64, yv[(hb+1):n])
+    X, resp, names = _arx_design(collect(Float64, yv), lagset, hb, trend, seasonal, period,
+                                 ex_mat, pex, plags)
     nobs = length(resp)
-
-    cols = Vector{Vector{Float64}}()
-    names = String[]
-
-    if trend in (:c, :ct)
-        push!(cols, ones(nobs)); push!(names, "const")
-    end
-    if trend in (:t, :ct)
-        push!(cols, collect(Float64, (hb+1):n)); push!(names, "trend")
-    end
-    if seasonal
-        # Seasons 2:period get a dummy, season 1 is the implicit baseline --
-        # matches AutoReg's actual column choice and naming exactly (verified
-        # by execution: 's(2,4)','s(3,4)','s(4,4)' for period=4, not a dummy
-        # for every season starting at 1, which the handoff's original
-        # 1:(period-1)/"seasonal.$s" proposal would have built instead).
-        for s in 2:period
-            push!(cols, Float64[mod1(t, period) == s ? 1.0 : 0.0 for t in (hb+1):n])
-            push!(names, "s($s,$period)")
-        end
-    end
-    for lag in lagset
-        push!(cols, collect(Float64, yv[(hb+1-lag):(n-lag)])); push!(names, "y.L$lag")
-    end
-    if exog !== nothing
-        exv = tsvalues(exog)
-        ex_mat = exv isa AbstractMatrix ? exv : reshape(collect(exv), :, 1)
-        size(ex_mat, 1) == n || throw(ArgumentError("exog must have the same length as y"))
-        any(!isfinite, ex_mat) && throw(ArgumentError("arx: missing/non-finite values not supported in exog"))
-        for j in 1:size(ex_mat, 2)
-            push!(cols, collect(Float64, ex_mat[(hb+1):n, j])); push!(names, "x$j")
-        end
-    end
-
-    X = reduce(hcat, cols)
     # `_ols`'s QR-based solve can still return SOME beta for a rank-deficient
     # X (least-squares via QR doesn't require full column rank the way
     # inv(X'X) does), and relying on inv() to throw is NOT portable: exact
@@ -215,7 +197,77 @@ function arx(y, lags::Union{Integer,AbstractVector{<:Integer}};
     bic_val = -2*loglik + (k+1)*log(nobs)
 
     return ARXModel(beta, vc, names, resid, sigma2, loglik, aic_val, bic_val, nobs, lagset, trend,
-                     collect(Float64, yv), seasonal ? period : nothing)
+                     collect(Float64, yv), seasonal ? period : nothing, ex_mat, pex, plags)
+end
+
+# lags as a sorted-as-given vector of positive integers; lag 0 is refused --
+# it would be the target itself (sktime's lag-0 window feature IS y_t: R² = 1)
+function _arx_lagset(lags, what)
+    ls = lags isa Integer ? collect(1:lags) : collect(Int, lags)
+    isempty(ls) && throw(ArgumentError("$what must be non-empty"))
+    all(>=(1), ls) || throw(ArgumentError(
+        "every entry of $what must be >= 1: a lag of 0 is the value being predicted, " *
+        "so it would leak the target into its own features"))
+    return ls
+end
+
+function _arx_regressors(x, n, what)
+    x === nothing && return nothing
+    xv = tsvalues(x)
+    M = xv isa AbstractMatrix ? Matrix{Float64}(xv) : reshape(collect(Float64, xv), :, 1)
+    size(M, 1) == n || throw(ArgumentError("$what must have the same length as y"))
+    any(!isfinite, M) && throw(ArgumentError("arx: missing/non-finite values not supported in $what"))
+    return M
+end
+
+# The one place the AR-X design is built -- arx, lag_regression and the
+# direct strategy all call it, so the column convention cannot drift.
+# Columns: deterministic terms, the lags of y, contemporaneous exog, then
+# lagged (past-only) exog; rows (hb+1):last (default the end). `shift` adds to every y and
+# past-exog lag (the direct strategy's horizon offset, h - 1).
+function _arx_design(yv::Vector{Float64}, lagset, hb, trend, seasonal, period, ex_mat, pex,
+                     plags; shift::Integer=0, extra=nothing, last::Integer=length(yv))
+    rows = (hb + 1):last
+    nobs = length(rows)
+    cols = Vector{Vector{Float64}}()
+    names = String[]
+    if trend in (:c, :ct)
+        push!(cols, ones(nobs)); push!(names, "const")
+    end
+    if trend in (:t, :ct)
+        push!(cols, collect(Float64, rows)); push!(names, "trend")
+    end
+    if seasonal
+        # Seasons 2:period get a dummy, season 1 is the implicit baseline --
+        # matches AutoReg's actual column choice and naming exactly (verified
+        # by execution: 's(2,4)','s(3,4)','s(4,4)' for period=4, not a dummy
+        # for every season starting at 1).
+        for s in 2:period
+            push!(cols, Float64[mod1(t, period) == s ? 1.0 : 0.0 for t in rows])
+            push!(names, "s($s,$period)")
+        end
+    end
+    for lag in lagset
+        L = lag + shift
+        push!(cols, yv[rows .- L]); push!(names, "y.L$L")
+    end
+    if ex_mat !== nothing
+        for j in 1:size(ex_mat, 2)
+            push!(cols, ex_mat[rows, j]); push!(names, "x$j")
+        end
+    end
+    if pex !== nothing
+        for j in 1:size(pex, 2), l in plags
+            L = l + shift
+            push!(cols, pex[rows .- L, j]); push!(names, "past$j.L$L")
+        end
+    end
+    if extra !== nothing
+        for (nm, f) in extra
+            push!(cols, Float64[f(yv, t) for t in rows]); push!(names, nm)
+        end
+    end
+    return reduce(hcat, cols), yv[rows], names
 end
 
 function Base.show(io::IO, m::ARXModel)

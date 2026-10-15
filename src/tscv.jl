@@ -1,4 +1,4 @@
-export expanding_window_split, sliding_window_split, tscv
+export expanding_window_split, sliding_window_split, blocked_window_split, tscv
 
 """
     expanding_window_split(n; initial_window, step_length=1, fh=1) -> Vector{Tuple{Vector{Int},Vector{Int}}}
@@ -39,6 +39,45 @@ function expanding_window_split(n::Integer; initial_window::Integer,
         test_idx = [origin + h for h in horizons]
         push!(folds, (train_idx, test_idx))
         origin += step_length
+    end
+    return folds
+end
+
+"""
+    blocked_window_split(n; window_length, skip=0, include_partial=true)
+        -> Vector{Tuple{Vector{Int},Vector{Int}}}
+
+Blocked cross-validation (Bergmeir, Hyndman & Koo 2018): the series is cut
+into contiguous validation blocks of `window_length`, and each fold trains
+on **everything outside its block, before and after it**. That is not
+rolling-origin cross-validation -- the model sees the future of the block
+-- and it is the right check for a direct lag regression, whose rows are
+independent given their features. `skip` leaves that many observations
+between blocks; `include_partial = false` drops a final block shorter than
+`window_length`. Matches R `forecastML`'s `create_windows` (with the
+training rows that its models are actually fitted on): 117 usable rows in
+blocks of 20 train on 97 rows, and on 100 beside the final 17-row block.
+
+```jldoctest
+julia> folds = blocked_window_split(10; window_length=4);
+
+julia> folds[2]
+([1, 2, 3, 4, 9, 10], [5, 6, 7, 8])
+```
+"""
+function blocked_window_split(n::Integer; window_length::Integer, skip::Integer=0,
+                              include_partial::Bool=true)
+    window_length >= 1 || throw(ArgumentError("window_length must be >= 1"))
+    skip >= 0 || throw(ArgumentError("skip must be >= 0"))
+    window_length < n || throw(ArgumentError("window_length must be smaller than n = $n"))
+    folds = Tuple{Vector{Int},Vector{Int}}[]
+    start = 1
+    while start <= n
+        stop = min(start + window_length - 1, n)
+        (stop - start + 1 < window_length && !include_partial) && break
+        test = collect(start:stop)
+        push!(folds, (setdiff(1:n, test), test))
+        start = stop + 1 + skip
     end
     return folds
 end
@@ -137,6 +176,46 @@ function tscv(y, fit_forecast_fn; h::Union{Integer,AbstractVector{<:Integer}}=1,
     for (i, (train_idx, test_idx)) in enumerate(folds)
         train_data = yv[train_idx]
         fc = fit_forecast_fn(train_data, max_h)
+        point = fc isa Forecast ? fc.point : fc
+        for (j, hh) in enumerate(horizons)
+            errors[i, j] = yv[test_idx[j]] - point[hh]
+        end
+    end
+    return errors
+end
+
+"""
+    tscv(y, fit_fn, forecast_fn; h=1, window=nothing, initial=0, step_length=1, refit=true)
+        -> Matrix
+
+The same rolling-origin evaluation with the fit and the forecast separated:
+`fit_fn(train) -> model` and `forecast_fn(model, train, hmax)` returning a
+vector or a [`Forecast`](@ref), where `train` is the fold's data -- so a
+model fitted on an earlier fold can forecast from a later fold's history.
+`refit` decides how often it is refitted: `true` (every fold), `false`
+(once, on the first fold) or an integer `k` (every `k`-th fold), as
+`mlforecast`'s `cross_validation(refit=…)`. With an expensive injected
+regressor in [`lag_regression`](@ref), refitting less often is the lever;
+[`forecast`](@ref)`(m, h; history=train)` is the matching `forecast_fn`.
+"""
+function tscv(y, fit_fn, forecast_fn; h::Union{Integer,AbstractVector{<:Integer}}=1,
+              window::Union{Nothing,Integer}=nothing, initial::Integer=0, step_length::Integer=1,
+              refit::Union{Bool,Integer}=true)
+    k = refit === true ? 1 : refit === false ? typemax(Int) : Int(refit)
+    k >= 1 || throw(ArgumentError("tscv: refit must be true, false or a positive integer"))
+    yv = tsvalues(y)
+    n = length(yv)
+    horizons = h isa Integer ? [h] : collect(h)
+    folds = window === nothing ?
+        expanding_window_split(n; initial_window=max(1, initial), step_length=step_length, fh=horizons) :
+        sliding_window_split(n; window_length=window, step_length=step_length, fh=horizons)
+    errors = fill(NaN, length(folds), length(horizons))
+    max_h = maximum(horizons)
+    model = nothing
+    for (i, (train_idx, test_idx)) in enumerate(folds)
+        train_data = yv[train_idx]
+        ((i - 1) % k == 0 || model === nothing) && (model = fit_fn(train_data))
+        fc = forecast_fn(model, train_data, max_h)
         point = fc isa Forecast ? fc.point : fc
         for (j, hh) in enumerate(horizons)
             errors[i, j] = yv[test_idx[j]] - point[hh]
