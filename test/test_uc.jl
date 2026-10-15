@@ -280,3 +280,21 @@ end
     s2 = sprint(show, uc_local_level(_NILE; params=[1.0, 1.0]))
     @test occursin("not estimated", s2)
 end
+
+@testset "UC: several starts escape a flat ridge, deterministically under threads" begin
+    # log(jj), BSM with a trigonometric seasonal: from the single default start
+    # the level and seasonal log-variances slid towards -Inf (llf 56.35, not
+    # converged). statsmodels 0.15 reaches 80.5249346684875 (bfgs; lbfgs
+    # 80.52492703547085) at [7.75980e-04, 1.20238e-03, 6.26000e-06, 2.61360e-04].
+    jj = log.(dataset("jj").value)
+    kw = (level=:stochastic, trend=:stochastic, seasonal=4, seasonal_kind=:trig)
+    m = fit_uc(jj; kw...)
+    @test m.loglik >= 80.5249346684875 - 1e-9
+    @test m.converged
+    @test m.params ≈ [7.75980e-04, 1.20238e-03, 6.26000e-06, 2.61360e-04] rtol = 1e-2
+    # our likelihood at statsmodels' printed optimum (8-decimal parameters)
+    @test fit_uc(jj; kw..., params=[7.75980e-04, 1.20238e-03, 6.26000e-06, 2.61360e-04]).loglik ≈
+          80.5249346684875 atol = 1e-5
+    # the starts run on threads; the answer must not depend on scheduling
+    @test all(_ -> fit_uc(jj; kw...).params == m.params, 1:4)
+end

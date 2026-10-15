@@ -520,37 +520,66 @@ function _uc_optimise(s, L, y, X, vy, lltarget, fixed_idx, fixed_val)
     np = length(L.names)
     free = setdiff(1:np, fixed_idx)
     # several starting frequencies for a cycle (its likelihood is multimodal
-    # in the frequency); one start otherwise
+    # in the frequency), and three scales for the component variances
+    # relative to the irregular: from a single start the log-variances can
+    # slide towards -Inf along a flat ridge and never return (log(jj), a BSM
+    # with a trigonometric seasonal: 56.35 from the one start, 80.52 -- the
+    # reference's optimum -- from the smaller ones)
     lams = s.cycle === :none ? [nothing] : [2pi / 4, 2pi / 8, 2pi / 16, 2pi / 32]
-    best = nothing
-    for lam in lams
-        p0 = _uc_start(s, L, y, X, vy; lam=lam)
-        p0[fixed_idx] = fixed_val
-        u0 = _uc_untransform(s, L, p0, vy)
-        function obj(uf)
-            u = Vector{eltype(uf)}(u0)
-            u[free] = uf
-            ll = lltarget(_uc_transform(s, L, u, vy))
-            isfinite(ll) ? -ll : eltype(uf)(1e15)
+    scales = s.irregular ? (1.0, 1e-2, 1e-4) : (1.0,)
+    starts = [(lam, sc) for lam in lams for sc in scales]
+    # `local` throughout the closures: the enclosing function assigns the
+    # same names, and Julia would otherwise share one boxed variable between
+    # every thread -- a data race (it gave four different optima in six runs)
+    function from(lam, sc)
+        local q0 = _uc_start(s, L, y, X, vy; lam=lam)
+        for (j, nm) in enumerate(L.names)
+            startswith(nm, "sigma2.") && nm != "sigma2.irregular" && (q0[j] *= sc)
         end
-        isempty(free) && return (p0, true, 0)
-        res = try
-            _optimize(obj, u0[free]; method=:lbfgs, autodiff=true, g_tol=1e-8, iterations=2000)
+        q0[fixed_idx] = fixed_val
+        return _uc_untransform(s, L, q0, vy)
+    end
+    if isempty(free)
+        p0 = _uc_start(s, L, y, X, vy; lam=lams[1])
+        p0[fixed_idx] = fixed_val
+        return (p0, true, 0)
+    end
+    objective(w0) = uf -> begin
+        local w = Vector{eltype(uf)}(w0)
+        w[free] = uf
+        local ll = lltarget(_uc_transform(s, L, w, vy))
+        isfinite(ll) ? -ll : eltype(uf)(1e15)
+    end
+    # the starts are independent: run them on threads, then take the best
+    # in start order (deterministic whatever the scheduling)
+    results = Vector{Any}(nothing, length(starts))
+    Threads.@threads for k in eachindex(starts)
+        local w0 = from(starts[k]...)
+        results[k] = try
+            (w0, _optimize(objective(w0), w0[free]; method=:lbfgs, autodiff=true, g_tol=1e-8,
+                           iterations=500))
         catch e
             e isa ArgumentError || e isa DomainError || rethrow()
             nothing
         end
-        res === nothing && continue
+    end
+    best = nothing
+    for r in results
+        r === nothing && continue
+        u0, res = r
         if best === nothing || res.minimum < best[2].minimum
             u = copy(u0); u[free] = res.minimizer
-            best = (u, res)
+            best = (u, res, objective(u0))
         end
     end
     best === nothing && throw(ArgumentError("fit_uc: the optimiser failed from every start"))
-    u, res = best
+    u, res, obj = best
     p = _uc_transform(s, L, u, vy)
     p[fixed_idx] = fixed_val
-    return p, res.converged, res.iterations
+    # on a flat ridge the line search can stop at the optimum without meeting
+    # g_tol; the first-order condition is the honest test of convergence
+    conv = res.converged || maximum(abs, ForwardDiff.gradient(obj, u[free])) <= 1e-5 * max(1.0, abs(res.minimum))
+    return p, conv, res.iterations
 end
 
 # --- convenience constructors ------------------------------------------------
