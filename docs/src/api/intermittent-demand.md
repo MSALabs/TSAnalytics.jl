@@ -26,3 +26,38 @@ DemandIntervals
 adi_cv2
 ADICV2Result
 ```
+
+## Plotting
+
+A mostly-zero series is drawn as stems: a line through the zeros would
+show fractional demand on days with none. Built from a fitted model,
+`demand_intervals` carries the smoothed levels, and the plot shows what
+Croston's method divides: the demand sizes and the intervals, each with
+its level.
+
+```@example imtapi
+using TSAnalytics, Plots
+y = [2, 0, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 2, 0, 0, 0, 3, 1, 2, 0, 0, 0, 2, 0,
+     1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 2, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0]
+m = croston(y)
+plot(demand_intervals(m); size = (700, 600))
+```
+
+The final levels, 1.2979 and 1.9692, give the forecast 0.6591 per period.
+`histogram = true` shows the intervals' distribution instead, the final
+interval level marked:
+
+```@example imtapi
+plot(demand_intervals(m); histogram = true, size = (600, 320))
+```
+
+The classification as a point on the ADI–CV² plane. The quadrant names are
+Syntetos, Boylan and Croston's categories; `tsintermittent::idclass` draws
+only the SBA-or-Croston split.
+
+```@example imtapi
+plot(adi_cv2(y); size = (600, 360))
+```
+
+`plot(forecast(m, h))` draws the flat forecast as stems as well, and
+`diagnostic_plot(m)` gives the residual panels for the one-step errors.

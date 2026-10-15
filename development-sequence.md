@@ -499,6 +499,37 @@ and Hansen panels and the "observed" label from the UC decomposition; the UC fit
 zero over the diffuse periods; and the R² legend hid a marker.
 
 
+### Stage 12 plot recipes — ✅ built 2026-10-15
+
+From `handoff/stage 12/docs/stage-12-plot-recipes-handoff.md`. Eight recipes the handoff lists plus the
+stem mark for `IntermittentForecast` (nine new; the 29 earlier ones untouched, the count asserted), two
+new types (`LagFeatureMap`, `CVWindowLayout`), one extended (`DemandIntervals` now carries the smoothed
+levels), and the elbow and boundary data as `penalty_path` and `efp_boundary`. Tested in
+`test/test_plot_stage12.jl` (**15 testsets, 174 tests**), with no plotting backend loaded.
+
+| # | What | Notes |
+|---|---|---|
+| 1 | **`DemandIntervals`** (12.1), `histogram` keyword | Three panels: the series as **stems** (asserted: `:sticks`, never a line, the one rendering assertion the handoff asks for, since `autoplot` on a Croston fit draws a connected line through the zeros), the demand sizes and the intervals each with its smoothed level as a step. `demand_intervals(m)` builds it from a fitted model, and the level paths end at `m.demand_level`/`m.interval_level` **bit for bit** for all three Croston variants and TSB. A 20,000-point series is thinned with `_decimate_local_max`, keeping every bin's largest stem. `histogram = true`: the intervals with the final level, or the mean interval without a model. |
+| 2 | **`ADICV2Result`** (12.1) | The point, the 1.32/0.49 crosshair, the four quadrants named (each label asserted inside its own quadrant). F3 sits at (1.3187, 0.2545), just inside. The docstring says the names are drawn by us from the paper: `idclass` draws only the binary split. |
+| 3 | **`ChangePointResult`** (12.2), `confint` and `penalty_path` keywords | Series, segment means as a step (asserted equal to `segment_means`), breaks between segments, and `break_confint`'s exact integers as bars at the foot (fx0: 99–101, 199–201). A `confint` for other breaks is refused, not drawn. `penalty_path = true` draws the CROPS-style elbow; the segmentations themselves return as data (`penalty_path`, the refusal of handoff §5). At the fitted penalty it reproduces the fit for PELT, exact, BinSeg, MBIC (fxB_weak's 139) and the variance cost; the count is non-increasing in the penalty. |
+| 4 | **`BreakpointsResult`** (12.2) | BIC and RSS against m, side by side, the selection marked (fx0: m = 2 at 838.563795). |
+| 5 | **`FStatsResult`** (12.2), `boundary` keyword | Path, trimming bounds, supF marked. **No boundary by default.** A user-supplied one is labelled "simulated 95.0% critical value, 1000 replications" (asserted). |
+| 6 | **`EFPResult`** (12.2), `alpha` keyword | Each dimension of the process with `efp_boundary`'s exact closed-form boundary: 1.3580986 for the bridge and 0.9478982(1 + 2t) for Rec-CUSUM at 5%, the textbook constants. At α = 0.01, 0.05 and 0.1 the boundary is where the p-value equals α (to 1e-9), and the process crosses it exactly when p < α, for all four types. fxA_var: Score-CUSUM crosses, OLS-CUSUM does not. |
+| 7 | **`LagFeatureMap`** (12.3) | Horizon × lag heatmap. Recursive rows are identical; direct rows drift one lag per horizon (lags [1, 2, 4] give the asserted diagonal band), which is origin anchoring made visible. |
+| 8 | **`CVWindowLayout`** (12.3) | Folds × time, train and test segments; expanding folds reproduce the split's indices exactly, and blocked folds train on both sides. |
+| — | **Dispatches** | `diagnostic_plot` on `IntermittentModel` (one-step errors from period 2) and `BreakpointsResult` (each segment's own residuals, checked by hand); `plot(::IntermittentForecast)` as stems. |
+
+**Not built, stated:** a supF boundary (its tables are GPL, so only a labelled user simulation is
+drawn), feature importances (OLS has none, and no reference plots them), predicted-versus-actual by
+horizon (`plot(::Forecast)` covers it), and the full penalty × segmentation surface (returned as data).
+
+**Rendered and inspected by hand**, all nine with GR. The stems, quadrant, segmented series with bars,
+crossing Score-CUSUM, and the anchored lag diagonal read as intended. It caught two legends: the
+F-statistic legend covered the supF marker, and the CV legend covered the last fold (moved to
+bottom-right and outer-right). Found while writing: RecipesBase rewrites `return` in a recipe body into
+its value **without leaving the function**, so an early `return` falls through into the next branch.
+The two recipes with modes are written as `if`/`else`.
+
 ## Stage 9B Tier 1 — finishing what was started (cross-cutting)
 
 **✅ built (2026-10-01)** (`handoff/stage-9B-nonets-handoff.md`, whose

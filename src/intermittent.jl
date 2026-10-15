@@ -472,13 +472,19 @@ end
 
 An intermittent series split into its non-zero `demands`, the `intervals`
 between them (the first counts from the start of the series) and the
-`positions` of the demands, built by [`demand_intervals`](@ref).
+`positions` of the demands, built by [`demand_intervals`](@ref). Built from
+a fitted model, it also carries the smoothed `demand_levels` and
+`interval_levels` after each demand, and the model's `method` (otherwise
+empty and `nothing`). `plot(d)` draws the decomposition.
 """
 struct DemandIntervals
     y::Vector{Float64}
     demands::Vector{Float64}
     intervals::Vector{Int}
     positions::Vector{Int}
+    demand_levels::Vector{Float64}
+    interval_levels::Vector{Float64}
+    method::Union{Nothing,Symbol}
 end
 
 """
@@ -501,7 +507,7 @@ function demand_intervals(y)
     yv = collect(Float64, tsvalues(y))
     any(<(0), yv) && throw(ArgumentError("demand_intervals: demand cannot be negative"))
     pos = findall(!=(0), yv)
-    return DemandIntervals(yv, yv[pos], diff(vcat(0, pos)), pos)
+    return DemandIntervals(yv, yv[pos], diff(vcat(0, pos)), pos, Float64[], Float64[], nothing)
 end
 
 """

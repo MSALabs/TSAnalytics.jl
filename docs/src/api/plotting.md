@@ -70,3 +70,34 @@ ThresholdProfileResult
 transition_plot
 TransitionFunctionResult
 ```
+
+## Change points, intermittent demand and lag regression
+
+The Stage 12 results plot directly: a [`DemandIntervals`](@ref) and an
+[`IntermittentForecast`](@ref) as stems, an [`ADICV2Result`](@ref) as a
+quadrant, a [`ChangePointResult`](@ref), [`BreakpointsResult`](@ref),
+[`FStatsResult`](@ref) and [`EFPResult`](@ref) each with its chart (see
+those pages). Two builders remain, both for lag regression.
+
+```@docs
+lag_feature_map
+LagFeatureMap
+cv_window_layout
+CVWindowLayout
+```
+
+Which lags each horizon's model uses. A direct model anchored at the
+forecast origin drifts one lag per step:
+
+```@example lagapi
+using TSAnalytics, Plots
+y = sin.(1:60) .+ (1:60) ./ 10
+m = lag_regression(y, [1, 2, 4]; strategy = :direct, horizon = 4)
+plot(lag_feature_map(m); size = (600, 320))
+```
+
+Blocked cross-validation trains on both sides of each held-out block:
+
+```@example lagapi
+plot(cv_window_layout(blocked_window_split(24; window_length = 6); kind = "Blocked CV"); size = (650, 300))
+```

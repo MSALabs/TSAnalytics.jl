@@ -1456,3 +1456,397 @@ asymptotic distribution, and drawing one invites reading it as the null
         end
     end
 end
+
+# --- Stage 12 -------------------------------------------------------------------
+
+# stems for a mostly-zero series, thinned to the largest value per bin when
+# long (demand is non-negative, so the largest is the one worth keeping)
+_stem_xy(x, y) = length(x) > _PLOT_MAXPOINTS ? _decimate_local_max(x, y, _PLOT_MAXPOINTS) :
+                 (collect(x), collect(y))
+
+"""
+    @recipe f(d::DemandIntervals; histogram=false)
+
+Three stacked panels: the series as **stems** (a spike at each demand, no
+line between them -- a connected line through the zeros implies
+fractional demand on days with none, which is what R's `autoplot` of a
+Croston fit draws), the demand sizes with their smoothed level, and the
+inter-arrival intervals with theirs. The levels are drawn when `d` came
+from a fitted model ([`demand_intervals`](@ref)`(m)`). Neither `forecast`
+nor `statsforecast` has an intermittent-specific plot.
+
+`histogram = true` draws instead the distribution of the intervals, the
+final interval level (or, without a model, the mean interval) marked.
+"""
+@recipe function f(d::DemandIntervals)
+    hist = pop!(plotattributes, :histogram, false)
+    legend --> false
+    if hist
+        isempty(d.intervals) && throw(ArgumentError("plot: no demands, so no intervals"))
+        title --> "Inter-arrival intervals"
+        xlabel --> "periods between demands"
+        @series begin
+            seriestype := :histogram
+            bins --> 0.5:1:(maximum(d.intervals) + 0.5)
+            color := :steelblue
+            fillalpha := 0.6
+            d.intervals
+        end
+        @series begin
+            seriestype := :vline
+            color := :firebrick
+            linestyle := :dash
+            [isempty(d.interval_levels) ? mean(d.intervals) : d.interval_levels[end]]
+        end
+    else
+        layout --> (3, 1)
+        sx, sy = _stem_xy(1:length(d.y), d.y)
+        @series begin
+            subplot := 1
+            seriestype := :sticks
+            markershape := :circle
+            markersize --> 2
+            color := :black
+            title := "Demand"
+            sx, sy
+        end
+        for (sp, vals, lev, ttl) in ((2, Float64.(d.demands), d.demand_levels, "Demand size"),
+                                     (3, Float64.(d.intervals), d.interval_levels, "Interval"))
+            @series begin
+                subplot := sp
+                seriestype := :scatter
+                color := :steelblue
+                markersize --> 3
+                title := ttl
+                d.positions, vals
+            end
+            isempty(lev) && continue
+            @series begin
+                subplot := sp
+                seriestype := :steppost
+                color := :firebrick
+                title := ttl
+                d.positions, lev
+            end
+        end
+    end
+end
+
+"""
+    @recipe f(fc::IntermittentForecast)
+
+The flat forecast as stems, one per period: it is a demand rate, not a
+path through the periods.
+"""
+@recipe function f(fc::IntermittentForecast)
+    legend --> false
+    title --> _IMT_NAME[fc.method] * " forecast"
+    xlabel --> "horizon"
+    seriestype := :sticks
+    markershape := :circle
+    color := :steelblue
+    collect(1:fc.horizon), fc.point
+end
+
+"""
+    @recipe f(r::ADICV2Result)
+
+The series as a point on the ADI–CV² plane, the cutoffs as a crosshair,
+the quadrants named. The names -- smooth, intermittent, erratic, lumpy --
+are Syntetos, Boylan & Croston's (2005) categories, drawn here by us: R's
+`tsintermittent::idclass` (the one implementation of the rule) draws only
+its binary SBA-versus-Croston split, and neither `forecast` nor
+`statsforecast` classifies at all.
+"""
+@recipe function f(r::ADICV2Result)
+    xmax = max(r.adi, r.adi_cutoff) * 1.6
+    ymax = max(r.cv2, r.cv2_cutoff) * 1.6
+    legend --> false
+    xlims --> (1, xmax)
+    ylims --> (0, ymax)
+    xlabel --> "ADI (average demand interval)"
+    ylabel --> "CV² (of the demand sizes)"
+    title --> "ADI–CV²: $(r.quadrant), use $(r.method === :sba ? "SBA" : "Croston")"
+    xa, xb = (1 + r.adi_cutoff) / 2, (r.adi_cutoff + xmax) / 2
+    ya, yb = r.cv2_cutoff / 2, (r.cv2_cutoff + ymax) / 2
+    annotations --> [(xa, ya, "smooth"), (xb, ya, "intermittent"), (xa, yb, "erratic"), (xb, yb, "lumpy")]
+    @series begin
+        seriestype := :vline
+        color := :gray
+        linestyle := :dash
+        [r.adi_cutoff]
+    end
+    @series begin
+        seriestype := :hline
+        color := :gray
+        linestyle := :dash
+        [r.cv2_cutoff]
+    end
+    @series begin
+        seriestype := :scatter
+        color := :firebrick
+        markersize --> 6
+        [r.adi], [r.cv2]
+    end
+end
+
+"""
+    @recipe f(r::ChangePointResult; confint=nothing, penalty_path=false)
+
+The series, the fitted segment means as a step function, and the change
+points as dashed verticals (drawn between the last point of a segment and
+the first of the next). `confint`, a [`break_confint`](@ref) matrix for
+the same breaks, adds each break date's confidence interval as a
+horizontal bar at the foot of the plot -- `changepoint` draws the breaks
+without means, `strucchange` has the intervals but no composite plot.
+
+`penalty_path = true` draws instead the number of change points against
+the penalty, the fitted penalty marked: `changepoint`'s CROPS diagnostic
+(see [`penalty_path`](@ref)).
+"""
+@recipe function f(r::ChangePointResult)
+    ci = pop!(plotattributes, :confint, nothing)
+    pp = pop!(plotattributes, :penalty_path, false)
+    legend --> false
+    if pp
+        p = penalty_path(r)
+        xscale --> :log10
+        xlabel --> "penalty"
+        ylabel --> "change points"
+        title --> "Penalty path"
+        @series begin
+            seriestype := :steppre
+            color := :steelblue
+            p.penalties, p.counts
+        end
+        @series begin
+            seriestype := :vline
+            color := :firebrick
+            linestyle := :dash
+            [r.penalty]
+        end
+    else
+        n = length(r.y)
+        edges = vcat(0, r.breakpoints, n)
+        title --> (isempty(r.breakpoints) ? "No change points" : "Change points: " * join(r.breakpoints, ", "))
+        @series begin
+            seriestype := :line
+            color := :gray
+            _decimate_minmax(collect(1:n), r.y, _PLOT_MAXPOINTS)
+        end
+        sx, sy = Float64[], Float64[]
+        for i in 1:(length(edges) - 1)
+            append!(sx, [edges[i] + 0.5, edges[i + 1] + 0.5, NaN])
+            append!(sy, [r.segment_means[i], r.segment_means[i], NaN])
+        end
+        @series begin
+            seriestype := :path
+            color := :firebrick
+            linewidth := 2
+            sx, sy
+        end
+        if !isempty(r.breakpoints)
+            @series begin
+                seriestype := :vline
+                color := :black
+                linestyle := :dash
+                r.breakpoints .+ 0.5
+            end
+            if ci !== nothing
+                size(ci, 1) == length(r.breakpoints) && ci[:, 2] == r.breakpoints || throw(ArgumentError(
+                    "plot: confint is for breaks $(ci[:, 2]), the result's are $(r.breakpoints)"))
+                lo = minimum(r.y)
+                bx, by = Float64[], Float64[]
+                for i in axes(ci, 1)
+                    append!(bx, [ci[i, 1] + 0.5, ci[i, 3] + 0.5, NaN])
+                    append!(by, [lo, lo, NaN])
+                end
+                @series begin
+                    seriestype := :path
+                    color := :black
+                    linewidth := 3
+                    markershape := :vline
+                    bx, by
+                end
+            end
+        end
+    end
+end
+
+"""
+    @recipe f(r::BreakpointsResult)
+
+BIC and residual sum of squares against the number of breaks, the
+selected number marked -- `strucchange`'s `plot(breakpoints(...))`, which
+draws the two on one plot with twin axes; here, side by side.
+"""
+@recipe function f(r::BreakpointsResult)
+    m = 0:(length(r.bic) - 1)
+    sel = length(r.breaks)
+    layout --> (1, 2)
+    legend --> false
+    xlabel --> "number of breaks"
+    for (sp, v, ttl) in ((1, r.bic, "BIC"), (2, r.rss, "RSS"))
+        @series begin
+            subplot := sp
+            seriestype := :line
+            markershape := :circle
+            color := :steelblue
+            title := ttl
+            collect(m), v
+        end
+        @series begin
+            subplot := sp
+            seriestype := :vline
+            color := :firebrick
+            linestyle := :dash
+            title := ttl
+            [sel]
+        end
+    end
+end
+
+"""
+    @recipe f(r::FStatsResult; boundary=nothing)
+
+The F statistic against the candidate break date, the trimmed ends
+marked and the supF date highlighted. No critical boundary is drawn by
+default: the supF null distribution is non-standard and its tables are not
+available, and `strucchange`'s boundary comes from them. A boundary from
+your own simulation can be passed as `boundary = (value=…, reps=…,
+level=0.95)`; it is drawn and labelled as simulated, with the replication
+count.
+"""
+@recipe function f(r::FStatsResult)
+    bnd = pop!(plotattributes, :boundary, nothing)
+    legend --> (bnd === nothing ? false : :bottomright)
+    xlabel --> "candidate break date"
+    ylabel --> "F statistic"
+    title --> "supF = $(round(r.supF; sigdigits=5)) at $(r.argmax)"
+    xlims --> (0, r.nobs)
+    @series begin
+        seriestype := :line
+        color := :steelblue
+        label := ""
+        r.dates, r.stats
+    end
+    @series begin
+        seriestype := :vline
+        color := :gray
+        linestyle := :dot
+        label := ""
+        [first(r.dates), last(r.dates)]
+    end
+    @series begin
+        seriestype := :scatter
+        color := :firebrick
+        label := ""
+        [r.argmax], [r.supF]
+    end
+    if bnd !== nothing
+        lvl = hasproperty(bnd, :level) ? bnd.level : 0.95
+        @series begin
+            seriestype := :hline
+            color := :firebrick
+            linestyle := :dash
+            label := "simulated $(round(100lvl; digits=1))% critical value, $(bnd.reps) replications"
+            [bnd.value]
+        end
+    end
+end
+
+"""
+    @recipe f(r::EFPResult; alpha=0.05)
+
+The fluctuation process against the fraction of the sample, one line per
+dimension, with the critical boundary at level `alpha` from
+[`efp_boundary`](@ref) -- exact, since the CUSUM family's limiting
+distributions are in closed form. The process crossing the boundary is
+the test rejecting. R's `strucchange::plot.efp`.
+"""
+@recipe function f(r::EFPResult)
+    α = pop!(plotattributes, :alpha, 0.05)
+    b = efp_boundary(r; alpha=α)
+    m = size(r.process, 1) - 1
+    t = collect(0:m) ./ m
+    nm = Dict(:ols_cusum => "OLS-CUSUM", :rec_cusum => "Rec-CUSUM",
+              :score_cusum => "Score-CUSUM", :re => "RE")[r.type]
+    legend --> false
+    xlabel --> "fraction of the sample"
+    title --> "$nm, p = $(r.pvalue < 1e-4 ? string(round(r.pvalue; sigdigits=3)) : string(round(r.pvalue; digits=4)))"
+    for j in axes(r.process, 2)
+        @series begin
+            seriestype := :line
+            color := size(r.process, 2) == 1 ? :black : j
+            t, r.process[:, j]
+        end
+    end
+    for s in (1, -1)
+        @series begin
+            seriestype := :line
+            color := :firebrick
+            linestyle := :dash
+            t, s .* b
+        end
+    end
+    @series begin
+        seriestype := :hline
+        color := :gray
+        [0.0]
+    end
+end
+
+"""
+    @recipe f(m::LagFeatureMap)
+
+A horizon × lag grid, filled where that horizon's model uses that lag of
+`y`. A recursive model gives identical rows; a direct model's set shifts
+one lag per horizon -- the origin anchoring, visible.
+"""
+@recipe function f(m::LagFeatureMap)
+    H, L = size(m.used)
+    legend --> false
+    xlabel --> "lag of y (from the target)"
+    ylabel --> "horizon"
+    title --> (m.strategy === :direct ? "Direct: one model per horizon" : "Recursive: one model")
+    yflip --> true
+    xticks --> 1:L
+    yticks --> 1:H
+    seriestype := :heatmap
+    color --> :Blues
+    clims --> (0, 1)
+    collect(1:L), collect(1:H), Float64.(m.used)
+end
+
+"""
+    @recipe f(c::CVWindowLayout)
+
+The folds as rows over time, the training periods in blue and the test
+periods in orange -- the layout `sktime`'s `plot_windows` and
+`forecastML`'s `plot.windows` draw.
+"""
+@recipe function f(c::CVWindowLayout)
+    k, n = size(c.layout)
+    legend --> :outerright
+    xlabel --> "time"
+    ylabel --> "fold"
+    title --> (isempty(c.kind) ? "Cross-validation folds" : c.kind)
+    yflip --> true
+    yticks --> 1:k
+    ylims --> (0.4, k + 0.6)
+    for (code, col, lab) in ((1, :steelblue, "train"), (2, :darkorange, "test"))
+        x, y = Float64[], Float64[]
+        for i in 1:k, t in 1:n
+            c.layout[i, t] == code || continue
+            append!(x, [t - 0.45, t + 0.45, NaN])
+            append!(y, [i, i, NaN])
+        end
+        @series begin
+            seriestype := :path
+            color := col
+            linewidth --> 8
+            label := lab
+            x, y
+        end
+    end
+end

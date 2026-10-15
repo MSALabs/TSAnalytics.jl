@@ -937,3 +937,250 @@ diagnostic_plot(m::SETARModel; kwargs...) = diagnostic_plot(StatsAPI.residuals(m
 diagnostic_plot(m::LSTARModel; kwargs...) = diagnostic_plot(StatsAPI.residuals(m); kwargs...)
 ts_display(m::SETARModel; kwargs...) = ts_display(m.y; kwargs...)
 ts_display(m::LSTARModel; kwargs...) = ts_display(m.y; kwargs...)
+
+# ===========================================================================
+# Stage 12 plot data (handoff/stage 12/docs/stage-12-plot-recipes-handoff.md)
+# ===========================================================================
+
+export penalty_path, efp_boundary, lag_feature_map, LagFeatureMap, cv_window_layout, CVWindowLayout
+
+# the smoothing path of simple exponential smoothing started at the first
+# value: the level after each of x[1..k], in _ses_level's arithmetic order,
+# so the last element is _ses_level(x, α) to the bit
+function _ses_path(x::AbstractVector{Float64}, α::Real)
+    L = similar(x)
+    f = x[1]
+    for i in eachindex(x)
+        f = α * x[i] + (1 - α) * f
+        L[i] = f
+    end
+    return L
+end
+
+"""
+    demand_intervals(m::IntermittentModel) -> DemandIntervals
+
+The decomposition of the series `m` was fitted to, with the smoothed
+levels it produced: for Croston (all three variants) the demand level and
+the interval level after each demand, for TSB the demand level. The last
+elements are `m.demand_level` and `m.interval_level` exactly. The optimised
+variant's paths use the final `alpha`s, which is what its forecast uses.
+ADIDA and IMAPA smooth bucket sums, not demands, and carry no levels.
+`plot` draws the three-panel decomposition.
+
+```jldoctest
+julia> using TSAnalytics
+
+julia> m = croston([0, 0, 3, 0, 0, 0, 2, 0, 4, 0]);
+
+julia> d = demand_intervals(m);
+
+julia> d.demand_levels[end] == m.demand_level, d.interval_levels[end] == m.interval_level
+(true, true)
+```
+"""
+function demand_intervals(m::IntermittentModel)
+    d = demand_intervals(m.y)
+    isempty(d.demands) && return d
+    if m.method in (:classic, :sba, :optimized)
+        return DemandIntervals(d.y, d.demands, d.intervals, d.positions,
+                               _ses_path(d.demands, m.alpha_demand),
+                               _ses_path(Float64.(d.intervals), m.alpha_interval), m.method)
+    elseif m.method === :tsb
+        return DemandIntervals(d.y, d.demands, d.intervals, d.positions,
+                               _ses_path(d.demands, m.alpha_demand), Float64[], m.method)
+    end
+    return DemandIntervals(d.y, d.demands, d.intervals, d.positions, Float64[], Float64[], m.method)
+end
+
+"""
+    diagnostic_plot(m::IntermittentModel; kwargs...) -> DiagnosticPlotResult
+
+Residual diagnostics on the in-sample one-step errors of an
+intermittent-demand model, from the second period (the first has no
+forecast). Read the normal Q–Q panel with care: errors of a mostly-zero
+series are far from Gaussian by construction.
+"""
+diagnostic_plot(m::IntermittentModel; kwargs...) =
+    diagnostic_plot(StatsAPI.residuals(m)[2:end]; kwargs...)
+
+"""
+    penalty_path(r::ChangePointResult; penalties=nothing, mu=nothing)
+        -> (penalties, breakpoints, counts)
+
+The segmentation `r`'s search finds at each penalty in `penalties`
+(default 60 values log-spaced from a tenth to ten times `r.penalty`) --
+the data behind `changepoint`'s CROPS plot. `counts` against `penalties`
+is the elbow `plot(r; penalty_path=true)` draws; the full set of
+segmentations is returned as data with no recipe, since a per-penalty
+segment plot or a heatmap of positions against penalty are equally
+defensible renderings (the `seasonal_subseries_plot` precedent). Pass the
+`mu` used for a `:var` fit; an MBIC fit keeps its per-segment term.
+
+```jldoctest
+julia> using TSAnalytics
+
+julia> y = vcat(zeros(50), fill(3.0, 50)) .+ 0.5 .* sin.(1:100);
+
+julia> p = penalty_path(changepoints(y); penalties = [1.0, 10.0, 1000.0]);
+
+julia> p.counts
+3-element Vector{Int64}:
+ 1
+ 1
+ 0
+```
+"""
+function penalty_path(r::ChangePointResult; penalties=nothing, mu=nothing)
+    n = length(r.y)
+    p0 = r.penalty > 0 ? r.penalty : log(n)
+    pens = penalties === nothing ? exp.(range(log(p0 / 10), log(p0 * 10); length=60)) :
+           collect(Float64, penalties)
+    all(>=(0), pens) || throw(ArgumentError("penalty_path: penalties must be >= 0"))
+    c = _CPCost(r.y, r.cost, mu, r.penalty_name === :mbic)
+    bps = Vector{Vector{Int}}(undef, length(pens))
+    for (i, β) in enumerate(pens)
+        bps[i] = r.search === :binseg ? _cp_binseg(c, n, β, r.min_segment_length, 20)[1] :
+                 _cp_optimal(c, n, β, r.min_segment_length, r.search === :pelt)[1]
+    end
+    return (penalties=pens, breakpoints=bps, counts=length.(bps))
+end
+
+"""
+    diagnostic_plot(r::BreakpointsResult; kwargs...) -> DiagnosticPlotResult
+
+Residual diagnostics for the selected Bai–Perron segmentation: the
+residuals of each segment's own regression, in time order.
+"""
+function diagnostic_plot(r::BreakpointsResult; kwargs...)
+    edges = vcat(0, r.breaks, length(r.y))
+    e = Float64[]
+    for i in 1:(length(edges) - 1)
+        rows = (edges[i] + 1):edges[i + 1]
+        X = r.X[rows, :]
+        append!(e, r.y[rows] .- X * (X \ r.y[rows]))
+    end
+    return diagnostic_plot(e; kwargs...)
+end
+
+"""
+    efp_boundary(r::EFPResult; alpha=0.05) -> Vector{Float64}
+
+The critical boundary of the fluctuation test at level `alpha`, one value
+per row of `r.process`: the constant `λ` with `P(sup |B| > λ) = alpha`
+for the bridge processes, and `λ(1 + 2t)` for the recursive CUSUM. The
+limiting distributions are in closed form, so this is exact, not
+simulated; `r.statistic > λ` exactly when `r.pvalue < alpha`.
+
+```jldoctest
+julia> using TSAnalytics
+
+julia> b = efp_boundary(efp(randn(50)));
+
+julia> round(b[1], digits = 4)
+1.3581
+```
+"""
+function efp_boundary(r::EFPResult; alpha::Real=0.05)
+    0 < alpha < 1 || throw(ArgumentError("efp_boundary: alpha must be in (0, 1)"))
+    k = size(r.process, 2)
+    p = r.limit === :motion ? (x -> _p_motion_max(x, k)[1]) : (x -> _p_bridge_max(x, k)[1])
+    lo, hi = 0.1, 20.0                  # p is decreasing in x
+    for _ in 1:200
+        mid = (lo + hi) / 2
+        p(mid) > alpha ? (lo = mid) : (hi = mid)
+        hi - lo < 1e-12 && break
+    end
+    λ = (lo + hi) / 2
+    m = size(r.process, 1) - 1
+    return r.limit === :motion ? [λ * (1 + 2j / m) for j in 0:m] : fill(λ, m + 1)
+end
+
+"""
+    LagFeatureMap
+
+Which lags of `y` feed the model for each forecast horizon, built by
+[`lag_feature_map`](@ref): `used[h, ℓ]` is true when the model for step
+`h` uses `y` lagged `ℓ` from its target. `plot(m)` draws the grid.
+"""
+struct LagFeatureMap
+    used::BitMatrix
+    strategy::Symbol
+end
+
+"""
+    lag_feature_map(m::LagRegressionModel; horizon=6) -> LagFeatureMap
+
+The lags of `y` each horizon's model uses, measured from the target. A
+recursive model is one model applied repeatedly, so every row is the same
+lag set (`horizon` sets how many rows to show). A direct model has one
+model per horizon, anchored at the forecast origin: step `h` can only use
+values known at the origin, so its lags are the requested ones plus
+`h − 1` -- the grid's diagonal drift is that anchoring. Only `y`'s own
+lags are mapped; exogenous columns are not.
+
+```jldoctest
+julia> using TSAnalytics
+
+julia> m = lag_regression(sin.(1:60) .+ (1:60) ./ 10, [1, 2]; strategy = :direct, horizon = 3);
+
+julia> lag_feature_map(m).used
+3×4 BitMatrix:
+ 1  1  0  0
+ 0  1  1  0
+ 0  0  1  1
+```
+"""
+function lag_feature_map(m::LagRegressionModel; horizon::Integer=6)
+    H = m.strategy === :direct ? m.horizon : Int(horizon)
+    H >= 1 || throw(ArgumentError("lag_feature_map: horizon must be >= 1"))
+    lagsof(h) = [parse(Int, nm[4:end]) for nm in m.names[m.strategy === :direct ? h : 1]
+                 if startswith(nm, "y.L")]
+    L = maximum(h -> maximum(lagsof(h); init=0), 1:H)
+    used = falses(H, L)
+    for h in 1:H, ℓ in lagsof(h)
+        used[h, ℓ] = true
+    end
+    return LagFeatureMap(used, m.strategy)
+end
+
+"""
+    CVWindowLayout
+
+The folds of a cross-validation split as a fold × time matrix -- 0 unused,
+1 training, 2 test -- built by [`cv_window_layout`](@ref).
+"""
+struct CVWindowLayout
+    layout::Matrix{Int}
+    kind::String
+end
+
+"""
+    cv_window_layout(folds; kind="") -> CVWindowLayout
+
+The output of [`expanding_window_split`](@ref),
+[`sliding_window_split`](@ref) or [`blocked_window_split`](@ref) as a
+fold × time grid for plotting, one row per fold with its training and test
+periods marked; `kind` titles the plot. The blocked layout is the one
+worth seeing: it trains on both sides of the held-out block.
+
+```jldoctest
+julia> using TSAnalytics
+
+julia> cv_window_layout(blocked_window_split(6; window_length = 2)).layout
+3×6 Matrix{Int64}:
+ 2  2  1  1  1  1
+ 1  1  2  2  1  1
+ 1  1  1  1  2  2
+```
+"""
+function cv_window_layout(folds; kind::AbstractString="")
+    isempty(folds) && throw(ArgumentError("cv_window_layout: no folds"))
+    n = maximum(f -> max(maximum(f[1]; init=0), maximum(f[2]; init=0)), folds)
+    M = zeros(Int, length(folds), n)
+    for (i, (tr, te)) in enumerate(folds)
+        M[i, tr] .= 1
+        M[i, te] .= 2
+    end
+    return CVWindowLayout(M, String(kind))
+end
