@@ -472,6 +472,33 @@ clothing; no break machinery exists), Sims-Zha IRF bands, interactive output. **
 an earlier remark in this project's conversation (not the repo) said `plot.ets` draws one panel per
 state; it draws at most four, using `s1` alone.
 
+### Stage 11 plot recipes — ✅ built 2026-10-15
+
+From `handoff/stage 11/docs/stage-11-plot-recipes-handoff.md`, same patterns, same rule that every
+plottable output is a named struct (never a recipe on a bare `NamedTuple`). Twelve new result types and
+recipes plus one extension; tested in `test/test_plot_stage11.jl` (**14 testsets, 177 tests**) —
+the data against fixture figures, band arithmetic by hand at three periods, panel counts and order.
+
+| # | What | Notes |
+|---|---|---|
+| 1 | **`StateDecomposition` extended** (11.1) | Optional `level_se`/`slope_se`/`seasonal_se`, further components in `extra` (cycle, AR, regression, irregular) and one-step `fitted`; `state_decomposition(::UCModel)`. Ribbons at ±1.96 se labelled "95% interval, smoothed component"; the irregular gets none; fitted overlaid on observed, blank over the diffuse periods. **The ETS, TBATS and Holt-Winters renderings are byte-identical to before** (recipe output serialised before the change and compared after). `level` may now be `nothing` (an AR-only UC model). |
+| 2–6 | **`factor_paths`, `loadings_plot`, `factor_r2_plot`, `factor_selection_plot`, `factor_residual_plot`** (11.2) | Factor bands and the loadings heatmap exist in neither reference. Observations × factors, asserted. The R² chart draws per-factor bars with the joint R² as a marker — they are different quantities (with one factor the joint R² uses Λ, the per-factor one a free slope, so joint ≤ per-factor). The selection plot says "not asymptotic" on the plot when N < 20. Box plots drawn from stored five-number summaries (no StatsPlots dependency). |
+| 7 | **`regime_plot`** (11.3) | Two modes: smoothed + filtered overlaid per regime (titled with the expected duration), and `mode = :shaded`. The last filtered and smoothed probabilities coincide, asserted. New `residuals`/`fitted` for `MSModel` (the residual averaged over the smoothed regime distribution; = OLS for k = 1) and `diagnostic_plot(m; regime)`. |
+| 8–12 | **`threshold_regime_plot`, `threshold_phase_plot`, `threshold_profile`, `transition_plot`, `plot(::ThresholdTest)`** (11.4) | The boundary observation (`regime[63]`, z = th) drawn low, asserted. Phase plot for three regimes (tsDyn draws none). Profile for SSR or AIC (tsDyn refuses AIC). The transition curve notes a γ at the grid bound. The Hansen test now stores its bootstrap draws (`boot`) and plots them with the observed F and critical values — **no χ² curve**. `residuals`/`fitted` for `LSTARModel`. |
+| — | **Dispatches** | `diagnostic_plot` on UC, MS, SETAR, LSTAR; `ts_display` on MS, SETAR, LSTAR. |
+
+**Not built, stated:** the threshold confidence set (Hansen 2000) — gated on a scope decision that was
+not taken, and a shaded region with no stated coverage would mislead; the pairwise regime-transition
+probabilities (no single natural rendering — the `seasonal_subseries_plot` precedent);
+`MSwM::plotReg`; tsDyn's `autopairs`/`autotriples`; average mutual information.
+
+**Rendered and inspected by hand**, all of them, with GR (the check that cannot be automated). It
+caught what the data tests could not: subplot attributes (`title`, `ylabel`) are set by the *last*
+series drawn into a panel, so a title set only on the first series vanished from the regime, transition
+and Hansen panels and the "observed" label from the UC decomposition; the UC fitted line plunged to
+zero over the diffuse periods; and the R² legend hid a marker.
+
+
 ## Stage 9B Tier 1 — finishing what was started (cross-cutting)
 
 **✅ built (2026-10-01)** (`handoff/stage-9B-nonets-handoff.md`, whose

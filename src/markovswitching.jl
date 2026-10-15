@@ -752,6 +752,51 @@ function regime_probabilities(m::MSModel; kind::Symbol=:smoothed)
     throw(ArgumentError("regime_probabilities: kind must be :smoothed or :filtered"))
 end
 
+# Residuals given the regime path, averaged over the smoothed joint
+# distribution: E = nobs × k, E[τ, r] = E[e_t | S_t = r, all data] (the
+# lagged regimes integrated out), and the pooled Σ_r Pr(S_t = r) E[τ, r].
+function _ms_conditional_resid(m::MSModel)
+    s = m.spec
+    st = _ms_states(s.k, s.p)
+    n = length(m.y)
+    X = m.exog === nothing ? zeros(n, 0) : m.exog
+    Z = m.exog_tvtp === nothing ? ones(n, 1) : m.exog_tvtp
+    _, lf, lp = _ms_filter(s, m.params, st, m.y, X, Z; init=m.initial)
+    ls, _ = _ms_smooth(s, m.params, st, m.y, X, Z, lf, lp)
+    u = _ms_unpack(s, m.params)
+    J, nobs = size(ls)
+    E = zeros(nobs, s.k)
+    W = zeros(nobs, s.k)
+    for τ in 1:nobs
+        t = τ + s.p
+        for j in 1:J
+            r0 = st.digits[j, 1] + 1
+            e = m.y[t] - _ms_mu(s, u, X, r0, t)
+            for l in 1:s.p
+                rl = st.digits[j, l + 1] + 1
+                e -= u.ϕ[l][s.sw_ar ? r0 : 1] * (m.y[t - l] - _ms_mu(s, u, X, rl, t - l))
+            end
+            w = exp(ls[j, τ])
+            E[τ, r0] += w * e
+            W[τ, r0] += w
+        end
+    end
+    E ./= max.(W, floatmin(Float64))
+    return E, vec(sum(W .* E; dims=2))
+end
+
+"""
+    residuals(m::MSModel) -> Vector
+    fitted(m::MSModel) -> Vector
+
+The residual averaged over the smoothed regime distribution,
+`Σ_r Pr(S_t = r | all data) E[e_t | S_t = r]`, for each usable observation
+(the first `order` are lags), and `y_t` less it. A smoothed quantity --
+it uses the whole sample -- so it is a diagnostic, not a forecast error.
+"""
+StatsAPI.residuals(m::MSModel) = _ms_conditional_resid(m)[2]
+StatsAPI.fitted(m::MSModel) = m.y[(m.spec.p + 1):end] .- StatsAPI.residuals(m)
+
 """
     expected_durations(m::MSModel) -> Vector
 

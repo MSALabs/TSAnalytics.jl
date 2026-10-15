@@ -620,6 +620,12 @@ function fit_lstar(y, m::Integer; thDelay::Integer=0, trim::Real=0.15, ngamma::I
 end
 
 StatsAPI.coef(m::LSTARModel) = vcat(m.phiL, m.phiH, m.gamma, m.th)
+function StatsAPI.fitted(m::LSTARModel)
+    Y, lag, z, _ = _tar_embed(m.y, m.m, m.thDelay)
+    X = hcat(ones(length(Y)), [lag(j) for j in 1:m.m]...)
+    return X * m.phiL .+ (X * m.phiH) .* m.G
+end
+StatsAPI.residuals(m::LSTARModel) = m.y[(m.m + 1):end] .- StatsAPI.fitted(m)
 StatsAPI.coefnames(m::LSTARModel) = copy(m.names)
 StatsAPI.stderror(m::LSTARModel) = copy(m.se)
 StatsAPI.nobs(m::LSTARModel) = m.nobs
@@ -644,7 +650,8 @@ end
 Hansen's (1999) tests of linearity against SETAR, from
 [`setar_test`](@ref): the sums of squares of the linear AR and the one- and
 two-threshold SETARs, the statistics `F_ij = n (S_i − S_j) / S_j` with
-`n = rows`, and bootstrap p-values and critical values.
+`n = rows`, bootstrap p-values and critical values, and the bootstrap draws
+themselves (`boot`, `nboot × 3`). `plot(t)` draws their distributions.
 """
 struct ThresholdTest <: HypothesisTest
     ssr::Vector{Float64}                 # AR, SETAR(1), SETAR(2)
@@ -653,6 +660,7 @@ struct ThresholdTest <: HypothesisTest
     critical::Matrix{Float64}            # 3 x 4: 0.90, 0.95, 0.975, 0.99
     nboot::Int
     nobs::Int
+    boot::Matrix{Float64}                # nboot x 3 bootstrap F statistics
 end
 
 """
@@ -711,7 +719,7 @@ function setar_test(y, m::Integer; thDelay=0:(m - 1), trim::Real=0.15, nboot::In
     pv = [mean(Fb[:, i] .>= obs.F[i]) for i in 1:3]
     q = [0.90, 0.95, 0.975, 0.99]
     crit = [quantile(Fb[:, i], qq) for i in 1:3, qq in q]
-    return ThresholdTest(obs.S, obs.F, pv, crit, Int(nboot), obs.nr)
+    return ThresholdTest(obs.S, obs.F, pv, crit, Int(nboot), obs.nr, Fb)
 end
 
 statistic(t::ThresholdTest) = t.F

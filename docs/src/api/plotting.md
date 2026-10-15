@@ -37,3 +37,36 @@ VARDiagnosticPlotResult
 cointegration_plot
 CointegrationPlotResult
 ```
+
+## Unobserved components, factors, regimes and thresholds
+
+The Stage 11 models plot the same way. `state_decomposition` and
+`diagnostic_plot` take an unobserved-components model; the rest are
+builders for one chart each. `plot(t)` draws a [`ThresholdTest`](@ref)'s
+bootstrap distributions directly. No confidence set for a threshold is
+drawn: it is not computed, and a shaded region with no stated coverage
+would mislead. The pairwise regime-transition probabilities get no plot,
+for want of one natural rendering.
+
+```@docs
+factor_paths
+FactorPathResult
+loadings_plot
+LoadingsResult
+factor_r2_plot
+FactorR2Result
+factor_selection_plot
+FactorSelectionResult
+factor_residual_plot
+FactorResidualResult
+regime_plot
+RegimeProbabilityResult
+threshold_regime_plot
+ThresholdRegimeResult
+threshold_phase_plot
+ThresholdPhaseResult
+threshold_profile
+ThresholdProfileResult
+transition_plot
+TransitionFunctionResult
+```

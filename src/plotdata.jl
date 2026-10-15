@@ -23,21 +23,40 @@ export cointegration_plot, CointegrationPlotResult
 """
     StateDecomposition
 
-The fitted state paths of an exponential-smoothing model, built by
-[`state_decomposition`](@ref): `observed`, `level`, `slope` (`nothing`
-without a trend), and `seasonal` — one series per seasonal period —
-all on the time positions `t`. `plot(d)` draws them stacked, as R's
-`plot.ets`/`plot.tbats` do.
+The fitted state paths of a model, built by [`state_decomposition`](@ref):
+`observed`, `level` (`nothing` for a model without one), `slope`
+(`nothing` without a trend), and `seasonal` — one series per seasonal
+period — all on the time positions `t`. `plot(d)` draws them stacked, as
+R's `plot.ets`/`plot.tbats` do.
+
+For an unobserved-components model the decomposition also carries each
+component's smoothed standard error (`level_se`, `slope_se`,
+`seasonal_se`; `nothing` where there is none), the further components in
+`extra` as `(name, path, se)` -- cycle, autoregressive, regression,
+irregular -- and the one-step `fitted` values, which the recipe overlays
+on the observed series. Exponential-smoothing models have no state
+standard errors, and their fields stay `nothing`/empty.
 """
 struct StateDecomposition
     t::Vector{Int}
     observed::Vector{Float64}
-    level::Vector{Float64}
+    level::Union{Nothing,Vector{Float64}}
     slope::Union{Nothing,Vector{Float64}}
     seasonal::Vector{Vector{Float64}}
     periods::Vector{Float64}
     model_name::String
+    level_se::Union{Nothing,Vector{Float64}}
+    slope_se::Union{Nothing,Vector{Float64}}
+    seasonal_se::Vector{Union{Nothing,Vector{Float64}}}
+    extra::Vector{Tuple{String,Vector{Float64},Union{Nothing,Vector{Float64}}}}
+    fitted::Union{Nothing,Vector{Float64}}
 end
+
+# the exponential-smoothing form: no standard errors, no further components
+StateDecomposition(t, observed, level, slope, seasonal, periods, model_name) =
+    StateDecomposition(t, observed, level, slope, seasonal, periods, model_name, nothing, nothing,
+                       Union{Nothing,Vector{Float64}}[nothing for _ in seasonal],
+                       Tuple{String,Vector{Float64},Union{Nothing,Vector{Float64}}}[], nothing)
 
 """
     state_decomposition(m) -> StateDecomposition
@@ -442,3 +461,479 @@ end
 
 _coint_plot_result(t, R, B, names) =
     CointegrationPlotResult(t, R, [acf(R[:, j]) for j in 1:size(R, 2)], Matrix(B), copy(names))
+
+# ===========================================================================
+# Stage 11 plot data (handoff/stage 11/docs/stage-11-plot-recipes-handoff.md).
+# Every plottable output gets a named struct: a recipe on a bare NamedTuple
+# would capture every NamedTuple in the session.
+# ===========================================================================
+
+export factor_paths, FactorPathResult, loadings_plot, LoadingsResult
+export factor_r2_plot, FactorR2Result, factor_selection_plot, FactorSelectionResult
+export factor_residual_plot, FactorResidualResult
+export regime_plot, RegimeProbabilityResult
+export threshold_regime_plot, ThresholdRegimeResult, threshold_phase_plot, ThresholdPhaseResult
+export threshold_profile, ThresholdProfileResult, transition_plot, TransitionFunctionResult
+
+const _Extra = Tuple{String,Vector{Float64},Union{Nothing,Vector{Float64}}}
+
+# --- 11.1 unobserved components ---------------------------------------------
+
+"""
+    state_decomposition(m::UCModel) -> StateDecomposition
+
+The smoothed components of an unobserved-components model with their
+standard errors: `level`, `slope` (the stochastic trend's slope), the
+seasonal, then in `extra` the cycle, autoregressive, regression and
+irregular components, and the one-step `fitted` values. The recipe draws
+each component with a ribbon at ±1.96 standard errors -- **a 95% interval
+for the smoothed component**, not a forecast interval -- except the
+irregular, which is a residual and gets none. The standard errors are
+`NaN` over the periods the diffuse initialisation consumes, where the
+smoother's variance is not yet defined; the band starts after them.
+
+```jldoctest
+julia> using TSAnalytics, DelimitedFiles
+
+julia> nile = readdlm(TSAnalytics.NILE, ','; skipstart=1)[:, 2];
+
+julia> d = state_decomposition(uc_local_level(nile));
+
+julia> d.slope === nothing, first.(d.extra)
+(true, ["irregular"])
+
+julia> length(d.level) == length(d.level_se) == 100
+true
+```
+"""
+function state_decomposition(m::UCModel)
+    d = uc_decomposition(m)
+    n = length(m.y)
+    seas = d.seasonal === nothing ? Vector{Float64}[] : [d.seasonal]
+    sse = Union{Nothing,Vector{Float64}}[d.seasonal_se for _ in seas]
+    per = d.seasonal === nothing ? Float64[] : [Float64(d.period)]
+    extra = _Extra[]
+    d.cycle === nothing || push!(extra, ("cycle", d.cycle, d.cycle_se))
+    d.ar === nothing || push!(extra, ("autoregressive", d.ar, d.ar_se))
+    d.regression === nothing || push!(extra, ("regression", d.regression, nothing))
+    push!(extra, ("irregular", d.irregular, nothing))
+    # the one-step prediction is not defined over the diffuse periods
+    fit = copy(m.fitted)
+    fit[1:min(m.burn, n)] .= NaN
+    return StateDecomposition(collect(1:n), copy(m.y), d.level, d.trend, seas, per,
+                              "unobserved components", d.level_se, d.trend_se, sse, extra, fit)
+end
+
+"""
+    diagnostic_plot(m::UCModel; kwargs...) -> DiagnosticPlotResult
+
+The residual diagnostics of [`diagnostic_plot`](@ref) on the model's
+one-step prediction errors, leaving out the periods the diffuse
+initialisation consumes and any missing observations.
+"""
+function diagnostic_plot(m::UCModel; kwargs...)
+    e = m.resid[(m.burn + 1):end]
+    return diagnostic_plot(e[.!isnan.(e)]; kwargs...)
+end
+
+# --- 11.2 dynamic factor models ---------------------------------------------
+
+"""
+    FactorPathResult
+
+The smoothed factors of a dynamic factor model and their standard errors
+(both **observations × factors** -- statsmodels' `factors.smoothed` is the
+transpose), with the data, built by [`factor_paths`](@ref). `plot(r)` draws
+one panel per factor with a ±1.96 se band; `plot(r; overlay_series=true)`
+draws every series in grey with the factors over them, in one panel (R
+`dfms`' `type = "joint"`).
+"""
+struct FactorPathResult
+    t::Vector{Int}
+    factors::Matrix{Float64}
+    se::Matrix{Float64}
+    series::Matrix{Float64}
+    series_names::Vector{String}
+end
+
+"""
+    factor_paths(m::DFMModel) -> FactorPathResult
+
+The smoothed factor paths with their standard errors, observations ×
+factors. Neither reference draws the band: statsmodels has no factor plot
+and `dfms` draws the paths alone.
+
+```jldoctest
+julia> using TSAnalytics, DelimitedFiles
+
+julia> Y = readdlm(TSAnalytics.US_CHANGE, ','; skipstart=1);
+
+julia> r = factor_paths(fit_dfm(standardize(Y), 1));
+
+julia> size(r.factors), size(r.series)
+((187, 1), (187, 5))
+```
+"""
+function factor_paths(m::DFMModel)
+    n = size(m.Y, 1)
+    return FactorPathResult(collect(1:n), copy(m.factors), copy(m.factors_se), copy(m.Y),
+                            string.(m.names))
+end
+
+"""
+    LoadingsResult
+
+The loadings matrix `Λ` (series × factors) with the series names, built by
+[`loadings_plot`](@ref). `plot(r)` draws it as a heatmap on a diverging
+colour scale centred at zero.
+"""
+struct LoadingsResult
+    loadings::Matrix{Float64}
+    series_names::Vector{String}
+end
+
+"""
+    loadings_plot(m::DFMModel) -> LoadingsResult
+
+Which series load on which factor. Under the package's identification
+(lower-triangular leading block, positive diagonal) the pattern is
+interpretable rather than an artefact of an arbitrary rotation; after
+[`rotate_factors`](@ref) it shows the rotated loadings.
+"""
+loadings_plot(m::DFMModel) = LoadingsResult(copy(m.Lambda), string.(m.names))
+
+"""
+    FactorR2Result
+
+Per-factor R² (series × factors, [`factor_r2`](@ref)) and the share
+explained by all factors together ([`series_r2`](@ref)), built by
+[`factor_r2_plot`](@ref). `plot(r)` draws grouped bars, one group per
+series, with the joint R² as a marker over each group.
+"""
+struct FactorR2Result
+    per_factor::Matrix{Float64}
+    total::Vector{Float64}
+    series_names::Vector{String}
+end
+
+"""
+    factor_r2_plot(m::DFMModel) -> FactorR2Result
+
+Both variance decompositions at once. They are different quantities -- the
+per-factor R² does not add up to the joint one unless the factors are
+uncorrelated -- which is why both are drawn.
+"""
+factor_r2_plot(m::DFMModel) = FactorR2Result(factor_r2(m), series_r2(m), string.(m.names))
+
+"""
+    FactorSelectionResult
+
+The eigenvalues of the series' correlation matrix and Bai & Ng's criteria
+for `r = 1 … rmax`, built by [`factor_selection_plot`](@ref). `plot(r)`
+draws the scree plot and the three criteria side by side.
+"""
+struct FactorSelectionResult
+    eigenvalues::Vector{Float64}
+    r::Vector{Int}
+    IC1::Vector{Float64}
+    IC2::Vector{Float64}
+    IC3::Vector{Float64}
+    N::Int
+    T::Int
+end
+
+"""
+    factor_selection_plot(Y, rmax) -> FactorSelectionResult
+
+A scree plot and [`bai_ng_ic`](@ref) together. **The criteria are
+consistent only as both `N` and `T` grow**: with a handful of series they
+often keep falling past the true number of factors (on a six-series fixture
+built with two they keep falling through four), so the minimum is not an
+answer. The recipe says so on the plot when `N < 20`.
+"""
+function factor_selection_plot(Y, rmax::Integer)
+    M = Matrix{Float64}(tsmatrix(Y))
+    ic = bai_ng_ic(M, rmax)
+    ev = sort(eigvals(Symmetric(cor(M))); rev=true)
+    return FactorSelectionResult(ev, ic.r, ic.IC1, ic.IC2, ic.IC3, size(M, 2), size(M, 1))
+end
+
+"""
+    FactorResidualResult
+
+Each series' idiosyncratic residual `y − Λ f` and its five-number summary
+(quartiles by linear interpolation, whiskers at the most extreme points
+within 1.5 IQR, the points beyond them as outliers), built by
+[`factor_residual_plot`](@ref). `plot(r)` draws one box per series.
+"""
+struct FactorResidualResult
+    residuals::Matrix{Float64}
+    series_names::Vector{String}
+    q1::Vector{Float64}
+    median::Vector{Float64}
+    q3::Vector{Float64}
+    whisker_low::Vector{Float64}
+    whisker_high::Vector{Float64}
+    outliers::Vector{Vector{Float64}}
+end
+
+"""
+    factor_residual_plot(m::DFMModel) -> FactorResidualResult
+
+The residuals by series as box plots (R `dfms`' `type = "residual"`): a
+series the factors do not explain stands out as a wide box.
+"""
+function factor_residual_plot(m::DFMModel)
+    E = m.Y .- m.factors * m.Lambda'
+    N = size(E, 2)
+    q1, md, q3, lo, hi = (zeros(N) for _ in 1:5)
+    out = Vector{Vector{Float64}}(undef, N)
+    for i in 1:N
+        e = filter(!isnan, E[:, i])
+        q1[i], md[i], q3[i] = quantile(e, (0.25, 0.5, 0.75))
+        iqr = q3[i] - q1[i]
+        inside = filter(x -> q1[i] - 1.5iqr <= x <= q3[i] + 1.5iqr, e)
+        lo[i], hi[i] = extrema(inside)
+        out[i] = filter(x -> x < lo[i] || x > hi[i], e)
+    end
+    return FactorResidualResult(E, string.(m.names), q1, md, q3, lo, hi, out)
+end
+
+# --- 11.3 Markov switching ----------------------------------------------------
+
+"""
+    RegimeProbabilityResult
+
+Filtered and smoothed regime probabilities (each `nobs × k`), the series on
+the same periods, and the expected durations (`nothing` with time-varying
+transition probabilities), built by [`regime_plot`](@ref). R `MSwM`'s
+`smoProb` has `nobs + 1` rows (its first is the smoothed distribution at
+`t = 0`); these have `nobs`.
+
+`plot(r)` draws one panel per regime with the smoothed and filtered
+probabilities overlaid -- the gap between them is what the smoother adds.
+`plot(r; mode=:shaded, regime=1)` draws the series with the periods where
+`Pr(S_t = regime | all data) > 0.5` shaded, the figure of the published
+Markov-switching literature.
+"""
+struct RegimeProbabilityResult
+    t::Vector{Int}
+    y::Vector{Float64}
+    filtered::Matrix{Float64}
+    smoothed::Matrix{Float64}
+    durations::Union{Nothing,Vector{Float64}}
+end
+
+"""
+    regime_plot(m::MSModel) -> RegimeProbabilityResult
+
+The data for the regime-probability plots. The last filtered and the last
+smoothed probability coincide (the smoother starts from the filter's end).
+The pairwise transition probabilities `Pr(S_t, S_{t−1} | all data)` get no
+plot: a heatmap per period, `k²` small multiples or a transition-count
+summary are all defensible and none is obviously right.
+
+```jldoctest
+julia> using TSAnalytics, DelimitedFiles
+
+julia> gnp = readdlm(joinpath(pkgdir(TSAnalytics), "handoff", "stage 11", "fixtures",
+                              "hamilton_rgnp.csv"), ','; skipstart=1)[:, 2];
+
+julia> r = regime_plot(canonicalise(fit_ms_autoregression(gnp, 4)));
+
+julia> size(r.smoothed), r.filtered[end, :] ≈ r.smoothed[end, :]
+((131, 2), true)
+```
+"""
+function regime_plot(m::MSModel)
+    p = m.spec.p
+    n = length(m.y)
+    dur = m.P === nothing ? nothing : expected_durations(m)
+    return RegimeProbabilityResult(collect((p + 1):n), m.y[(p + 1):n], copy(m.filtered),
+                                   copy(m.smoothed), dur)
+end
+
+"""
+    diagnostic_plot(m::MSModel; regime=nothing, kwargs...) -> DiagnosticPlotResult
+
+Residual diagnostics. With `regime = nothing`, on the residual averaged
+over the smoothed regime distribution (`residuals(m)`); with `regime = r`,
+on that regime's conditional residual weighted by `Pr(S_t = r | all data)`,
+so the periods the model assigns elsewhere fade out (R `MSwM`'s per-regime
+`plotDiag`).
+"""
+function diagnostic_plot(m::MSModel; regime::Union{Nothing,Integer}=nothing, kwargs...)
+    regime === nothing && return diagnostic_plot(StatsAPI.residuals(m); kwargs...)
+    1 <= regime <= m.spec.k || throw(ArgumentError(
+        "diagnostic_plot: regime must be in 1:$(m.spec.k), got $regime"))
+    E, _ = _ms_conditional_resid(m)
+    return diagnostic_plot(E[:, regime] .* m.smoothed[:, regime]; kwargs...)
+end
+
+ts_display(m::MSModel; kwargs...) = ts_display(m.y; kwargs...)
+
+# --- 11.4 threshold models ----------------------------------------------------
+
+"""
+    ThresholdRegimeResult
+
+The series on the rows a SETAR model used, the threshold variable `z`, the
+regime of each row (the low regime is `z ≤ th`, inclusive), the
+threshold(s) and the fitted values, built by
+[`threshold_regime_plot`](@ref). `plot(r)` draws the series coloured by
+regime with the thresholds as horizontal lines (R `tsDyn`'s `plot.setar`).
+A point's regime is set by the threshold variable `z_t = y_{t−thDelay−1}`,
+not by `y_t` itself, so a point above the line can belong to the low regime.
+"""
+struct ThresholdRegimeResult
+    t::Vector{Int}
+    y::Vector{Float64}
+    z::Vector{Float64}
+    regime::Vector{Int}
+    thresholds::Vector{Float64}
+    fitted::Vector{Float64}
+end
+
+"""
+    threshold_regime_plot(m::SETARModel) -> ThresholdRegimeResult
+
+Which regime each observation falls in. On log10(lynx) exactly one
+observation sits on the threshold and belongs to the low regime.
+
+```jldoctest
+julia> using TSAnalytics, DelimitedFiles
+
+julia> y = log10.(readdlm(TSAnalytics.LYNX, ','; skipstart=1)[:, 2]);
+
+julia> r = threshold_regime_plot(fit_setar(y, 2; thDelay=1, warn=false));
+
+julia> count(==(1), r.regime), r.regime[63], r.z[63] == r.thresholds[1]
+(78, 1, true)
+```
+"""
+function threshold_regime_plot(m::SETARModel)
+    _, _, z, rows = _tar_embed(m.y, m.m, m.thDelay)
+    return ThresholdRegimeResult(collect(rows), m.y[rows], z, copy(m.regime), copy(m.thresholds),
+                                 copy(m.fitted))
+end
+
+"""
+    ThresholdPhaseResult
+
+`y_t` against `y_{t−lag}` with each point's regime and fitted value, built
+by [`threshold_phase_plot`](@ref). `plot(r)` draws the points coloured by
+regime and the fitted values as open markers.
+"""
+struct ThresholdPhaseResult
+    lagged::Vector{Float64}
+    y::Vector{Float64}
+    fitted::Vector{Float64}
+    regime::Vector{Int}
+    lag::Int
+    nregimes::Int
+end
+
+"""
+    threshold_phase_plot(m::SETARModel; lag=1) -> ThresholdPhaseResult
+
+The phase plot of R `tsDyn`'s `plot.setar`, for any number of regimes --
+`tsDyn` does not draw it with two thresholds. With more than one lag in the
+model the fitted value is not a function of `y_{t−lag}` alone, so it is
+drawn as points, not a curve.
+"""
+function threshold_phase_plot(m::SETARModel; lag::Integer=1)
+    1 <= lag <= m.m || throw(ArgumentError("threshold_phase_plot: lag must be in 1:$(m.m)"))
+    _, lagf, _, _ = _tar_embed(m.y, m.m, m.thDelay)
+    return ThresholdPhaseResult(lagf(lag), m.y[(m.m + 1):end], copy(m.fitted), copy(m.regime),
+                                Int(lag), length(m.thresholds) + 1)
+end
+
+"""
+    ThresholdProfileResult
+
+The search criterion at every candidate threshold, built by
+[`threshold_profile`](@ref). `plot(r)` draws the profile with the chosen
+threshold marked.
+"""
+struct ThresholdProfileResult
+    candidates::Vector{Float64}
+    values::Vector{Float64}
+    chosen::Float64
+    criterion::Symbol
+    conditional_on::Union{Nothing,Float64}
+end
+
+"""
+    threshold_profile(m::SETARModel; criterion=:ssr) -> ThresholdProfileResult
+
+The profile the threshold search minimised: the SSR at every candidate, or
+(`criterion = :aic`) `tsDyn`'s AIC, `n log(SSR/n) + 2k` on the full series
+length. `tsDyn`'s `plot.selectSETAR` refuses anything but the SSR; the
+profile is as meaningful for the AIC. With two thresholds it is the profile
+of the lower threshold with the upper one fixed (`conditional_on`), the
+last step of the sequential search. A threshold that was supplied, not
+searched, has no profile and is refused.
+
+There is no confidence set for the threshold (Hansen 2000's likelihood-ratio
+inversion): it is not built, and a shaded region with no stated coverage
+would be worse than none.
+"""
+function threshold_profile(m::SETARModel; criterion::Symbol=:ssr)
+    m.searched || throw(ArgumentError("threshold_profile: the threshold was supplied, not searched"))
+    criterion in (:ssr, :aic) || throw(ArgumentError("threshold_profile: criterion must be :ssr or :aic"))
+    c = first.(m.profile)
+    v = last.(m.profile)
+    n = length(m.y)
+    criterion === :aic && (v = n .* log.(v ./ n) .+ 2 * StatsAPI.dof(m))
+    nt = length(m.thresholds)
+    # the stored profile is over the threshold that was searched last
+    chosen = c[argmin(v)]
+    other = nt == 1 ? nothing : m.thresholds[findfirst(!=(chosen), m.thresholds)]
+    return ThresholdProfileResult(c, v, chosen, criterion, other)
+end
+
+"""
+    TransitionFunctionResult
+
+The fitted LSTAR transition `G(z_t)` at every row, with `z`, the slope
+`gamma`, the location `th` and whether `gamma` ran to the start grid's
+bound, built by [`transition_plot`](@ref). `plot(r)` draws `G` against `z`
+(with the logistic curve) and against time.
+"""
+struct TransitionFunctionResult
+    t::Vector{Int}
+    z::Vector{Float64}
+    G::Vector{Float64}
+    gamma::Float64
+    th::Float64
+    gamma_at_bound::Bool
+end
+
+"""
+    transition_plot(m::LSTARModel) -> TransitionFunctionResult
+
+How abrupt the transition is -- which neither reference plots (`tsDyn`
+only colours points by `G`). A slope at the start grid's bound is noted on
+the plot: the curve is then a step because the parameter is at a boundary,
+not because a step was estimated.
+
+```jldoctest
+julia> using TSAnalytics, DelimitedFiles
+
+julia> y = log10.(readdlm(TSAnalytics.LYNX, ','; skipstart=1)[:, 2]);
+
+julia> r = transition_plot(fit_lstar(y, 2; thDelay=1));
+
+julia> minimum(r.G) < 1e-7, maximum(r.G) > 0.99, r.gamma_at_bound
+(true, true, false)
+```
+"""
+function transition_plot(m::LSTARModel)
+    _, _, z, rows = _tar_embed(m.y, m.m, m.thDelay)
+    return TransitionFunctionResult(collect(rows), z, copy(m.G), m.gamma, m.th, m.gamma_at_bound)
+end
+
+diagnostic_plot(m::SETARModel; kwargs...) = diagnostic_plot(StatsAPI.residuals(m); kwargs...)
+diagnostic_plot(m::LSTARModel; kwargs...) = diagnostic_plot(StatsAPI.residuals(m); kwargs...)
+ts_display(m::SETARModel; kwargs...) = ts_display(m.y; kwargs...)
+ts_display(m::LSTARModel; kwargs...) = ts_display(m.y; kwargs...)

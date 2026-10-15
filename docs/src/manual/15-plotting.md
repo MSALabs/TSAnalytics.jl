@@ -160,6 +160,90 @@ Impulse responses and variance decompositions plot directly:
 [Cointegration and VECM](13-cointegration-and-vecm.md) and
 [Structural VAR](14-structural-var.md) for each in context.
 
+## Unobserved components
+
+`state_decomposition` takes an unobserved-components model too
+([`fit_uc`](@ref)), and then each component carries its smoothed standard
+error: the ribbon is a 95% interval **for the smoothed component**, not a
+forecast interval. The irregular is a residual and gets none; the
+one-step fitted values are overlaid on the observed series.
+
+```@example plots
+using DelimitedFiles
+nile = readdlm(TSAnalytics.NILE, ',', skipstart = 1)[:, 2]
+plot(state_decomposition(uc_local_level(nile)); size = (700, 550))
+```
+
+## Dynamic factor models
+
+[`factor_paths`](@ref) draws the smoothed factors with their bands, or
+with `overlay_series = true` the factors over the data;
+[`loadings_plot`](@ref) shows which series load on which factor;
+[`factor_r2_plot`](@ref) gives both variance decompositions;
+[`factor_selection_plot`](@ref) the scree plot and Bai–Ng criteria; and
+[`factor_residual_plot`](@ref) a box per series.
+
+```@example plots
+Yus = standardize(readdlm(TSAnalytics.US_CHANGE, ',', skipstart = 1))
+dfm = fit_dfm(Yus, 2)
+plot(factor_paths(dfm); size = (700, 450))
+```
+
+```@example plots
+plot(plot(loadings_plot(dfm)), plot(factor_r2_plot(dfm)); size = (900, 350))
+```
+
+```@example plots
+plot(factor_selection_plot(Yus, 3); size = (850, 330))
+```
+
+With five series the criteria are far from their asymptotics and simply
+keep falling: the plot says so, and the minimum is not an answer.
+
+## Regime switching
+
+[`regime_plot`](@ref) carries the filtered and smoothed regime
+probabilities. By default one panel per regime overlays the two; with
+`mode = :shaded` the series is drawn with the periods in a regime shaded.
+
+```@example plots
+gnp = readdlm(joinpath(pkgdir(TSAnalytics), "handoff", "stage 11", "fixtures",
+                       "hamilton_rgnp.csv"), ',', skipstart = 1)[:, 2]
+ms = canonicalise(fit_ms_autoregression(Float64.(gnp), 4))
+plot(regime_plot(ms); size = (700, 450))
+```
+
+```@example plots
+plot(regime_plot(ms); mode = :shaded, regime = 1)
+```
+
+## Threshold models
+
+[`threshold_regime_plot`](@ref) colours the series by regime, with the
+threshold drawn; [`threshold_phase_plot`](@ref) plots `y_t` against a lag,
+for any number of regimes; [`threshold_profile`](@ref) shows the
+criterion the search minimised; [`transition_plot`](@ref) the fitted LSTAR
+transition; and a [`setar_test`](@ref) result plots its bootstrap
+distributions directly.
+
+```@example plots
+lynx = log10.(readdlm(TSAnalytics.LYNX, ',', skipstart = 1)[:, 2])
+st = fit_setar(lynx, 2; thDelay = 1, warn = false)
+plot(plot(threshold_regime_plot(st)), plot(threshold_phase_plot(st)); size = (900, 350))
+```
+
+```@example plots
+plot(threshold_profile(st))
+```
+
+```@example plots
+plot(transition_plot(fit_lstar(lynx, 2; thDelay = 1)); size = (850, 330))
+```
+
+```@example plots
+plot(setar_test(lynx, 2; thDelay = 0:1, nboot = 200); size = (950, 320))
+```
+
 ## Seasonal subseries plot
 
 fpp3's own signature "subseries plot" — [`seasonal_subseries_plot`](@ref)

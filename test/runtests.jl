@@ -34,6 +34,7 @@ using Dates: Date
     include("test_dfm.jl")              # Stage 11.2
     include("test_markovswitching.jl")  # Stage 11.3
     include("test_tar.jl")              # Stage 11.4
+    include("test_plot_stage11.jl")     # Stage 11 plot recipes
     include("test_stattools.jl")
     include("test_ccf.jl")
     include("test_unitroot.jl")

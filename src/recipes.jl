@@ -619,36 +619,70 @@ end
 """
     @recipe f(d::StateDecomposition)
 
-Stacked panels sharing the x-axis: observed, level, slope (if any), and
-one season panel per seasonal period — `[S]` the panels of R's
-`plot.ets`/`plot.tbats`, titled "Decomposition by …" as R does.
+Stacked panels sharing the x-axis: observed, level, slope (if any), one
+season panel per seasonal period, then any further components (cycle,
+autoregressive, regression, irregular) — `[S]` the panels of R's
+`plot.ets`/`plot.tbats`, titled "Decomposition by …" as R does. A
+component with standard errors (an unobserved-components model) gets a
+ribbon at ±1.96 se, labelled as a 95% interval for the smoothed component;
+the irregular, a residual, gets none. One-step fitted values, when present,
+are overlaid on the observed panel.
 """
 @recipe function f(d::StateDecomposition)
-    npan = 2 + (d.slope !== nothing) + length(d.seasonal)
-    layout --> (npan, 1)
-    legend --> false
-    link --> :x
-    plot_title --> "Decomposition by " * d.model_name
-    plot_titlefontsize --> 11
-    panels = Tuple{String,Vector{Float64}}[("observed", d.observed), ("level", d.level)]
-    d.slope === nothing || push!(panels, ("slope", d.slope))
+    Opt = Union{Nothing,Vector{Float64}}
+    panels = Tuple{String,Vector{Float64},Opt}[("observed", d.observed, nothing)]
+    d.level === nothing || push!(panels, ("level", d.level, d.level_se))
+    d.slope === nothing || push!(panels, ("slope", d.slope, d.slope_se))
     for (i, s) in enumerate(d.seasonal)
         lab = length(d.seasonal) == 1 ? "season" :
               "season $(isinteger(d.periods[i]) ? Int(d.periods[i]) : d.periods[i])"
-        push!(panels, (lab, s))
+        push!(panels, (lab, s, d.seasonal_se[i]))
     end
-    for (k, (lab, v)) in enumerate(panels)
-        lo, hi = extrema(v)
+    append!(panels, d.extra)
+    banded = any(p -> p[3] !== nothing, panels)
+    layout --> (length(panels), 1)
+    legend --> (banded ? :topleft : false)
+    link --> :x
+    plot_title --> "Decomposition by " * d.model_name
+    plot_titlefontsize --> 11
+    for (k, (lab, v, se)) in enumerate(panels)
+        ok = filter(isfinite, v)
+        lo, hi = isempty(ok) ? (0.0, 0.0) : extrema(ok)
         c = (lo + hi) / 2
         # a state the fit held constant draws flat, not as its rounding
         # error magnified to fill the panel
         flat = hi - lo <= 1e-6 * max(abs(c), 1.0)
+        if se !== nothing
+            @series begin
+                subplot := k
+                seriestype := :line
+                fillrange := v .+ 1.96 .* se
+                fillalpha := 0.2
+                linealpha := 0
+                color := :steelblue
+                label := k == findfirst(p -> p[3] !== nothing, panels) ?
+                         "95% interval, smoothed component" : ""
+                d.t, v .- 1.96 .* se
+            end
+        end
         @series begin
             subplot := k
             seriestype := :line
             ylabel := lab
+            banded && (label := "")
             flat && (ylims := (c - max(abs(c), 1.0), c + max(abs(c), 1.0)))
             _decimate_minmax(d.t, v, _PLOT_MAXPOINTS)
+        end
+        if k == 1 && d.fitted !== nothing
+            @series begin
+                subplot := 1
+                seriestype := :line
+                linestyle := :dash
+                color := :firebrick
+                label := "one-step fitted"
+                ylabel := lab           # a subplot attribute: the last series sets it
+                _decimate_minmax(d.t, d.fitted, _PLOT_MAXPOINTS)
+            end
         end
     end
 end
@@ -970,6 +1004,455 @@ and its autocorrelations die out.
             marker := :circle
             title := "relation $j: ACF"
             a.lags, a.values
+        end
+    end
+end
+
+# ===========================================================================
+# Stage 11 recipes (handoff/stage 11/docs/stage-11-plot-recipes-handoff.md)
+# ===========================================================================
+
+"""
+    @recipe f(r::FactorPathResult; overlay_series=false)
+
+One panel per factor with a ribbon at ±1.96 standard errors -- which
+neither reference draws. `overlay_series = true` instead draws every
+series in grey with the factors over them in a single panel (R `dfms`'
+`plot(type = "joint")`).
+"""
+@recipe function f(r::FactorPathResult)
+    overlay = pop!(plotattributes, :overlay_series, false)
+    nf = size(r.factors, 2)
+    if overlay
+        legend --> :topleft
+        title --> "Series (grey) and factors"
+        for i in axes(r.series, 2)
+            @series begin
+                seriestype := :line
+                color := :gray
+                linealpha := 0.4
+                label := i == 1 ? "series" : ""
+                r.t, r.series[:, i]
+            end
+        end
+        for j in 1:nf
+            @series begin
+                seriestype := :line
+                linewidth --> 2
+                label := "factor $j"
+                r.t, r.factors[:, j]
+            end
+        end
+    else
+        layout --> (nf, 1)
+        legend --> false
+        link --> :x
+        for j in 1:nf
+            f, s = r.factors[:, j], r.se[:, j]
+            @series begin
+                subplot := j
+                seriestype := :line
+                fillrange := f .+ 1.96 .* s
+                fillalpha := 0.2
+                linealpha := 0
+                color := :steelblue
+                r.t, f .- 1.96 .* s
+            end
+            @series begin
+                subplot := j
+                seriestype := :line
+                color := :steelblue
+                ylabel := "factor $j"
+                title := j == 1 ? "Smoothed factors, 95% band" : ""
+                r.t, f
+            end
+        end
+    end
+end
+
+"""
+    @recipe f(r::LoadingsResult)
+
+The loadings as a heatmap, series down the side and factors across, on a
+diverging scale centred at zero -- neither reference has one.
+"""
+@recipe function f(r::LoadingsResult)
+    N, nf = size(r.loadings)
+    m = maximum(abs, r.loadings)
+    m = m > 0 ? m : 1.0
+    seriestype := :heatmap
+    seriescolor --> :RdBu
+    clims --> (-m, m)
+    title --> "Factor loadings"
+    xticks --> (1:nf, ["factor $j" for j in 1:nf])
+    yticks --> (1:N, r.series_names)
+    yflip --> true
+    1:nf, 1:N, r.loadings
+end
+
+"""
+    @recipe f(r::FactorR2Result)
+
+Grouped bars: for each series, the R² on each factor alone; a black marker
+gives the R² on all factors together. The bars need not add up to the
+marker -- they do only when the factors are uncorrelated.
+"""
+@recipe function f(r::FactorR2Result)
+    N, nf = size(r.per_factor)
+    w = 0.8 / nf
+    legend --> :outertopright
+    title --> "Variance explained"
+    ylims --> (0, 1)
+    ylabel --> "R²"
+    xticks --> (1:N, r.series_names)
+    for j in 1:nf
+        @series begin
+            seriestype := :bar
+            bar_width := w
+            label := "factor $j"
+            collect(1:N) .+ (j - (nf + 1) / 2) * w, r.per_factor[:, j]
+        end
+    end
+    @series begin
+        seriestype := :scatter
+        color := :black
+        markershape := :hline
+        markersize --> 10
+        label := "all factors"
+        collect(1:N), r.total
+    end
+end
+
+"""
+    @recipe f(r::FactorSelectionResult)
+
+The scree plot and Bai & Ng's three criteria side by side. With fewer
+than 20 series the criteria panel says the minimum is not to be trusted --
+the criteria are consistent only as `N` and `T` both grow.
+"""
+@recipe function f(r::FactorSelectionResult)
+    layout --> (1, 2)
+    legend --> :topright
+    @series begin
+        subplot := 1
+        seriestype := :line
+        markershape := :circle
+        label := ""
+        title := "Scree: correlation eigenvalues"
+        xlabel := "component"
+        collect(1:length(r.eigenvalues)), r.eigenvalues
+    end
+    for (nm, v) in (("IC1", r.IC1), ("IC2", r.IC2), ("IC3", r.IC3))
+        @series begin
+            subplot := 2
+            seriestype := :line
+            markershape := :circle
+            label := nm
+            xlabel := "number of factors"
+            title := r.N < 20 ? "Bai–Ng criteria (N = $(r.N): not asymptotic)" : "Bai–Ng criteria"
+            r.r, v
+        end
+    end
+end
+
+"""
+    @recipe f(r::FactorResidualResult)
+
+One box per series: the quartiles, the median, whiskers to the most
+extreme points within 1.5 IQR, and the points beyond them (R `dfms`'
+`plot(type = "residual")`).
+"""
+@recipe function f(r::FactorResidualResult)
+    N = length(r.series_names)
+    legend --> false
+    title --> "Idiosyncratic residuals"
+    xticks --> (1:N, r.series_names)
+    bx, by, wx, wy, mx, my = Float64[], Float64[], Float64[], Float64[], Float64[], Float64[]
+    for i in 1:N
+        append!(bx, [i - 0.3, i + 0.3, i + 0.3, i - 0.3, i - 0.3, NaN])
+        append!(by, [r.q1[i], r.q1[i], r.q3[i], r.q3[i], r.q1[i], NaN])
+        append!(wx, [i, i, NaN, i, i, NaN, i - 0.3, i + 0.3, NaN])
+        append!(wy, [r.q1[i], r.whisker_low[i], NaN, r.q3[i], r.whisker_high[i], NaN,
+                     r.median[i], r.median[i], NaN])
+        append!(mx, fill(Float64(i), length(r.outliers[i])))
+        append!(my, r.outliers[i])
+    end
+    @series begin
+        seriestype := :shape
+        fillalpha := 0.3
+        color := :steelblue
+        bx, by
+    end
+    @series begin
+        seriestype := :path
+        color := :black
+        wx, wy
+    end
+    if !isempty(mx)
+        @series begin
+            seriestype := :scatter
+            markersize --> 3
+            color := :black
+            mx, my
+        end
+    end
+end
+
+# runs of consecutive periods with p > 0.5, as [start, stop] edges of a span
+function _regime_spans(t::AbstractVector, p::AbstractVector)
+    edges = Float64[]
+    inrun = false
+    for i in eachindex(p)
+        if p[i] > 0.5 && !inrun
+            push!(edges, t[i] - 0.5); inrun = true
+        elseif p[i] <= 0.5 && inrun
+            push!(edges, t[i - 1] + 0.5); inrun = false
+        end
+    end
+    inrun && push!(edges, t[end] + 0.5)
+    return edges
+end
+
+"""
+    @recipe f(r::RegimeProbabilityResult; mode=:probabilities, regime=1)
+
+`mode = :probabilities`: one panel per regime, smoothed and filtered
+probabilities overlaid (R `MSwM`'s `plotProb(which = 1)`), each titled
+with the regime's expected duration. `mode = :shaded`: the series with the
+periods where `Pr(S_t = regime | all data) > 0.5` shaded.
+"""
+@recipe function f(r::RegimeProbabilityResult)
+    mode = pop!(plotattributes, :mode, :probabilities)
+    reg = pop!(plotattributes, :regime, 1)
+    k = size(r.smoothed, 2)
+    mode in (:probabilities, :shaded) || throw(ArgumentError(
+        "plot(::RegimeProbabilityResult): mode must be :probabilities or :shaded"))
+    1 <= reg <= k || throw(ArgumentError("plot(::RegimeProbabilityResult): regime must be in 1:$k"))
+    if mode === :probabilities
+        layout --> (k, 1)
+        link --> :x
+        legend --> :topright
+        for j in 1:k
+            dur = r.durations === nothing ? "" :
+                  " (expected duration $(round(r.durations[j]; digits=2)))"
+            @series begin
+                subplot := j
+                seriestype := :line
+                color := :steelblue
+                label := j == 1 ? "smoothed" : ""
+                title := "regime $j" * dur
+                ylims := (0, 1)
+                r.t, r.smoothed[:, j]
+            end
+            @series begin
+                subplot := j
+                seriestype := :line
+                color := :darkorange
+                linestyle := :dash
+                label := j == 1 ? "filtered" : ""
+                title := "regime $j" * dur       # subplot attributes: the last series sets them
+                ylims := (0, 1)
+                r.t, r.filtered[:, j]
+            end
+        end
+    else
+        legend --> :topright
+        title --> "Shaded: Pr(regime $reg) > 0.5, smoothed"
+        edges = _regime_spans(r.t, r.smoothed[:, reg])
+        if !isempty(edges)
+            @series begin
+                seriestype := :vspan
+                color := :gray
+                fillalpha := 0.3
+                linealpha := 0
+                label := "regime $reg"
+                edges
+            end
+        end
+        @series begin
+            seriestype := :line
+            color := :black
+            label := "series"
+            r.t, r.y
+        end
+    end
+end
+
+const _REGIME_COLORS = [:steelblue, :darkorange, :forestgreen]
+_regime_label(j, k) = k == 2 ? ("low", "high")[j] : ("low", "middle", "high")[j]
+
+"""
+    @recipe f(r::ThresholdRegimeResult)
+
+The series over time, each point coloured by its regime, with the
+threshold(s) as dashed horizontal lines -- R `tsDyn`'s `plot.setar`. The
+regime is the one the model assigned (`z ≤ th` is low, inclusive).
+"""
+@recipe function f(r::ThresholdRegimeResult)
+    k = length(r.thresholds) + 1
+    legend --> :topright
+    title --> "Regimes"
+    @series begin
+        seriestype := :line
+        color := :gray
+        label := ""
+        r.t, r.y
+    end
+    for j in 1:k
+        sel = r.regime .== j
+        any(sel) || continue
+        @series begin
+            seriestype := :scatter
+            color := _REGIME_COLORS[j]
+            label := _regime_label(j, k)
+            r.t[sel], r.y[sel]
+        end
+    end
+    @series begin
+        seriestype := :hline
+        linestyle := :dash
+        color := :black
+        label := length(r.thresholds) == 1 ? "threshold" : "thresholds"
+        r.thresholds
+    end
+end
+
+"""
+    @recipe f(r::ThresholdPhaseResult)
+
+`y_t` against `y_{t−lag}`, the observations coloured by regime and the
+fitted values as crosses -- for any number of regimes.
+"""
+@recipe function f(r::ThresholdPhaseResult)
+    legend --> :topleft
+    title --> "Phase plot"
+    xlabel --> "y(t−$(r.lag))"
+    ylabel --> "y(t)"
+    for j in 1:r.nregimes
+        sel = r.regime .== j
+        any(sel) || continue
+        @series begin
+            seriestype := :scatter
+            color := _REGIME_COLORS[j]
+            label := _regime_label(j, r.nregimes)
+            r.lagged[sel], r.y[sel]
+        end
+        @series begin
+            seriestype := :scatter
+            color := _REGIME_COLORS[j]
+            markershape := :xcross
+            label := j == 1 ? "fitted" : ""
+            r.lagged[sel], r.fitted[sel]
+        end
+    end
+end
+
+"""
+    @recipe f(r::ThresholdProfileResult)
+
+The criterion against the candidate threshold, the chosen one marked
+(`tsDyn`'s `plot.selectSETAR`, for either criterion).
+"""
+@recipe function f(r::ThresholdProfileResult)
+    o = sortperm(r.candidates)
+    legend --> false
+    xlabel --> "threshold"
+    ylabel --> (r.criterion === :ssr ? "SSR" : "AIC")
+    title --> (r.conditional_on === nothing ? "Threshold profile" :
+               "Threshold profile (other threshold fixed at $(round(r.conditional_on; sigdigits=6)))")
+    @series begin
+        seriestype := :line
+        markershape := :circle
+        markersize --> 2
+        r.candidates[o], r.values[o]
+    end
+    @series begin
+        seriestype := :vline
+        linestyle := :dash
+        color := :firebrick
+        xlabel := "threshold"
+        [r.chosen]
+    end
+end
+
+"""
+    @recipe f(r::TransitionFunctionResult)
+
+`G` against the threshold variable, with the logistic curve through it,
+and `G` over time. A slope at the start grid's bound is noted in the
+title.
+"""
+@recipe function f(r::TransitionFunctionResult)
+    layout --> (1, 2)
+    legend --> false
+    note = r.gamma_at_bound ? " -- γ at the grid bound" : ""
+    lo, hi = extrema(r.z)
+    zz = range(lo, hi; length=400)
+    @series begin
+        subplot := 1
+        seriestype := :line
+        color := :gray
+        title := "G(z), γ = $(round(r.gamma; sigdigits=4))" * note
+        xlabel := "z"
+        collect(zz), 1 ./ (1 .+ exp.(-r.gamma .* (zz .- r.th)))
+    end
+    @series begin
+        subplot := 1
+        seriestype := :scatter
+        color := :steelblue
+        markersize --> 3
+        title := "G(z), γ = $(round(r.gamma; sigdigits=4))" * note
+        xlabel := "z"
+        r.z, r.G
+    end
+    @series begin
+        subplot := 2
+        seriestype := :line
+        color := :steelblue
+        title := "G over time"
+        ylims := (0, 1)
+        r.t, r.G
+    end
+end
+
+"""
+    @recipe f(t::ThresholdTest)
+
+For each of the three tests, the bootstrap distribution of the F
+statistic, the observed statistic (red, dashed) and the 90, 95, 97.5 and
+99% bootstrap critical values (grey). No χ² curve: the test has no
+asymptotic distribution, and drawing one invites reading it as the null
+(R `tsDyn`'s `plot.Hansen99Test` draws it for scaling only).
+"""
+@recipe function f(t::ThresholdTest)
+    layout --> (1, 3)
+    legend --> false
+    for (i, lab) in enumerate(("1 vs 2 regimes", "1 vs 3", "2 vs 3"))
+        @series begin
+            subplot := i
+            seriestype := :histogram
+            normalize := :pdf
+            color := :steelblue
+            fillalpha := 0.5
+            title := "$lab, F = $(round(t.F[i]; digits=2))"
+            t.boot[:, i]
+        end
+        @series begin
+            subplot := i
+            seriestype := :vline
+            color := :gray
+            linestyle := :dot
+            title := "$lab, F = $(round(t.F[i]; digits=2))"
+            t.critical[i, :]
+        end
+        @series begin
+            subplot := i
+            seriestype := :vline
+            color := :red
+            linestyle := :dash
+            linewidth := 2
+            title := "$lab, F = $(round(t.F[i]; digits=2))"
+            [t.F[i]]
         end
     end
 end
