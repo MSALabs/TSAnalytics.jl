@@ -132,6 +132,27 @@ built from.
 
 ## Primary sources for components, factors and regimes
 
+Part XI also cites two textbooks beyond the six above, each for what it
+genuinely contains:
+
+- **Cowpertwait, P. S. P. & Metcalfe, A. V. (2009).** *Introductory Time
+  Series with R.* Springer. Chapter 12's dynamic linear models: the
+  clearest pictures of filtering against smoothing across a level shift,
+  and of how the variance ratio drives the filter. (It does not use R's
+  `StructTS`, and estimates no variances by maximum likelihood.)
+- **Montgomery, D. C., Jennings, C. L. & Kulahci, M. (2008).**
+  *Introduction to Time Series Analysis and Forecasting.* Wiley.
+  Exponential smoothing as the optimal forecast of an IMA(1,1) (§4.8), and
+  monitoring a forecasting model with tracking signals (§2.6.3), which no
+  other book here covers.
+
+The papers:
+
+- **Durbin, J. & Koopman, S. J. (2001).** *Time Series Analysis by State
+  Space Methods* (1st ed.). Oxford University Press. The univariate
+  treatment of multivariate observations used by the filter beneath
+  [`fit_dfm`](@ref); see Appendix B on this citation's provenance.
+
 - **Harvey, A. C. (1989).** *Forecasting, Structural Time Series Models
   and the Kalman Filter.* Cambridge University Press. The structural
   (unobserved-components) model — level, slope, seasonal and cycle, each
@@ -148,12 +169,24 @@ built from.
   characterization by partial autocorrelation matrices. *Annals of
   Statistics* 6(3), 643–648. The map that keeps a factor VAR stationary
   while the optimiser searches freely.
+- **Stock, J. H. & Watson, M. W. (1991).** A probability model of the
+  coincident economic indicators. In K. Lahiri & G. H. Moore (eds.),
+  *Leading Economic Indicators*, Cambridge University Press, 63–89. The
+  dynamic factor model as an unobserved index of the business cycle.
 - **Stock, J. H. & Watson, M. W. (2002).** Forecasting using principal
   components from a large number of predictors. *Journal of the
   American Statistical Association* 97(460), 1167–1179. The case for a
   few factors behind many series, and the principal-components start.
 - **Bai, J. & Ng, S. (2002).** Determining the number of factors in
   approximate factor models. *Econometrica* 70(1), 191–221. — [`bai_ng_ic`](@ref).
+- **Shephard, N. G. & Harvey, A. C. (1990).** On the probability of
+  estimating a deterministic component in the local level model. *Journal
+  of Time Series Analysis* 11(4), 339–347. The pile-up of variance
+  estimates at zero.
+- **Self, S. G. & Liang, K.-Y. (1987).** Asymptotic properties of maximum
+  likelihood estimators and likelihood ratio tests under nonstandard
+  conditions. *Journal of the American Statistical Association* 82(398),
+  605–610. The half-`χ²` test of a variance on its boundary.
 - **Hamilton, J. D. (1989).** A new approach to the economic analysis of
   nonstationary time series and the business cycle. *Econometrica*
   57(2), 357–384. The Markov-switching autoregression, its filter, and
@@ -173,6 +206,9 @@ built from.
   Dynamical System Approach.* Oxford University Press. The threshold
   autoregression, and the lynx series it is still demonstrated on —
   [`fit_setar`](@ref).
+- **Davies, R. B. (1987).** Hypothesis testing when a nuisance parameter
+  is present only under the alternative. *Biometrika* 74(1), 33–43. Why a
+  threshold test needs the bootstrap.
 - **Hansen, B. E. (1999).** Testing for linearity. *Journal of Economic
   Surveys* 13(5), 551–576. — [`setar_test`](@ref). And **Hansen, B. E.
   (2000).** Sample splitting and threshold estimation. *Econometrica*

@@ -38,7 +38,21 @@ kalman_filter_diffuse
 
 `kalman_filter`/`kalman_smoother` are each defined for both forms
 above — the `GaussianSSM` method and the `TimeVaryingSSM` method are
-documented together here.
+documented together here. The `TimeVaryingSSM` methods also take a
+**matrix** of observations, one column per series, which is what
+[`fit_dfm`](@ref) runs on: each period's observations are processed **one
+series at a time**, as a sequence of scalar updates with the transition
+applied once per period, so no `N × N` matrix is formed or inverted and a
+missing value is simply skipped. That requires a diagonal observation
+covariance `H`; a dense one is refused.
+
+The sequential treatment is Durbin & Koopman's (2001), in their section on
+treating multivariate series as univariate. None of the six textbooks this
+project checks against states it — Hamilton and Shumway & Stoffer both form
+and invert the full innovation covariance — so it is cited to Durbin &
+Koopman directly, and the recursion is verified against `statsmodels` and
+`dfms` (to `1.6e-12` and `1.4e-11` on a five-series fixture) rather than
+against a printed page.
 
 ```@docs
 kalman_filter

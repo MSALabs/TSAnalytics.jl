@@ -9,7 +9,7 @@ of question you are asking, not around the function list.
 | You are asking | Go to | Shape |
 |---|---|---|
 | "How do I *do* X?" | **[Manual](../manual/01-primitives.md)** | Task-oriented. Short, entered from search, one `@example` per task. Nothing is explained twice. |
-| "*Why* does X work that way, and when does it fail?" | **[Introduction to Time Series Analysis](../introduction/01-why-model-a-time-series.md)** | A book. 52 chapters in eleven parts, read in order, building from autocorrelation through ARIMA, exponential smoothing, GARCH and the Kalman filter to vector autoregression and cointegration. |
+| "*Why* does X work that way, and when does it fail?" | **[Introduction to Time Series Analysis](../introduction/01-why-model-a-time-series.md)** | A book. 57 chapters in twelve parts, read in order, building from autocorrelation through ARIMA, exponential smoothing, GARCH and the Kalman filter to vector autoregression, cointegration, and models whose structure is hidden or switches. |
 | "What are the arguments to X?" | **[API Reference](../api/primitives.md)** | Every exported function and type, with its docstring. |
 | "I know how to do this in R/Python" | **[Coming from R or Python](../manual/16-coming-from-r-python.md)** | Translation tables, and — more importantly — where the numbers deliberately differ. |
 
@@ -76,5 +76,5 @@ Stated plainly, because finding out by hitting it is worse:
 
 `development-sequence.md` in the repository is the full roadmap, and
 the last chapter of the Introduction,
-[The Frontier](../introduction/52-the-frontier.md), discusses where
+[The Frontier](../introduction/57-the-frontier.md), discusses where
 the field goes from here.

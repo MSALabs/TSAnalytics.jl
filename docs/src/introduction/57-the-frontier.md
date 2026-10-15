@@ -1,6 +1,6 @@
 # The Frontier
 
-Fifty-one chapters in, it is worth being precise about where this
+Fifty-six chapters in, it is worth being precise about where this
 package stops. Not because the gaps are embarrassing — every library has
 them — but because knowing which wall you are standing at tells you
 which direction to walk.
@@ -83,10 +83,13 @@ not changes to it.
 
 This section used to say that **unobserved components** models were the
 obvious state-space application not yet built. They are built now —
-[`fit_uc`](@ref): a level, a slope, a seasonal, a cycle and an
-autoregressive part, each with its own variance, fitted jointly, every
-component returned with a standard error — and so are **dynamic factor
-models** ([`fit_dfm`](@ref)), the same idea across many series at once.
+[Chapter 52](52-the-components-you-cannot-see.md) and
+[Chapter 53](53-when-a-component-stops-moving.md): a level, a slope, a
+seasonal, a cycle and an autoregressive part, each with its own variance,
+fitted jointly, every component returned with a standard error — and so
+are **dynamic factor models**
+([Chapter 54](54-many-series-few-forces.md)), the same idea across many
+series at once.
 
 What they do not yet have:
 
@@ -104,11 +107,12 @@ What they do not yet have:
 ## Regimes: what is still missing
 
 The model can change now. **Markov-switching** regressions and
-autoregressions ([`fit_ms_regression`](@ref),
-[`fit_ms_autoregression`](@ref)) let the parameters jump between
+autoregressions ([Chapter 55](55-the-economy-has-two-moods.md)) let the
+parameters jump between
 unobserved states, with fixed or covariate-driven transition
-probabilities; **threshold** autoregressions ([`fit_setar`](@ref),
-[`fit_lstar`](@ref)) let them change when an observed lag crosses a
+probabilities; **threshold** autoregressions
+([Chapter 56](56-a-different-model-on-each-side-of-a-line.md)) let them
+change when an observed lag crosses a
 boundary, abruptly or smoothly, and [`setar_test`](@ref) asks whether a
 threshold is there at all. Each is checked against R's `MSwM` or `tsDyn`
 and `statsmodels`, and in several places goes further than both — a

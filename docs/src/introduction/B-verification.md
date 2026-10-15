@@ -40,13 +40,13 @@ languages is testing the wrong thing.
 
 ## What that looks like in the repository
 
-The package carries 173 fixture files across 20 verification
+The package carries 303 fixture files across 41 verification
 directories, and 22 ground-truth transcripts recording what was
 executed to produce them. A transcript is not a summary — it is the
 actual session, so a future reader can tell the difference between "R
 returned this" and "the handoff said R returns this".
 
-The full test suite runs 7,428 assertions. Nine test files carry
+The full test suite runs 15,852 assertions. Nine test files carry
 additional bulk suites, gated behind `TSANALYTICS_FULL_TESTS`, that
 sweep hundreds or thousands of parameter combinations rather than spot
 checks — the seasonal state-space bulk suite alone covers 364 cases.
@@ -64,7 +64,7 @@ styling so you can recognise the kind at a glance.
 
 The first records a case where two reference implementations returned
 different numbers for the same question, and what was done about it.
-Eighteen of these appear across the Introduction:
+Thirty-four of these appear across the Introduction:
 
 !!! disagreement "When Implementations Disagree"
     R's `stats::arima()` reports `nobs`/`n.used` as `n − d` (verified
@@ -81,7 +81,7 @@ Eighteen of these appear across the Introduction:
     you know which convention each one is following.
 
 The second records something about the Julia implementation that a
-reader coming from R or Python would not expect. Twelve of these
+reader coming from R or Python would not expect. Twenty-four of these
 appear:
 
 !!! julia "Under the Hood"
@@ -185,6 +185,21 @@ implementation — a package can be wrong, a definition cannot — but it is
 a different kind of check, and a reader comparing numbers across
 languages should know which one they are relying on.
 
+**Cited, but not to a page in hand.** The multivariate Kalman filter
+behind [`fit_dfm`](@ref) processes each period's observations one series
+at a time — the univariate treatment of multivariate series in Durbin &
+Koopman (2001). Of the six textbooks this project checks its citations
+against, none describes it: Hamilton (1994, eqs. 13.2.15–13.2.22,
+printed pp. 379–381, PDF 394–396) and Shumway & Stoffer (2017, eq. 6.22, printed p. 293,
+PDF 303) both form and invert the full innovation covariance, and Hamilton's index
+entry for "Durbin" is the Durbin–Watson statistic. So the algorithm is
+cited to Durbin & Koopman directly, from a copy not in hand when it was
+written, and its correctness rests on the numbers instead: it agrees with
+`statsmodels` to `1.6e-12` and with `dfms`' C++ filter to `1.4e-11` on a
+five-series fixture. The section number should be checked against a
+physical copy; until it is, this is the one citation in the book that is
+not to a page someone has read.
+
 ## When a reference is simply wrong
 
 The two asides above cover two situations: the references disagree with
@@ -268,7 +283,7 @@ and [Cointegration and VECM](../manual/13-cointegration-and-vecm.md) — and col
 Verification establishes agreement with a reference. It does not
 establish correctness, and the two are not the same thing.
 
-Where the references themselves disagree — and eighteen chapters record
+Where the references themselves disagree — and thirty-three chapters record
 a case where they do — agreement with one is disagreement with the
 other, and the choice was made on the merits rather than by majority.
 Where all the references share a limitation, as they do on prediction

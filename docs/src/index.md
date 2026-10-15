@@ -134,7 +134,7 @@ documentation? Please open an issue at
   -- come back to whichever page matches the task in front of
   you.
 - **[Introduction to Time Series Analysis](introduction/01-why-model-a-time-series.md)**
-  is a conceptual, textbook-style treatment -- 52 chapters across eleven
+  is a conceptual, textbook-style treatment -- 57 chapters across twelve
   parts, plus a diagnostic checklist, the verification standard and a
   further-reading appendix,
   readable without a Julia session open, for understanding *why* a

@@ -3,6 +3,14 @@ using TSAnalytics
 
 DocMeta.setdocmeta!(TSAnalytics, :DocTestSetup, :(using TSAnalytics); recursive=true)
 
+# A block that prints and then displays a plot or value loses its printed
+# output in the rendered page; fail the build rather than ship it.
+include(joinpath(@__DIR__, "check_example_blocks.jl"))
+let bad = check_example_blocks(joinpath(@__DIR__, "src"))
+    isempty(bad) || error("@example blocks that print and then display a value -- " *
+                          "split them, or end with `nothing # hide`:\n  " * join(bad, "\n  "))
+end
+
 makedocs(;
     modules=[TSAnalytics],
     authors="Mousum Dutta",
@@ -40,6 +48,12 @@ makedocs(;
             "manual/12-causality-and-impulse-responses.md",
             "manual/13-cointegration-and-vecm.md",
             "manual/14-structural-var.md",
+            # Stage 11: numbered 17-20 (appended, no renames), placed here so
+            # plotting and the R/Python comparison stay last
+            "manual/17-unobserved-components.md",
+            "manual/18-dynamic-factor-models.md",
+            "manual/19-regime-switching.md",
+            "manual/20-threshold-models.md",
             "manual/15-plotting.md",
             "manual/16-coming-from-r-python.md",
         ],
@@ -115,8 +129,15 @@ makedocs(;
                 "introduction/50-how-many-relations.md",
                 "introduction/51-shocks-with-names.md",
             ],
-            "Part XI -- The Frontier" => [
-                "introduction/52-the-frontier.md",
+            "Part XI -- Series That Change Their Mind" => [
+                "introduction/52-the-components-you-cannot-see.md",
+                "introduction/53-when-a-component-stops-moving.md",
+                "introduction/54-many-series-few-forces.md",
+                "introduction/55-the-economy-has-two-moods.md",
+                "introduction/56-a-different-model-on-each-side-of-a-line.md",
+            ],
+            "Part XII -- The Frontier" => [
+                "introduction/57-the-frontier.md",
             ],
             "Appendices" => [
                 "introduction/A-checklist.md",
