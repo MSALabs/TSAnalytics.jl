@@ -266,6 +266,8 @@ Stage 11 ended at D18. Every one below found by execution.
 
 | **D35** | `utilsforecast` | *Appended 2026-10-15, building 12.1.* **`cfe`'s sign contradicts its own docstring.** The docstring says "Positive values mean under forecast"; the code computes `sum(model − target)`, so a total under-forecast of 2 returns **−2.0** (forecasts 1,1,1 against actuals 2,0,3). TSAnalytics' `cfe` is `sum(actual − predicted)`, positive for under-forecasting, as documented there. | [V] executed on utilsforecast as installed with statsforecast 2.1.1; [S] `losses.py:241` |
 
+| **D36** | `strucchange` | *Appended 2026-10-15, building 12.2.* **D27 is not only underflow.** The bridge p-value `1 − (1 + 2Σ…)^k` loses relative precision well before it reaches 0: on fx0 the Score-CUSUM p-value is 9.67739e-11 against the directly computed tail 9.67738e-11, differing in the sixth digit, and on fxF 7.27638e-11 against 7.27639e-11. TSAnalytics computes the tail as `−expm1(k·log1p(−tail))`. | [V] `test/test_changepoint.jl` |
+
 **D19, D20, D21 and D24 are the four that change what gets built.**
 
 ---

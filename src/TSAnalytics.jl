@@ -51,6 +51,7 @@ include("autoreg.jl")      # after arspectral.jl (ar_yw) and arx.jl (_ols)
 include("tscv.jl")
 include("lagregression.jl")  # Stage 12.3: after arx.jl (_arx_design) and forecast.jl (_arx_forecast_row)
 include("intermittent.jl")    # Stage 12.1
+include("changepoint.jl")     # Stage 12.2: after diagnostics.jl (_std_normal_cdf)
 include("holtwinters.jl")
 include("ets.jl")          # after holtwinters.jl: reuses _hw_heuristic_init
 include("theta.jl")        # after ets.jl (SES) and decompose.jl (classical_decompose)

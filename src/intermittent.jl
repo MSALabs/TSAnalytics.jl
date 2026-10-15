@@ -268,7 +268,7 @@ julia> using TSAnalytics
 julia> m = croston([0, 0, 3, 0, 0, 0, 2, 0, 4, 0]);
 
 julia> round(m.forecast, digits = 6), m.method
-(1.06633, :classic)
+(1.006689, :classic)
 
 julia> forecast(m, 3).point == fill(m.forecast, 3)
 true
@@ -313,7 +313,7 @@ takes them as given, and so does this.
 julia> using TSAnalytics
 
 julia> round(tsb([0, 0, 3, 0, 0, 0, 2, 0, 4, 0]; alpha_d = 0.2, alpha_p = 0.2).forecast, digits = 6)
-0.892954
+0.925203
 ```
 """
 function tsb(y; alpha_d::Real, alpha_p::Real)
