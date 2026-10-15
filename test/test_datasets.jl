@@ -52,3 +52,27 @@ end
     @test isnan(dnet[1])
     @test all(!isnan, dnet[2:end])
 end
+
+@testset "Montgomery's fixtures reproduce the book's own numbers" begin
+    # Table 2.3 (printed p. 54): every control limit of Figures 2.33-2.35,
+    # recomputed from the transcribed errors
+    e = _load_column(TSAnalytics.FORECAST_ERRORS, "error")
+    @test length(e) == 50
+    mrbar = mean(abs.(diff(e)))
+    σ = 0.8865 * mrbar                                     # Eq. 2.48
+    @test round(mean(e), digits = 2) == 0.28               # Fig. 2.33 X̄
+    @test round(mean(e) + 3σ, digits = 2) == 8.91          # Fig. 2.33 UCL
+    @test round(mean(e) - 3σ, digits = 2) == -8.34         # Fig. 2.33 LCL
+    @test round(mrbar, digits = 2) == 3.24                 # Fig. 2.33 MR̄
+    @test round(3.267 * mrbar, digits = 2) == 10.60        # Fig. 2.33 MR UCL
+    @test round(5σ, digits = 2) == 14.38                   # Fig. 2.34 H (the text's 14.36 rounds MR̄ first)
+    @test round(5 * 0.8865 * 3.24, digits = 2) == 14.36
+    w = 3σ * sqrt(0.1 / 1.9)
+    @test round(mean(e) + w, digits = 3) == 2.261          # Fig. 2.35, λ = 0.1
+    @test round(mean(e) - w, digits = 3) == -1.697
+    # Table 6.12 (printed p. 335): 104 weeks, spot values from the page
+    c = _load_column(TSAnalytics.CEREAL, "sales")
+    @test length(c) == 104
+    @test (c[1], c[88], c[104]) == (102450.0, 201100.0, 163560.0)
+    @test sum(c) == 16384250.0
+end

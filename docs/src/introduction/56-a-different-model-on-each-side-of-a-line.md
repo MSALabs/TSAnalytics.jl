@@ -124,7 +124,7 @@ side: a mean ± 1.96 standard errors interval would be wrong in both
 directions at once. [`fit_setar`](@ref) therefore reports no standard
 error for the threshold, where R's `tsDyn` reports a zero. The right tool
 is Hansen's likelihood-ratio confidence set, which neither reference
-implements and which [Chapter 57](57-the-frontier.md) lists as not yet
+implements and which [Chapter 61](61-the-frontier.md) lists as not yet
 built.
 
 ## Is there a threshold?
@@ -249,4 +249,5 @@ that `tsDyn` finds.
 
 - [Manual: Threshold and Smooth-Transition Models](../manual/20-threshold-models.md)
 - [Chapter 55](55-the-economy-has-two-moods.md) — regimes from a hidden chain
-- [Chapter 57](57-the-frontier.md) — what is still missing, including the threshold's confidence set
+- [Chapter 57](57-a-change-that-does-not-come-back.md) — a change that does not come back
+- [Chapter 61](61-the-frontier.md) — what is still missing, including the threshold's confidence set

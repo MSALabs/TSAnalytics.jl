@@ -18,6 +18,8 @@ summarized here for convenience.
 | `nile.csv` | Annual flow of the Nile at Aswan (10^8 m^3) | 1871-1970 | Durbin & Koopman (2012), ch. 2 -- the canonical local-level-model example |
 | `lynx.csv` | Annual Canadian lynx trappings, Mackenzie River (R `datasets::lynx`) | 1821-1934 | Tong (1990) -- the canonical threshold-autoregression example (Stage 11.4) |
 | `hamilton_gnp.csv` | Quarterly growth of US real GNP, 100 x change in log (as distributed with statsmodels) | 1951Q1-1984Q3 | Hamilton (1989) -- the canonical Markov-switching example (Stage 11.3) |
+| `montgomery_cereal.csv` | Weekly sales of a cereal brand; a rival launched in week 88 (`TSAnalytics.CEREAL`) | 104 weeks | Montgomery, Jennings & Kulahci (2008), Table 6.12, printed p. 335 -- transcribed from the page, checked twice (Stage 12 docs) |
+| `montgomery_forecast_errors.csv` | 50 one-step-ahead forecast errors (`TSAnalytics.FORECAST_ERRORS`) | 50 periods | Montgomery, Jennings & Kulahci (2008), Table 2.3, printed p. 54 -- reproduces every control limit of Figs. 2.33-2.35 (Stage 12 docs) |
 | `airpassengers.csv` | Monthly US airline passenger totals | 1949-1960 | Box & Jenkins (1976); the canonical multiplicative-seasonality example |
 | `sunspot_year.csv` | Yearly sunspot numbers | 1700-1988 | Federal Reserve Bank of St Louis / H. Tong (1996) -- classic nonlinear/AR benchmark |
 | `uschange.csv` | Quarterly % changes: consumption, income, production, savings, unemployment | 1960-2016 | Hyndman & Athanasopoulos, *Forecasting: Principles and Practice* -- multivariate/VAR and regression-with-ARIMA-errors benchmark |

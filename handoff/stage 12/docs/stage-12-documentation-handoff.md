@@ -293,3 +293,13 @@ Smaller than Stage 11's 66 charts and 9,100–11,400 lines, which is right: thre
 8. **Do not take a number from Hamilton or Montgomery without rasterizing.** §8.2.
 9. **Do not reproduce any figure from the six books.** Redraw from our own fits.
 10. **Do not conflate monitoring with testing.** §7.2 — it is why chapter 58 exists.
+
+---
+
+## 11. Corrections found while implementing (appended 2026-10-15)
+
+1. **§3.3 is reversed: Montgomery's Figure 2.34 (14.38) is right and the text's 14.36 is the rounding artefact.** Table 2.3 (printed p. 54, PDF 67) prints the 50 errors in full; transcribed, they reproduce every limit the book publishes for them -- X̄ 0.282, individuals UCL 8.909 / LCL −8.345, MR UCL 10.597 about MR̄ 3.2437, EWMA steady state 2.2611 / −1.6971 -- and give `H = 5σ̂ = 14.3776`. The text's `5(0.8865)(3.24) = 14.36` rounds MR̄ to 3.24 before multiplying. Chapter 58 uses 14.38 and says why. [V] fixture `test_data/montgomery_forecast_errors.csv`.
+2. **§3.1's Table 6.13 cannot be reproduced from Table 6.12.** The data (transcribed and checked twice against a 250-dpi raster; the text layer misaligns the last column by two rows) under the stated model `y = ω₀S + (1 − θB)/(1 − B)ε` give, in R's `arima`, ML `θ = 0.5211, ω₀ = −4205.5` (se 8472) and CSS `0.5257, −4277.3`; the package agrees. Neither the step in growth (`0.5621, −2367.4`, se 1094) nor either form with drift (closest: growth + drift, `θ = 0.7307`, `ω₀ = −3547.6`, se 759, variance 84.4M) gives SAS's `0.75886, −2071.5`, se 637.4, variance 82,507,397. A standard error near 637 is only consistent with the step acting on the differences. Documented in chapter 57 and Appendix B as a sixth erratum, not used as a target. [V] fixture `test_data/montgomery_cereal.csv`.
+3. **Polio is a real intermittent series in the catalogue** (`dataset("polio")`, 168 months, 64 zeros, ADI 1.615, CV² 0.840 -- lumpy). §6.3's "no intermittent series is to hand" holds for Indian data only; chapters 21 and 59 use polio and say the Indian gap remains.
+4. **Shumway §6.9 page range**: printed pp. 334–341, PDF 344–351 (offset +10). **Tsay §4.1.9**: printed 203–204 is PDF 230–231 (offset +27).
+

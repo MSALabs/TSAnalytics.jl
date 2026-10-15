@@ -46,7 +46,7 @@ executed to produce them. A transcript is not a summary — it is the
 actual session, so a future reader can tell the difference between "R
 returned this" and "the handoff said R returns this".
 
-The full test suite runs 15,852 assertions. Nine test files carry
+The full test suite runs more than 17,000 assertions (17,140 at the end of Stage 12's implementation). Nine test files carry
 additional bulk suites, gated behind `TSANALYTICS_FULL_TESTS`, that
 sweep hundreds or thousands of parameter combinations rather than spot
 checks — the seasonal state-space bulk suite alone covers 364 cases.
@@ -200,6 +200,40 @@ five-series fixture. The section number should be checked against a
 physical copy; until it is, this is the one citation in the book that is
 not to a page someone has read.
 
+**Cited, with no table anywhere in the corpus.** The supremum F statistic
+for a break at an unknown date ([`fstats`](@ref)) has a non-standard
+distribution. None of the six textbooks tabulates it: Hamilton's
+statistical tables (Appendix B, printed pp. 751–768) end with Johansen's,
+and Montgomery's (Appendix A, printed pp. 387–406) end with Durbin–Watson;
+the other four have no table appendix. Hamilton (§14.3, printed p. 425,
+PDF 440) states the test and the trimming and leaves the distribution to
+Andrews (1993, *Econometrica* 61, 821–856). So the citation is to Andrews
+directly, and because his tables, and Hansen's (1997) approximation to
+them, are not available under a compatible licence, the package reports
+the statistics with no p-value at all rather than an unverified one.
+[Chapter 57](57-a-change-that-does-not-come-back.md) shows by simulation
+what the missing distribution does.
+
+## The textbooks have errata too
+
+Checking numbers against printed pages finds mistakes in the books as
+well as in the software. Six are on record, each read from a rasterised
+page (Hamilton's and Montgomery's PDFs are OCR scans whose text layers
+drop and mangle characters):
+
+| Where | What | How the documentation handles it |
+|---|---|---|
+| Hamilton §14.3 against §15.5 (printed pp. 425, 450) | The break date `T₀` is the last observation of the first regime in one section and the first of the second in the other | [Chapter 57](57-a-change-that-does-not-come-back.md) names the section whenever it cites a convention |
+| Montgomery, Example 2.13 (printed p. 63) | The text computes the CUSUM interval as `H = 14.36`; Figure 2.34 shows 14.38 | The figure is right: Table 2.3's data give `5σ̂ = 14.378`, and the text's figure comes from rounding the mean moving range to 3.24 first ([Chapter 58](58-watching-a-model-drift.md)) |
+| Montgomery, Table 6.13 (printed p. 337) | The intervention estimates (`θ = 0.75886`, `ω₀ = −2071.5`, se 637.4) are not reproduced from Table 6.12's data by the stated model, nor by the step in growth, with or without drift, by CSS or ML; R's `arima` agrees with this package | Reported as found, with the reproducible estimates beside it ([Chapter 57](57-a-change-that-does-not-come-back.md)) |
+| Tsay, Eq. (4.9) | Minus signs before the SETAR lag terms, contradicting Eqs. (4.8) and (4.11) | [Chapter 56](56-a-different-model-on-each-side-of-a-line.md) uses the form of (4.8) |
+| Tsay, Eq. (4.53) (printed p. 219, PDF 246) | The regime-1 residual variance is printed as 0.76 (regime 2: 0.165), while the Markov-switching fit to the same data on the next page gives 0.031 for its calm state; 0.076 is the likely intended value | Not reproduced |
+| `fpp` notes, p. 101 | The code draws the smoothed level in blue and the filtered in red; the legend labels blue "Filtered" and red "Smoothed" | Not reproduced |
+
+The Montgomery CUSUM entry corrects an earlier reading in this project's
+own handoff notes, which took the text's 14.36 as right and the figure as
+wrong. Recomputing from the data settled it.
+
 ## When a reference is simply wrong
 
 The two asides above cover two situations: the references disagree with
@@ -244,6 +278,23 @@ model, but a wrong number:
   indexing fault, verified at three block sizes. It never returns a
   wrong answer, but for a general block `vars` is the only reference.
 
+Change points, intermittent demand and lag regression added six:
+
+- **`changepoint`'s default** (MBIC with PELT) returns a segmentation 2.07
+  worse on its own criterion than the optimum, with no warning, because
+  MBIC breaks PELT's pruning rule.
+- **`ruptures`' default `jump = 5`** turns true changes at 97 and 203 into
+  95, 100, 200 and 205.
+- **`sktime`** accepts a rolling window feature at lag 0, which is the
+  target itself, and reports an in-sample R² of 1.
+- **`statsforecast`'s SBA** multiplies by a literal 0.95 instead of
+  `1 − α/2`.
+- **`strucchange`** prints p-values of exactly 0 where the closed-form
+  tail is `6.8e-23`, and loses the sixth digit of p-values near `1e-10`,
+  by computing `1 − (1 − p)^k` rather than the tail directly.
+- **`utilsforecast`'s `cfe`** computes the opposite sign to its own
+  docstring.
+
 The models of components, factors and regimes found the most, in
 references that are otherwise careful:
 
@@ -283,7 +334,7 @@ and [Cointegration and VECM](../manual/13-cointegration-and-vecm.md) — and col
 Verification establishes agreement with a reference. It does not
 establish correctness, and the two are not the same thing.
 
-Where the references themselves disagree — and thirty-three chapters record
+Where the references themselves disagree — and thirty-five chapters record
 a case where they do — agreement with one is disagreement with the
 other, and the choice was made on the merits rather than by majority.
 Where all the references share a limitation, as they do on prediction

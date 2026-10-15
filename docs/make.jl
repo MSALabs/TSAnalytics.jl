@@ -54,6 +54,10 @@ makedocs(;
             "manual/18-dynamic-factor-models.md",
             "manual/19-regime-switching.md",
             "manual/20-threshold-models.md",
+            # Stage 12: 21-23, appended the same way
+            "manual/21-intermittent-demand.md",
+            "manual/22-change-points-and-breaks.md",
+            "manual/23-lag-feature-regression.md",
             "manual/15-plotting.md",
             "manual/16-coming-from-r-python.md",
         ],
@@ -135,9 +139,15 @@ makedocs(;
                 "introduction/54-many-series-few-forces.md",
                 "introduction/55-the-economy-has-two-moods.md",
                 "introduction/56-a-different-model-on-each-side-of-a-line.md",
+                "introduction/57-a-change-that-does-not-come-back.md",
+                "introduction/58-watching-a-model-drift.md",
             ],
-            "Part XII -- The Frontier" => [
-                "introduction/57-the-frontier.md",
+            "Part XII -- Beyond the Textbooks" => [
+                "introduction/59-mostly-nothing-then-something.md",
+                "introduction/60-any-regressor-you-like.md",
+            ],
+            "Part XIII -- The Frontier" => [
+                "introduction/61-the-frontier.md",
             ],
             "Appendices" => [
                 "introduction/A-checklist.md",

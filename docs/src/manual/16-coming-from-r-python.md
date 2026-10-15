@@ -75,6 +75,15 @@ and concluding something is broken.
 | `tsDyn::selectSETAR(y, m)` | [`select_setar`](@ref)`(y, m)` |
 | `tsDyn::lstar(y, m, thDelay=d)` | [`fit_lstar`](@ref)`(y, m; thDelay=d)` |
 | `tsDyn::setarTest(y, m)` | [`setar_test`](@ref)`(y, m)` — 1000 bootstrap draws, not 10 |
+| `forecast::croston(y)` | [`croston`](@ref)`(y)` — the same forecast to 17 digits |
+| `tsintermittent::idclass(y)` | [`adi_cv2`](@ref)`(y)` — the same rule, plus the quadrant |
+| `changepoint::cpt.mean(y, method="PELT")` | [`changepoints`](@ref)`(y)` — MBIC refused with PELT, see below |
+| `cpts(fit)` | `changepoints(y).breakpoints` — the same numbers |
+| `strucchange::breakpoints(y ~ 1)` | [`breakpoints`](@ref)`(y)` |
+| `confint(breakpoints(…))` | [`break_confint`](@ref)`(r)` |
+| `strucchange::Fstats(y ~ 1)` | [`fstats`](@ref)`(y)` — no p-values |
+| `strucchange::efp(y ~ 1, type="OLS-CUSUM")` | [`efp`](@ref)`(y; type=:ols_cusum)` |
+| `forecastML::create_windows` | [`blocked_window_split`](@ref) |
 
 ## From Python
 
@@ -123,6 +132,15 @@ and concluding something is broken.
 | `tsa.MarkovAutoregression(y, k_regimes=k, order=p)` | [`fit_ms_autoregression`](@ref)`(y, p; k)` |
 | `.smoothed_marginal_probabilities` | [`regime_probabilities`](@ref)`(m)` |
 | `.expected_durations` | [`expected_durations`](@ref)`(m)` |
+| `statsforecast` `CrostonClassic`/`CrostonSBA`/`CrostonOptimized` | [`croston`](@ref)`(y; method=:classic/:sba/:optimized)` |
+| `statsforecast` `TSB`, `ADIDA`, `IMAPA` | [`tsb`](@ref), [`adida`](@ref), [`imapa`](@ref) |
+| `ruptures.Pelt(model="l2").fit(y).predict(pen=β)` | [`changepoints`](@ref)`(y; penalty=β)` — `n` not appended, no `jump`, see below |
+| `ruptures.Binseg` | [`changepoints`](@ref)`(y; search=:binseg)` |
+| `sktime` `make_reduction(regressor, strategy="recursive")` | [`lag_regression`](@ref)`(y, lags; fit, predict)` |
+| `sktime` `make_reduction(…, strategy="direct")` | [`lag_regression`](@ref)`(…; strategy=:direct, horizon=H)` |
+| `mlforecast` `MLForecast(models, lags=…)` | [`lag_regression`](@ref) with `fit`/`predict` |
+| `mlforecast` `cross_validation(refit=…)` | [`tscv`](@ref)`(y, fit_fn, forecast_fn; refit=…)` |
+| `utilsforecast.losses.mase`/`rmsse` | [`mase`](@ref) / [`rmsse`](@ref) |
 
 ## Where the defaults differ
 
@@ -696,6 +714,43 @@ come from the bootstrap alone, and `tsDyn`'s default `nboot = 10` is far
 too few to be stable. [`setar_test`](@ref) defaults to 1000. The
 statistics themselves agree exactly.
 
+### `changepoint`'s default search is not exact under its default penalty
+
+`cpt.mean(y)` uses MBIC with PELT. MBIC adds a `log(length)` cost per
+segment, so splitting a segment can raise the total. That voids PELT's
+pruning rule (it fails in 143 of 190 measured splits). On a test series
+with one weak change the default returns a change at 187, while exact
+optimal partitioning under the same criterion finds 139, lower by 2.07.
+No warning is given. [`changepoints`](@ref) refuses `penalty=:mbic` with
+`search=:pelt` and points to `search=:exact`. With every other penalty,
+its PELT reproduces `changepoint` on all 120 configurations tested.
+
+### `ruptures`' `jump=5` snaps change points to a grid
+
+`ruptures`' searches consider only every `jump`th index, and the default
+is 5. True changes at 97 and 203 come back as 95, 100, 200 and 205: two
+right answers become four wrong ones. The documentation does not say that
+this makes PELT approximate. [`changepoints`](@ref) has no `jump`, and
+reports the last index of each segment without appending `n`.
+
+### `sktime` accepts a window feature that is the target itself
+
+`WindowSummarizer(lag_feature={"mean": [[0, 1]]})` builds a "mean of the
+window ending at lag 0", which is `y_t` itself: the feature equals the
+target to the last digit, the in-sample R² is 1, and the leak passes into
+a fitted forecaster with no warning. `mlforecast` makes it impossible by
+requiring positive lags, and so does this package: [`rolling_feature`](@ref)
+and [`arx`](@ref) refuse lag 0 by name.
+
+### `statsforecast`'s SBA factor is a hardcoded 0.95
+
+Syntetos & Boylan's correction multiplies Croston's forecast by
+`1 − α/2`. `statsforecast` multiplies by a literal 0.95, which is that
+factor only at its own fixed `α = 0.1`, and applies it even to a series of
+one observation. [`croston`](@ref)`(y; method=:sba, alpha=α)` uses
+`1 − α/2`, so it agrees with `statsforecast` at `α = 0.1` and stays a bias
+correction at any other `α`. It refuses a single observation.
+
 ## What is missing here that you may be looking for
 
 | Missing | Note |
@@ -706,11 +761,14 @@ statistics themselves agree exactly.
 | `tsDyn::selectLSTAR`, `star`, MTAR | [`fit_lstar`](@ref) fits the order it is given; more than two smooth regimes and a differenced threshold variable are not built. |
 | A confidence set for a threshold | Neither reference has one either; Hansen's (2000) inversion is not built, and no standard error stands in for it. |
 | `statsmodels` `DynamicFactorMQ` | Mixed frequencies and EM estimation are not built; [`fit_dfm`](@ref) maximises the likelihood directly. |
+| supF / aveF / expF p-values | [`fstats`](@ref) reports the statistics; Hansen's (1997) p-value approximation is GPL-licensed and Andrews' (1993) tables are in his paper. `strucchange` gives them. |
+| MOSUM fluctuation tests | Their p-values need tables; [`efp`](@ref) has the CUSUM family and RE, whose limits are in closed form. |
+| Prediction intervals for Croston-type methods | Neither `forecast` nor `statsforecast` computes any, and no model underlies the methods to derive them from. |
 | Robust SE for ARIMA in R | Not a gap here — `sandwich::vcovHC` **cannot consume an `arima` object at all**. `se_type=:robust` has no R counterpart to compare against. |
 
 ## Further reading
 
-The Introduction carries eighteen `disagreement` boxes, each working
+The Introduction carries thirty-six `disagreement` boxes, each working
 through one of these as the investigation it actually was — what R
 returned, what Python returned, what the source said, and which one
 this package follows. [Chapter 18](../introduction/18-fitting-arma.md)

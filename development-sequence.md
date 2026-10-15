@@ -2060,6 +2060,61 @@ line, and `foreach`), fixed in the checker, and nothing real.
 chapters cite only what each of the six books contains; the handoff's
 §11 "what not to do" list was followed throughout.
 
+### Stage 12 documentation — ✅ built 2026-10-15
+
+From `handoff/stage 12/docs/stage-12-documentation-handoff.md`.
+
+**API:** `api/intermittent-demand.md` and `api/change-points.md` (new with
+12.1/12.2) gain their chart sections; `api/arimax.md` and `api/forecasting.md`
+were updated with 12.3; `api/plotting.md` gains the Stage 12 builders.
+
+**Manual 21-23** (Series That Are Mostly Zero; Finding When Something
+Changed; Any Regressor, Any Lags), placed before Plotting and Coming from R
+or Python. Chapter 22 is in Montgomery's register: known date, unknown date,
+then monitoring. **Book:** chapters 57 (A Change That Does Not Come Back) and
+58 (Watching a Model Drift) appended to Part XI; new Part XII "Beyond the
+Textbooks" with 59 (Mostly Nothing, Then Something) and 60 (Any Regressor
+You Like); the Frontier moved to 61, Part XIII, and its gap tables rewritten
+(intermittent demand, change points and the break tests out; supF p-values,
+MOSUM, CROPS rendering, monitoring functions, intervals for intermittent
+methods, DirRec/multi-output and conformal intervals in). Manual 15 and 16
+updated (D19, D20, D21, D24 as dated sections with their measured evidence,
+both translation tables extended), Appendices B and C, the home page and the
+getting-started "not yet" list.
+
+**What the source pages changed.** (1) **Montgomery's Table 2.3 was
+transcribed and reproduces every published control limit** (X̄ 0.28, UCL
+8.91, LCL −8.34, MR UCL 10.60, EWMA 2.261/−1.697), so chapter 58 redraws
+Figures 2.33-2.35 from the book's own data, and it settles the CUSUM
+interval the other way from the handoff: **14.38 (the figure) is right**,
+the text's 14.36 rounds MR̄ before multiplying. (2) **Montgomery's Table 6.13
+is not reproducible from Table 6.12** under the stated model or four
+variants; R's `arima` agrees with this package (ω₀ −4205.5 vs −4208.7);
+recorded as an erratum, not used as a target. Both appended to the
+documentation handoff as §11, and both fixtures added as
+`TSAnalytics.CEREAL` / `TSAnalytics.FORECAST_ERRORS` with a test pinning
+the book's limits. (3) **`dataset("polio")` is a real intermittent series**
+(64 zeros in 168 months, lumpy), so chapters 21 and 59 use real data; the
+Indian gap is stated. (4) Appendix B gains a textbook-errata table (six
+entries, each read from a rasterised page, including the two Stage 11
+ones verified now: Tsay Eq. 4.53 printed p. 219, `fpp` p. 101's legend) and
+the supF citation debt; its disagreement-box and assertion counts were stale
+and are corrected (35 chapters, 36 boxes).
+
+**Indian examples, as found:** seasonally adjusted log IIP with a trend in
+each segment breaks after **Feb 2020** (95% Jun 2019-Mar 2020) and Aug 2021;
+OLS-CUSUM p 0.028. A model frozen at Dec 2019 signals on CUSUM in **Mar
+2020** and its lower sum stays outside for 26 months. India's annual growth
+on last year's CPI inflation (past-only regressor; monthly CPI is not in the
+datasets, said so): coefficient 0.03.
+
+**Simulations, labelled as such:** supF under no break rejects at the χ²
+5% point in 37% of series (simulated 5% point 8.58 at n = 100); CUSUM ARL
+458 in control, 10.5 after a 1σ shift against 44.4 for the individuals
+chart; Croston's bias +7.6% and SBA's −3.1% at α = 0.2; a 40-start NNAR(9,4)
+on sunspots spans out-of-sample MSE 1.02-49.2 against AR(9)'s 1.20, the
+instability Tsay's Example 4.7 remark reports for IBM.
+
 ## Downstream: SeasonalAdjustment.jl (separate package, starts once Stage 8 is stable)
 
 | # | Functionality | Depends on | Reference |

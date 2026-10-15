@@ -244,6 +244,54 @@ plot(transition_plot(fit_lstar(lynx, 2; thDelay = 1)); size = (850, 330))
 plot(setar_test(lynx, 2; thDelay = 0:1, nboot = 200); size = (950, 320))
 ```
 
+## Intermittent demand
+
+A mostly-zero series is drawn as **stems**: a line through the zeros would
+show demand in periods that had none. [`demand_intervals`](@ref) of a
+fitted model carries the smoothed levels, `histogram = true` shows the
+intervals' distribution instead, and an [`adi_cv2`](@ref) result plots as
+the ADI–CV² quadrant.
+
+```@example plots
+polio = dataset("polio").value
+plot(demand_intervals(croston(polio)); size = (700, 560))
+```
+
+```@example plots
+plot(plot(adi_cv2(polio)), plot(forecast(croston(polio), 12)); size = (900, 330))
+```
+
+## Change points and breaks
+
+A [`changepoints`](@ref) result draws the series with segment means and
+breaks, plus confidence bars from [`break_confint`](@ref) when given them
+and the penalty path with `penalty_path = true`. [`breakpoints`](@ref)
+draws the BIC/RSS selection curve, [`fstats`](@ref) the F path (no
+boundary unless you pass a simulated one, which is labelled so), and
+[`efp`](@ref) the fluctuation process with its exact boundary.
+
+```@example plots
+nile = Float64.(readdlm(TSAnalytics.NILE, ',', skipstart = 1)[:, end])
+bpn = breakpoints(nile)
+plot(changepoints(nile; standardize = true); confint = break_confint(bpn), size = (700, 300))
+```
+
+```@example plots
+plot(plot(bpn), plot(efp(nile)); layout = (1, 3), size = (950, 300))
+```
+
+## Lag regression
+
+[`lag_feature_map`](@ref) shows which lags each horizon's model uses, and
+[`cv_window_layout`](@ref) the folds of a cross-validation split.
+
+```@example plots
+air = log.(Float64.(readdlm(TSAnalytics.AIR_PASSENGERS, ',', skipstart = 1)[:, end]))
+plot(plot(lag_feature_map(lag_regression(air, [1, 12]; strategy = :direct, horizon = 4))),
+     plot(cv_window_layout(blocked_window_split(48; window_length = 12)));
+     size = (950, 320))
+```
+
 ## Seasonal subseries plot
 
 fpp3's own signature "subseries plot" — [`seasonal_subseries_plot`](@ref)

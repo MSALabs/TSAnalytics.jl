@@ -1,6 +1,6 @@
 # The Frontier
 
-Fifty-six chapters in, it is worth being precise about where this
+Sixty chapters in, it is worth being precise about where this
 package stops. Not because the gaps are embarrassing — every library has
 them — but because knowing which wall you are standing at tells you
 which direction to walk.
@@ -28,6 +28,10 @@ Everything in this book reduces to a small number of things:
 - a **filter over a discrete hidden state** — Hamilton's — for
   Markov-switching models, and a **least-squares search over a
   threshold** for the threshold autoregressions;
+- a **dynamic programme over segmentations**, which places change points
+  (PELT) and dates structural breaks (Bai–Perron);
+- **regression on a table of lagged features**, the reduction that
+  autoregression, the direct strategy and any plugged-in learner share;
 - a set of **decomposition** procedures — classical, STL, MSTL — that
   do not involve a likelihood at all;
 - and **diagnostics**, which are independent of all of the above and
@@ -127,7 +131,40 @@ What remains:
 | Automatic order search for LSTAR, and more than two smooth regimes | [`fit_lstar`](@ref) fits the order it is given | `tsDyn::selectLSTAR`, `tsDyn::star` |
 | Momentum TAR (a differenced threshold variable) | Asymmetric adjustment in the *direction* of the change | `tsDyn::setar(…, model="MTAR")` |
 | Markov-switching VARs | Several series switching together | — |
-| Structural-break and CUSUM tests | [`nyblom_test`](@ref) says the parameters moved; these say *when* | `strucchange` (R) |
+
+## Change points and breaks: what is still missing
+
+Changes that do not come back are built now:
+[Chapter 57](57-a-change-that-does-not-come-back.md) detects and dates
+them (PELT, binary segmentation, Bai–Perron with confidence intervals for
+the dates, the F and fluctuation tests), and
+[Chapter 58](58-watching-a-model-drift.md) watches for them as they
+happen. Each number is checked against R's `changepoint` and
+`strucchange` and Python's `ruptures`. What remains is mostly a matter of
+tables and licences, not mathematics:
+
+| Missing | Why it matters | Reference |
+|---|---|---|
+| p-values for supF, aveF and expF | The statistics are computed; their null distributions are non-standard. Hansen's (1997) approximation is GPL-licensed, and Andrews' (1993) tables are in his paper. None of the six textbooks prints them | `strucchange::sctest` |
+| MOSUM fluctuation tests | Their p-values also need tables; the CUSUM family has closed-form limits and is built | `strucchange::efp(type = "OLS-MOSUM")` |
+| The full penalty path (CROPS) as a recipe | [`penalty_path`](@ref) returns every segmentation; only the elbow is drawn, since no single rendering of the rest is natural | `changepoint::cpt.range` |
+| Multivariate and non-parametric change points | Changes in a covariance matrix, or with no distributional cost | `changepoint.np`, `ecp` |
+| Monitoring charts as functions | The CUSUM and EWMA of Chapter 58 are a few lines of code there, not a function with an average-run-length calculator | `qcc`, `spc` (R) |
+
+## Intermittent demand and lag regression: what is still missing
+
+Mostly-zero series ([Chapter 59](59-mostly-nothing-then-something.md))
+have Croston, SBA, TSB, ADIDA and IMAPA, each forecast agreeing with
+`statsforecast` to the last digit. The reduction of forecasting to
+regression ([Chapter 60](60-any-regressor-you-like.md)) accepts any
+regressor and adds the direct strategy. What was deliberately not built:
+
+| Not built | Why | Reference |
+|---|---|---|
+| Prediction intervals for intermittent methods | No reference implementation computes any, and the methods have no consistent underlying model to derive them from | — |
+| DirRec and multi-output strategies | Identical to the direct strategy under least squares, so they add nothing until a non-linear regressor is plugged in | `sktime` |
+| Conformal prediction intervals | A distribution-free interval for any plugged-in regressor; it needs a calibration design of its own | `mlforecast`'s `PredictionIntervals` |
+| Feature importances and hyperparameter search | Least squares has no importances, and search belongs to the learner's own library | — |
 
 ## Distributions other than the normal
 
@@ -146,8 +183,6 @@ doing work it cannot support.
 |---|---|---|
 | HEGY and Canova-Hansen seasonal unit-root tests | [`nsdiffs`](@ref) offers the seasonal-strength heuristic and OCSB, which is what R and `pmdarima` actually default to; `uroot`-style HEGY/CH are not built | R's `uroot` package |
 | `forecast` for `model=:tvss` | `model=:mle` forecasts with future regressors; the drifting-coefficient variant needs a projected `beta` path | R has no direct analogue |
-| Intermittent-demand methods (Croston, SBA, TSB) | Series that are mostly zeros are not served | `forecast::croston`, `statsforecast` |
-| Change-point detection | A break has to be found by eye | `changepoint` (R), `ruptures` (Python) |
 | Missing-data policy beyond the state-space path | `NaN` handling is per-function rather than uniform | — |
 
 These are genuine gaps but narrow ones: R reaches HEGY and
@@ -198,8 +233,9 @@ than an error you can read.
 If you want to contribute, the ordering that makes sense is roughly the
 order of this chapter. Bands for structural impulse responses and the
 restricted-`β` tests complete the multivariate track that Part X
-opened; a confidence set for the threshold, and the break tests that
-date a change rather than only detect it, complete the regime models.
+opened; a confidence set for the threshold completes the regime models,
+and p-values for the supremum break tests complete Part XI's break
+dating, once a licence-compatible source for their distribution exists.
 
 `development-sequence.md` in the repository carries the full staged
 roadmap with dependencies — what is built, what is next, and what each

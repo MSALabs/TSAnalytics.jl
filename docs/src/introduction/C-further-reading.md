@@ -217,3 +217,86 @@ The papers:
 - **Teräsvirta, T. (1994).** Specification, estimation, and evaluation
   of smooth transition autoregressive models. *Journal of the American
   Statistical Association* 89(425), 208–218. — [`fit_lstar`](@ref).
+
+## Primary sources for breaks, change points and monitoring
+
+Hamilton (§14.3, §15.5) and Montgomery (§2.6.3, §6.7) are the textbook
+treatments; the tests and algorithms come from these:
+
+- **Chow, G. C. (1960).** Tests of equality between sets of coefficients
+  in two linear regressions. *Econometrica* 28(3), 591–605. The test with
+  a known break date.
+- **Andrews, D. W. K. (1993).** Tests for parameter instability and
+  structural change with unknown change point. *Econometrica* 61(4),
+  821–856. The supremum statistics and their distribution — [`fstats`](@ref);
+  see Appendix B on why no p-value is given. And **Andrews, D. W. K. &
+  Ploberger, W. (1994).** Optimal tests when a nuisance parameter is
+  present only under the alternative. *Econometrica* 62(6), 1383–1414:
+  the average and exponential forms.
+- **Hansen, B. E. (1997).** Approximate asymptotic p values for
+  structural-change tests. *Journal of Business & Economic Statistics*
+  15(1), 60–67. The approximation `strucchange` uses.
+- **Bai, J. (1997).** Estimation of a change point in multiple regression
+  models. *Review of Economics and Statistics* 79(4), 551–563. The
+  break-date distribution behind [`break_confint`](@ref).
+- **Bai, J. & Perron, P. (2003).** Computation and analysis of multiple
+  structural change models. *Journal of Applied Econometrics* 18(1),
+  1–22. The dynamic programme — [`breakpoints`](@ref).
+- **Brown, R. L., Durbin, J. & Evans, J. M. (1975).** Techniques for
+  testing the constancy of regression relationships over time. *Journal
+  of the Royal Statistical Society B* 37(2), 149–192. The recursive CUSUM;
+  and **Ploberger, W. & Krämer, W. (1992).** The CUSUM test with OLS
+  residuals. *Econometrica* 60(2), 271–285 — [`efp`](@ref).
+- **Zeileis, A., Leisch, F., Hornik, K. & Kleiber, C. (2002).**
+  strucchange: an R package for testing for structural change in linear
+  regression models. *Journal of Statistical Software* 7(2), 1–38. The
+  fluctuation-process framework, and the reference implementation.
+- **Killick, R., Fearnhead, P. & Eckley, I. A. (2012).** Optimal detection
+  of changepoints with a linear computational cost. *Journal of the
+  American Statistical Association* 107(500), 1590–1598. PELT —
+  [`changepoints`](@ref).
+- **Box, G. E. P. & Tiao, G. C. (1975).** Intervention analysis with
+  applications to economic and environmental problems. *Journal of the
+  American Statistical Association* 70(349), 70–79.
+- **Lam, P.-S. (1990).** The Hamilton model with a general autoregressive
+  component. *Journal of Monetary Economics* 26(3), 409–432. The shifting
+  GNP trend of Hamilton's Figure 15.4.
+- **Page, E. S. (1954).** Continuous inspection schemes. *Biometrika*
+  41(1/2), 100–115. The CUSUM as a monitor.
+
+## Primary sources for intermittent demand and the ML reduction
+
+None of the six textbooks covers intermittent demand; these are the
+sources:
+
+- **Croston, J. D. (1972).** Forecasting and stock control for
+  intermittent demands. *Operational Research Quarterly* 23(3), 289–303.
+  — [`croston`](@ref).
+- **Syntetos, A. A. & Boylan, J. E. (2005).** The accuracy of intermittent
+  demand estimates. *International Journal of Forecasting* 21(2),
+  303–314. The bias correction (SBA).
+- **Syntetos, A. A., Boylan, J. E. & Croston, J. D. (2005).** On the
+  categorization of demand patterns. *Journal of the Operational Research
+  Society* 56(5), 495–503. — [`adi_cv2`](@ref).
+- **Teunter, R. H., Syntetos, A. A. & Babai, M. Z. (2011).** Intermittent
+  demand: linking forecasting to inventory obsolescence. *European Journal
+  of Operational Research* 214(3), 606–615. — [`tsb`](@ref).
+- **Nikolopoulos, K., Syntetos, A. A., Boylan, J. E., Petropoulos, F. &
+  Assimakopoulos, V. (2011).** An aggregate–disaggregate intermittent
+  demand approach (ADIDA) to forecasting. *Journal of the Operational
+  Research Society* 62(3), 544–554. — [`adida`](@ref).
+- **Petropoulos, F. & Kourentzes, N. (2015).** Forecast combinations for
+  intermittent demand. *Journal of the Operational Research Society*
+  66(6), 914–924. — [`imapa`](@ref).
+- **Shenstone, L. & Hyndman, R. J. (2005).** Stochastic models underlying
+  Croston's method for intermittent demand forecasting. *Journal of
+  Forecasting* 24(6), 389–402. Why there are no intervals.
+- **Hyndman, R. J. & Athanasopoulos, G. (2021).** *Forecasting:
+  Principles and Practice* (3rd ed.). OTexts. The published book, which
+  covers Croston's method; the `fpp` lecture notes in the reference set do
+  not.
+- **Taieb, S. B., Bontempi, G., Atiya, A. F. & Sorjamaa, A. (2012).** A
+  review and comparison of strategies for multi-step ahead time series
+  forecasting based on the NN5 forecasting competition. *Expert Systems
+  with Applications* 39(8), 7067–7083. The recursive, direct, DirRec and
+  multi-output strategies — [`lag_regression`](@ref).

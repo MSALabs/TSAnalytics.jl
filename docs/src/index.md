@@ -125,16 +125,19 @@ documentation? Please open an issue at
   customizing your first model -- read it in order, once, the first
   time you use the package.
 - **[Manual](manual/01-primitives.md)** is task-oriented reference:
-  sixteen "how do I ..." pages, one per area (primitives, diagnostics,
-  decomposition, fitting ARMA models, automatic order selection, GARCH
-  and volatility, state space and the Kalman filter, ARIMAX and
-  regression, forecasting and accuracy, exponential smoothing, vector
-  autoregression, causality and impulse responses, cointegration and
-  the VECM, structural VARs, plotting, and coming from R/Python)
+  twenty-three "how do I ..." pages, one per area (primitives,
+  diagnostics, decomposition, fitting ARMA models, automatic order
+  selection, GARCH and volatility, state space and the Kalman filter,
+  ARIMAX and regression, forecasting and accuracy, exponential smoothing,
+  vector autoregression, causality and impulse responses, cointegration
+  and the VECM, structural VARs, unobserved components, dynamic factor
+  models, regime switching, threshold models, intermittent demand,
+  change points and breaks, lag-feature regression, plotting, and coming
+  from R/Python)
   -- come back to whichever page matches the task in front of
   you.
 - **[Introduction to Time Series Analysis](introduction/01-why-model-a-time-series.md)**
-  is a conceptual, textbook-style treatment -- 57 chapters across twelve
+  is a conceptual, textbook-style treatment -- 61 chapters across thirteen
   parts, plus a diagnostic checklist, the verification standard and a
   further-reading appendix,
   readable without a Julia session open, for understanding *why* a
@@ -142,7 +145,9 @@ documentation? Please open an issue at
 - **[API Reference](api/primitives.md)** is the complete function-level
   documentation, split by topic (primitives, diagnostics, decomposition,
   ARMA models, exponential smoothing, GARCH, state space, ARIMAX, vector
-  autoregression, cointegration, structural VARs, forecasting, plotting)
+  autoregression, cointegration, structural VARs, unobserved components,
+  dynamic factors, regime switching, threshold models, intermittent
+  demand, change points, forecasting, plotting)
   rather
   than one long alphabetical list.
 

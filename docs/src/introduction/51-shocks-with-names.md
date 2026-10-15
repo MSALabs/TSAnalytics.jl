@@ -395,7 +395,7 @@ cointegration and identification. What you cannot yet do is put a band
 on a structural response — `irf` on a structural model returns point
 estimates and refuses `stderr` and `boot` by name — or identify shocks
 by the signs of their effects rather than by zeros. Those, and the
-other places the package stops, are [Chapter 57](57-the-frontier.md)'s
+other places the package stops, are [Chapter 61](61-the-frontier.md)'s
 subject.
 
 ## See also

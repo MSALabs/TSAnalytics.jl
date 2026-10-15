@@ -39,6 +39,26 @@ distributed with statsmodels.
 const HAMILTON_GNP = joinpath(dirname(@__DIR__), "test_data", "hamilton_gnp.csv")
 
 """
+    TSAnalytics.CEREAL
+
+Absolute path to `montgomery_cereal.csv`: weekly sales of a cereal brand,
+104 weeks, a rival product launched in week 88 -- Montgomery, Jennings &
+Kulahci (2008), Table 6.12 (printed p. 335), transcribed from the page and
+checked twice. Their intervention-analysis example (Example 6.4).
+"""
+const CEREAL = joinpath(dirname(@__DIR__), "test_data", "montgomery_cereal.csv")
+
+"""
+    TSAnalytics.FORECAST_ERRORS
+
+Absolute path to `montgomery_forecast_errors.csv`: 50 one-step-ahead
+forecast errors, Montgomery, Jennings & Kulahci (2008), Table 2.3 (printed
+p. 54), transcribed from the page. They reproduce every control limit the
+book publishes for them (Figures 2.33-2.35).
+"""
+const FORECAST_ERRORS = joinpath(dirname(@__DIR__), "test_data", "montgomery_forecast_errors.csv")
+
+"""
     TSAnalytics.AIR_PASSENGERS
 
 Absolute path to `airpassengers.csv`: monthly US airline passenger
