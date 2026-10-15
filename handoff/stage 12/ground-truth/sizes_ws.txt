@@ -1,0 +1,15 @@
+transformations/summarize/_window.py 992 lines
+    387  L15-401  WindowSummarizer [class]
+    230  L763-992  SplitterSummarizer [class]
+    167  L594-760  SummaryTransformer [class]
+     76  L435-510  _window_feature
+     68  L244-311  WindowSummarizer._fit
+     68  L667-734  SummaryTransformer._transform
+     49  L893-941  SplitterSummarizer._transform
+     49  L944-992  SplitterSummarizer.get_test_params
+     47  L313-359  WindowSummarizer._transform
+     40  L362-401  WindowSummarizer.get_test_params
+     38  L854-891  SplitterSummarizer.__init__
+     31  L561-591  _check_quantiles
+     29  L530-558  _check_summary_function
+     24  L737-760  SummaryTransformer.get_test_params

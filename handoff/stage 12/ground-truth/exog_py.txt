@@ -1,0 +1,56 @@
+fixture C: 132 observed y rows, 6 future-only rows carrying x
+NOTE: mlforecast requires static_features=[] -- it DEFAULTS every extra column to STATIC
+      and raises if the values vary over time (a loud error, not a silent one).
+
+==============================================================================
+MLFORECAST
+==============================================================================
+--- (a) exog columns present in df: treated as KNOWN-FUTURE, used CONTEMPORANEOUSLY
+preprocess cols: ['unique_id', 'ds', 'y', 'x_known', 'x_past', 'lag1']  shape (131, 6)
+  intercept 0.0018631539340603354
+  x_known    2.0268793035159347
+  x_past     1.5035550438207026
+  lag1       0.38423957639220185
+  predict(X_df supplied) -> -4.8391651439814414  1.0561926855297166  2.7677991988183308  4.9844189934247147  6.1885089853832485  3.9936585139939313
+
+--- (b) SAME model, X_df NOT supplied: what happens?
+  RAISES ValueError: X_df is required for prediction because future values are needed for feature generation or model inputs used during training: ['x_known', 'x_past'].
+
+--- (c) X_df supplied but MISSING a column
+  RAISES ValueError: X_df is missing future values required for feature generation or model inputs used during training: ['x_past'].
+
+--- (d) X_df supplied with only 3 of 6 future rows
+  -> -4.8391651439814414  1.0561926855297166  2.7677991988183308  3.4254661604344814  3.6781678351730176  3.7752658196281526
+
+--- (e) PAST-ONLY handling: mlforecast.feature_engineering.transform_exog
+  transform_exog(lags=[1,2]) cols: ['unique_id', 'ds', 'x_past', 'x_past_lag1', 'x_past_lag2']  shape (138, 5)
+  -> this LAGS the regressor so the future rows' lags come from OBSERVED history;
+     the contemporaneous x_past column must then be DROPPED by the user by hand.
+  fitted with x_past_lag1 instead; cols: ['x_known', 'x_past_lag1', 'lag1']
+  predict -> -3.2315233566935162  1.090407250567387  1.7924879588059655  2.7644426438931902  3.7447949003299863  3.17055308218232
+
+==============================================================================
+SKTIME make_reduction
+==============================================================================
+
+--- strategy=recursive
+   n_features_in_ = 6   (window_length=2, 1 y + 2 X = 3 vars x 2 lags = 6 expected)
+   predict(X with future rows) -> 0.76451946408486338  2.5245289313201114  0.22939608334831951  1.3002733606839243  2.5121915436329791  3.1491925964091951
+
+--- strategy=direct
+   n_features_in_ = [6, 6, 6, 6, 6, 6]   (window_length=2, 1 y + 2 X = 3 vars x 2 lags = 6 expected)
+   predict(X with future rows) -> 0.71249686519233402  2.4870065657428029  1.97331594395983  1.1269973895426173  1.2009496667279265  0.9722379423362959
+
+--- strategy=dirrec
+   n_features_in_ = [2, 3, 4, 5, 6, 7]   (window_length=2, 1 y + 2 X = 3 vars x 2 lags = 6 expected)
+   predict(X with future rows) -> 1.246476895731385  1.4381489252680004  2.0507140842075522  1.8430364639107475  0.92497209259550917  1.9038734077964921
+
+--- strategy=multioutput
+   n_features_in_ = 6   (window_length=2, 1 y + 2 X = 3 vars x 2 lags = 6 expected)
+   predict(X with future rows) -> 0.71249686519233446  2.487006565742802  1.9733159439598307  1.1269973895426171  1.2009496667279258  0.97223794233629723
+
+--- sktime: X given in fit but NOT in predict
+   RAISES ValueError: `X` must be passed to `predict` if `X` is given in `fit`.
+
+--- sktime: X given in predict covering only the HISTORY (no future rows)
+   -> 0.76451946408486338  0.70987856105880098  3.0154611992229303  2.590682360914478  2.550265880332427  3.0114843515855658

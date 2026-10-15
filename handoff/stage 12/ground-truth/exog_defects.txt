@@ -1,0 +1,26 @@
+DEFECT 1: mlforecast predict() with a SHORT X_df -- silent or loud?
+  full X_df (6 rows) : -3.191603742264959  1.1534813823989918  1.7276986665949534  2.6456641168199537  3.5555598906427672  2.9943749278265321
+  X_df with 1 of 6 rows: -3.191603742264959  -4.6651332590160504  -5.1364635403843284  -5.2872255248639561  -5.3354489827293241  -5.3508739713066484
+     warnings raised: ['X_df has 1 rows but 6 expected for horizon 6. Features will be reused for missing horizon ']
+     max|diff| vs full = 8.891   first divergent h = 2
+  X_df with 2 of 6 rows: -3.191603742264959  1.1534813823989918  2.5433213354475366  2.987882268011401  3.1300816790504573  3.1755662707423955
+     warnings raised: ['X_df has 2 rows but 6 expected for horizon 6. Features will be reused for missing horizon ']
+     max|diff| vs full = 0.8156   first divergent h = 3
+  X_df with 3 of 6 rows: -3.191603742264959  1.1534813823989918  1.7276986665949534  1.9113705856504635  1.970120774434438  1.9889128941003162
+     warnings raised: ['X_df has 3 rows but 6 expected for horizon 6. Features will be reused for missing horizon ']
+     max|diff| vs full = 1.585   first divergent h = 4
+  X_df with 5 of 6 rows: -3.191603742264959  1.1534813823989918  1.7276986665949534  2.6456641168199537  3.5555598906427672  3.8466035556772407
+     warnings raised: ['X_df has 5 rows but 6 expected for horizon 6. Features will be reused for missing horizon ']
+     max|diff| vs full = 0.8522   first divergent h = 6
+  future x_known actual values: -1.940425010361984  0.94681086436302564  0.54209338866206691  0.90645479707722743  1.2122525804809996  0.78937098074683321
+
+DEFECT 2: sktime dirrec silently DROPS X (source comment: 'logic for X below is broken')
+  dirrec WITH X : n_features=[2, 3, 4, 5, 6, 7]  preds 1.246476895731385  1.4381489252680004  2.0507140842075522  1.8430364639107475  0.92497209259550917  1.9038734077964921
+  warnings: ['The default of config ``remember_data`` will change from ``True`` to ``False`` in sktime 1.3.0. After 1.3.0, `', 'The default of config ``remember_data`` will change from ``True`` to ``False`` in sktime 1.3.0. After 1.3.0, `']
+  dirrec NO X   : n_features=[2, 3, 4, 5, 6, 7]  preds 1.246476895731385  1.4381489252680004  2.0507140842075522  1.8430364639107475  0.92497209259550917  1.9038734077964921
+  max|diff| WITH-X vs NO-X = 0.000e+00  -> X had ZERO effect
+
+DEFECT 3: sktime recursive with history-only X -> silent garbage
+  X incl. 6 future rows: 1.5705504457573838  1.587140767546616  1.4648232010479838  2.2607879928031651  2.4296909749102298  2.4703011389196194
+  X history only       : 1.5705504457573838  2.0528569362803939  2.4499655352350205  2.52045197511061  2.9162349376394676  3.2555252351491286
+  max|diff| = 0.9851   warnings: NONE

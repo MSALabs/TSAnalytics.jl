@@ -1,0 +1,16 @@
+RECURSIVE, all four implementations, per-horizon max|diff| from the arx-style OLS:
+  forecastML (hand-rolled recursion)   max|diff| = 8.882e-16
+  mlforecast                           max|diff| = 1.776e-15
+  sktime                               max|diff| = 1.998e-15
+
+DIRECT, per-horizon |forecastML - sktime|:
+    h       fML lc={h,h+1}           sk wi=True      |diff|          sk wi=False      |diff|
+    1  1.28467221075666660  1.25786654152838939   2.681e-02  1.28065775610177290   4.014e-03
+    2  1.23313478245739905  1.21363027505566823   1.950e-02  1.22870569174204380   4.429e-03
+    3  1.31496094770183225  1.30701018705539918   7.951e-03  1.31467992752566620   2.810e-04
+    4  1.31085977347667182  1.30847838549248885   2.381e-03  1.31420364915949528   3.344e-03
+    5  1.30427095875745169  1.30319882988662794   1.072e-03  1.30560227025052633   1.331e-03
+    6  1.38399214655808045  1.38399214655808067   2.220e-16  1.38399214655808067   2.220e-16
+
+=> the two direct reductions agree EXACTLY only at h = fh_max (3e-16);
+   at h<fh_max they retain DIFFERENT row subsets of the same size.

@@ -1,0 +1,25 @@
+### (1) LAG SUBSET lags=[1,3] (skipping lag 2): arx vs mlforecast vs sktime
+  arx       design (117, 3)  coefs 1.0121579752448  0.42498222304007482  -0.17715335668532084
+  mlforecast design (117, 2)  cols ['lag1', 'lag3']  coefs 1.0121579752447993  0.42498222304007438  -0.17715335668532109
+  max|diff| = 6.661e-16  => mlforecast SUPPORTS lag subsets, matches arx
+  arx        recursive h=1..6: 1.3293127255662058  1.246941513777384  1.2663167593599125  1.3148278752919131  1.3500365738454767  1.3615672550355706
+  mlforecast recursive h=1..6: 1.3293127255662041  1.2469415137773816  1.2663167593599098  1.3148278752919107  1.3500365738454745  1.3615672550355686
+  max|diff| = 2.665e-15
+
+  sktime make_reduction: window_length is a CONTIGUOUS window -- can it skip a lag?
+    make_reduction params: ['estimator', 'strategy', 'window_length', 'scitype', 'transformers', 'pooling', 'windows_identical']
+    -> no lag-subset argument; window_length=w always means lags 1..w.
+       A subset is only reachable via `transformers=WindowSummarizer(lag_feature={'lag':[1,3]})`,
+       which requires pooling='global'. Testing:
+       coefs 1.0121579752447993  0.42498222304007438  -0.17715335668532109   n_features 2
+       max|diff| vs arx (after reorder) = 6.661e-16
+
+### (2) PREDICTION INTERVALS from a reduction -- does any reference give them?
+  mlforecast predict(level=...) WITHOUT prediction_intervals: ['unique_id', 'ds', 'LinearRegression']
+  mlforecast WITH PredictionIntervals(n_windows=4,h=6) -> ['unique_id', 'ds', 'LinearRegression', 'LinearRegression-lo-95', 'LinearRegression-lo-80', 'LinearRegression-hi-80', 'LinearRegression-hi-95']
+  -> CONFORMAL (empirical quantiles of CV residuals), not an analytic psi-weight SE.
+  sktime predict_interval: NotImplementedError: RecursiveTabularRegressionForecaster does not have the capability to return prediction intervals. If you think this estimator should have the capability, please
+
+  forecastML: return_error gives point-error metrics only; no interval method in its API
+  (man pages: combine_forecasts, create_lagged_df, create_skeleton, create_windows,
+   fill_gaps, return_error, return_hyper, train_model, predict.forecast_model + 8 plots).

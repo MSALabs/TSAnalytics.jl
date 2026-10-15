@@ -1,0 +1,53 @@
+# Stage 12.1 intermittent-demand reference values
+# statsforecast 2.1.1 (Apache-2.0) -- transcribable as Julia test expectations
+# forecast 8.21.1 (GPL-3) -- independent check only, agreement recorded below
+# All point forecasts are FLAT in h: h=1..6 are bit-identical. Verified for every row.
+
+## F1_poisson040_n60: n=60 nonzero=22 sum=30
+#    ADI=2.5  CV2=0.18158730158730163  SBC(p>1.32|v>0.49)=SBA
+    CrostonClassic    = 0.65909246562518586   flat=True  MASE_naive1=1.0885456588355449
+    CrostonOptimized  = 0.67243689556737085   flat=True  MASE_naive1=1.0003334636707115
+    CrostonSBA        = 0.62613784234392655   flat=True  MASE_naive1=1.060205332415507
+    TSB_ad0.2_ap0.2   = 0.2447982165028067   flat=True  MASE_naive1=0.93462033008444145
+    ADIDA             = 0.42114174223778827   flat=True  MASE_naive1=0.86465563418349412
+    IMAPA             = 0.29789731076415754   flat=True  MASE_naive1=0.88322692682056458
+    [components a=0.1] demand_level=1.2978605425231977  interval_level=1.9691630692396169
+    [CrostonOptimized] alpha_demand=0.2406879687366284 alpha_interval=0.29999999999967963  bound_hit=YES
+    [agg level]        mean_interval=2.5 -> py round()=2  Cpp std::round()=3
+
+## F2_sparse010_n120: n=120 nonzero=15 sum=15
+#    ADI=7.7333333333333334  CV2=0  SBC(p>1.32|v>0.49)=SBA
+    CrostonClassic    = 0.11168100226728453   flat=True  MASE_naive1=0.75327412615990097
+    CrostonOptimized  = 0.12378068088891507   flat=True  MASE_naive1=0.84657935076697566
+    CrostonSBA        = 0.1060969521539203   flat=True  MASE_naive1=0.74061041985190545
+    TSB_ad0.2_ap0.2   = 0.10398268223642748   flat=True  MASE_naive1=0.89314620347791829
+    ADIDA             = 0.11809029046769849   flat=True  MASE_naive1=0.81819563743934332
+    IMAPA             = 0.12038743043325673   flat=True  MASE_naive1=0.83499151570749741
+    [components a=0.1] demand_level=1  interval_level=8.9540743698441609
+    [CrostonOptimized] alpha_demand=0.20000000000000001 alpha_interval=0.2623181302768971  bound_hit=no
+    [agg level]        mean_interval=7.7333333333333334 -> py round()=8  Cpp std::round()=8
+
+## F3_dense150_n120: n=120 nonzero=91 sum=187
+#    ADI=1.3186813186813187  CV2=0.25450541908547586  SBC(p>1.32|v>0.49)=Croston
+    CrostonClassic    = 1.7150503549950999   flat=True  MASE_naive1=0.76547402721288704
+    CrostonOptimized  = 1.7852955852683219   flat=True  MASE_naive1=0.76526682256932366
+    CrostonSBA        = 1.6292978372453448   flat=True  MASE_naive1=0.76995408408447064
+    TSB_ad0.2_ap0.2   = 1.7508977992762016   flat=True  MASE_naive1=0.78723985113066774
+    ADIDA             = 1.7486544426757562   flat=True  MASE_naive1=0.77289356516392216
+    IMAPA             = 1.7486544426757562   flat=True  MASE_naive1=0.78032048148946886
+    [components a=0.1] demand_level=1.9398661738758045  interval_level=1.1310840922110108
+    [CrostonOptimized] alpha_demand=0.10000000000032039 alpha_interval=0.13774151423786604  bound_hit=YES
+    [agg level]        mean_interval=1.3186813186813187 -> py round()=1  Cpp std::round()=1
+
+## F4_partx_n51: n=51 nonzero=17 sum=32
+#    ADI=2.8235294117647061  CV2=0.41918945312500006  SBC(p>1.32|v>0.49)=SBA
+    CrostonClassic    = 0.62833415999539266   flat=True  MASE_naive1=0.73831003384221094
+    CrostonOptimized  = 0.86891930123145744   flat=True  MASE_naive1=0.73673714906156695
+    CrostonSBA        = 0.59691745199562296   flat=True  MASE_naive1=0.73472786548343372
+    TSB_ad0.2_ap0.2   = 0.54467051605143924   flat=True  MASE_naive1=0.77609420910888038
+    ADIDA             = 0.68348006690415319   flat=True  MASE_naive1=0.76041355511470365
+    IMAPA             = 0.67725611059779922   flat=True  MASE_naive1=0.76956695978919842
+    [components a=0.1] demand_level=1.7140604293210617  interval_level=2.7279440438724998
+    [CrostonOptimized] alpha_demand=0.22998101979411428 alpha_interval=0.2177614945744667  bound_hit=no
+    [agg level]        mean_interval=2.8235294117647061 -> py round()=3  Cpp std::round()=3
+

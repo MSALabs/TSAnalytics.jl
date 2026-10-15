@@ -1,0 +1,156 @@
+============================================================================================
+MLFORECAST 1.1.0 -- per-file totals and the functions that matter
+============================================================================================
+
+-- core.py  (1882 lines, 50 defs)
+      1645  L238-1882  TimeSeries [class]
+       228  L796-1023  TimeSeries._transform
+       221  L489-709  TimeSeries._fit
+       138  L1627-1764  TimeSeries.predict
+       134  L1451-1584  TimeSeries._predict_multi
+       126  L1025-1150  TimeSeries._transform_per_horizon
+       100  L1783-1882  TimeSeries.update
+        72  L1211-1282  TimeSeries._update_features
+        47  L241-287  TimeSeries.__init__
+
+-- forecast.py  (1990 lines, 27 defs)
+      1854  L137-1990  MLForecast [class]
+       397  L1318-1714  MLForecast.predict
+       219  L1716-1934  MLForecast.cross_validation
+       195  L977-1171  MLForecast.fit
+       172  L663-834  MLForecast._compute_fitted_values
+       140  L836-975  MLForecast._compute_recursive_fitted_values_on_demand
+       126  L249-374  MLForecast._resolve_horizon_features
+       110  L1173-1282  MLForecast.forecast_fitted_values
+        90  L376-465  MLForecast.preprocess
+
+-- lag_transforms.py  (1885 lines, 163 defs)
+       202  L116-317  _BaseLagTransform [class]
+       170  L1530-1699  ExponentiallyWeightedMean [class]
+       138  L995-1132  _Seasonal_RollingBase [class]
+       129  L485-613  _RollingBase [class]
+       120  L1766-1885  Combine [class]
+       108  L375-482  LookupLag [class]
+        89  L1184-1272  _ExpandingBase [class]
+        84  L635-718  RollingMean [class]
+        83  L488-570  _RollingBase.__init__
+
+-- target_transforms.py  (469 lines, 52 defs)
+       121  L185-305  AutoDifferences [class]
+        96  L87-182  Differences [class]
+        47  L329-375  AutoSeasonalityAndDifferences [class]
+        42  L244-285  AutoDifferences.inverse_transform_fitted
+        35  L435-469  GlobalSklearnTransformer [class]
+        33  L52-84  _BaseGroupedArrayTargetTransform [class]
+        25  L197-221  AutoDifferences._diffs_per_step
+        22  L95-116  Differences.fit_transform
+        22  L354-375  AutoSeasonalityAndDifferences.fit_transform
+
+-- feature_engineering.py  (69 lines, 1 defs)
+        55  L15-69  transform_exog
+
+-- lgb_cv.py  (560 lines, 16 defs)
+       450  L111-560  LightGBMCV [class]
+       126  L404-529  LightGBMCV.fit
+       108  L160-267  LightGBMCV.setup
+        45  L304-348  LightGBMCV._multithreaded_partial_fit
+        39  L350-388  LightGBMCV.partial_fit
+        37  L112-148  LightGBMCV.__init__
+        34  L269-302  LightGBMCV._single_threaded_partial_fit
+        30  L531-560  LightGBMCV.predict
+        21  L76-96  _predict
+
+-- data_validation.py  (217 lines, 4 defs)
+        61  L77-137  validate_continuity
+        57  L18-74  validate_update_start_dates
+        49  L140-188  validate_update_df
+        27  L191-217  validate_df
+
+-- grouped_array.py  (241 lines, 18 defs)
+       182  L60-241  GroupedArray [class]
+        52  L124-175  GroupedArray.apply_multithreaded_transforms
+        29  L94-122  GroupedArray.apply_transforms
+        28  L211-238  GroupedArray.append_several
+        19  L24-42  _base_transform_series
+        11  L177-187  GroupedArray.expand_target
+        10  L189-198  GroupedArray.take_from_groups
+        10  L200-209  GroupedArray.append
+         8  L85-92  GroupedArray.take
+
+-- auto.py  (691 lines, 35 defs)
+       441  L251-691  AutoMLForecast [class]
+       153  L451-603  AutoMLForecast.fit
+       142  L308-449  AutoMLForecast._seasonality_based_config
+        50  L642-691  AutoMLForecast.forecast_fitted_values
+        36  L268-303  AutoMLForecast.__init__
+        27  L605-631  AutoMLForecast.predict
+        18  L127-144  AutoModel [class]
+        13  L49-61  lightgbm_space
+        11  L64-74  xgboost_space
+
+-- conformal_prediction.py  (1113 lines, 29 defs)
+        93  L342-434  _add_signed_transfer_intervals
+        93  L646-738  estimate_density_ratio
+        85  L543-627  _add_weighted_conformal_distribution_intervals
+        73  L124-196  _compute_series_scales
+        72  L876-947  _weighted_conformal_transfer
+        69  L472-540  _add_weighted_conformal_error_intervals
+        60  L62-121  TransferConformal [class]
+        52  L989-1040  _scale_aligned_weighted_transfer
+        49  L247-295  _add_conformal_distribution_intervals
+
+-- utils.py  (251 lines, 7 defs)
+        59  L165-223  generate_daily_series
+        42  L82-123  _compute_date_dummies
+        37  L126-162  _resolve_num_threads
+        21  L226-246  generate_prices_for_series
+        15  L65-79  _extract_week
+         3  L249-251  _ShortSeriesException [class]
+         2  L250-251  _ShortSeriesException.__init__
+
+-- optimization.py  (210 lines, 2 defs)
+       145  L66-210  mlforecast_objective
+        41  L23-63  _get_categorical_static_features
+
+mlforecast total across those files: 9578
+
+============================================================================================
+SKTIME 1.2.0 -- the reduction module only
+============================================================================================
+
+-- forecasting/compose/_reduce.py  (3331 lines, 86 defs)
+       467  L1989-2455  DirectReductionForecaster [class]
+       439  L2893-3331  YfromX [class]
+       433  L2458-2890  RecursiveReductionForecaster [class]
+       292  L502-793  _DirectReducer [class]
+       281  L219-499  _Reducer [class]
+       243  L892-1134  _RecursiveReducer [class]
+       171  L1575-1745  make_reduction
+       136  L658-793  _DirectReducer._predict_last_window
+       127  L1008-1134  _RecursiveReducer._predict_last_window
+       126  L1137-1262  _DirRecReducer [class]
+       117  L540-656  _DirectReducer._fit
+       115  L385-499  _Reducer._get_shifted_window
+        97  L910-1006  _RecursiveReducer._fit
+        94  L796-889  _MultioutputReducer [class]
+        82  L66-147  _sliding_window_transform
+        76  L2260-2335  DirectReductionForecaster._fit_multiple
+  transformations/series/summarize.py: MISSING
+
+-- forecasting/compose/_reduce_proba.py  (863 lines, 17 defs)
+       716  L148-863  MCRecursiveProbaReductionForecaster [class]
+       163  L530-692  MCRecursiveProbaReductionForecaster._generate_mc_trajectories
+        73  L308-380  MCRecursiveProbaReductionForecaster._fit
+        70  L727-796  MCRecursiveProbaReductionForecaster._build_empirical_from_trajectories
+        46  L483-528  MCRecursiveProbaReductionForecaster._build_lag_feature_template
+        44  L798-841  MCRecursiveProbaReductionForecaster._build_empirical_distribution
+        43  L402-444  MCRecursiveProbaReductionForecaster._predict_proba
+        40  L267-306  MCRecursiveProbaReductionForecaster.__post_init__
+        36  L446-481  MCRecursiveProbaReductionForecaster._get_exog_at_time
+        35  L31-65  _get_last_X_for_index
+        32  L694-725  MCRecursiveProbaReductionForecaster._sample_distribution_row
+        27  L68-94  _align_X_columns
+        26  L97-122  _pool_exogenous
+        21  L125-145  _align_X_index
+        20  L844-863  MCRecursiveProbaReductionForecaster.get_test_params
+        19  L382-400  MCRecursiveProbaReductionForecaster._predict

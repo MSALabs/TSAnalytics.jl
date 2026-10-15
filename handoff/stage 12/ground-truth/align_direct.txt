@@ -1,0 +1,27 @@
+### CLAIM: sktime direct(window_length=2) at horizon h uses origin-anchored
+### lags {1,2} and target y_{t+h}; forecastML direct uses TARGET-anchored lags
+### {h..max}. The two coincide when forecastML's lookback_control for horizon h
+### is set to {h, h+1} -- i.e. lag h and h+1 relative to the target == lag 1,2
+### relative to the origin. Testing that equivalence.
+
+h=1 dim=113x3 cols: y, y_lag_1, y_lag_2
+h=2 dim=113x3 cols: y, y_lag_2, y_lag_3
+h=3 dim=113x3 cols: y, y_lag_3, y_lag_4
+h=4 dim=113x3 cols: y, y_lag_4, y_lag_5
+h=5 dim=113x3 cols: y, y_lag_5, y_lag_6
+h=6 dim=113x3 cols: y, y_lag_6, y_lag_7
+
+### forecastML coefficients, lookback_control = {h, h+1} per horizon
+h=1  n=113  (Intercept)=1.0306474464862396  y_lag_1=0.59464057394334024  y_lag_2=-0.36038753585742056 
+h=2  n=113  (Intercept)=1.6448793339454093  y_lag_2=-0.0066609131950646225  y_lag_3=-0.21537148461864716 
+h=3  n=113  (Intercept)=1.6141001047456149  y_lag_3=-0.23292985846222572  y_lag_4=0.034049214048925094 
+h=4  n=113  (Intercept)=1.4705716790399102  y_lag_4=-0.043961004118979664  y_lag_5=-0.048978868360668004 
+h=5  n=113  (Intercept)=1.4837311447392716  y_lag_5=-0.040452485454642098  y_lag_6=-0.062506069726942046 
+h=6  n=113  (Intercept)=1.3629539857882313  y_lag_6=-0.13751156419184452  y_lag_7=0.12614975198289025 
+
+### forecastML DIRECT path (diagonal), lookback_control={h,h+1}
+FML_DIRECT_PATH 1.2846722107566666 1.233134782457399 1.3149609477018323 1.3108597734766718 1.3042709587574517 1.3839921465580804
+
+### forecastML RECURSIVE path hand-rolled from an h=1 model with lags 1:2
+h=1 model coefs: (Intercept)=1.010348499228958  y_lag_1=0.60269721018546274  y_lag_2=-0.35837911855381488 
+FML_RECURSIVE_PATH 1.2806577561017722  1.2243195830708198  1.2892814985203103  1.3486242885217872  1.3611090285019434  1.3473663296846208

@@ -1,0 +1,52 @@
+### method='recursive' (an invalid value) -- what does it build?
+length(result): 0  class: lagged_df/list  -- EMPTY, NO ERROR
+ list()
+ - attr(*, "type")= chr "train"
+ - attr(*, "method")= chr "recursive"
+ - attr(*, "horizons")= num 1
+ - attr(*, "outcome_col")= num 1
+ - attr(*, "outcome_name")= chr "y"
+ - attr(*, "predictor_names")= chr "y"
+ - attr(*, "row_indices")= int [1:120] 1 2 3 4 5 6 7 8 9 10 ...
+ - attr(*, "data_start")= int 1
+ - attr(*, "data_stop")= int 120
+ - attr(*, "class")= chr [1:2] "lagged_df" "list"
+
+### method='banana' (nonsense)
+REJECTED: subscript out of bounds 
+
+### multi_output with horizons=1:6 -- the real multi-target shape
+length: 1  dim: 120x8 
+cols: y_1, y_2, y_3, y_4, y_5, y_6, y_lag_1, y_lag_2 
+--- head(3) ---
+                  y_1                 y_2                 y_3
+1 1.19999999999999996 0.56706815192750026 0.68499132585617339
+2 0.56706815192750026 0.68499132585617339 1.22075624972849672
+3 0.68499132585617339 1.22075624972849672 1.64130266943929803
+                 y_4                y_5                y_6             y_lag_1
+1 1.2207562497284967 1.6413026694392980 1.7053723198611419 1.00000000000000000
+2 1.6413026694392980 1.7053723198611419 1.6248026104916098 1.19999999999999996
+3 1.7053723198611419 1.6248026104916098 1.7318647215931064 0.56706815192750026
+  y_lag_2
+1      NA
+2     1.0
+3     1.2
+--- tail(3) ---
+                   y_1                y_2 y_3 y_4 y_5 y_6            y_lag_1
+118 1.8636437088824283 1.5566693037649155  NA  NA  NA  NA 1.9440897839865263
+119 1.5566693037649155                 NA  NA  NA  NA  NA 1.8636437088824283
+120                 NA                 NA  NA  NA  NA  NA 1.5566693037649155
+               y_lag_2
+118 1.6530374986084468
+119 1.9440897839865263
+120 1.8636437088824283
+
+NA counts per column (multi_output does NOT drop NA rows):
+    y_1     y_2     y_3     y_4     y_5     y_6 y_lag_1 y_lag_2 
+      1       2       3       4       5       6       0       1 
+
+raw y[1:9]: 1  1.2  0.5670681519  0.6849913259  1.22075625  1.641302669  1.70537232  1.62480261  1.731864722 
+raw y[118:120]: 1.944089784  1.863643709  1.556669304 
+
+### direct: NA handling. nrow(train direct h=1) = 118 of 120 
+### direct keep_rows=TRUE: nrow = 120 

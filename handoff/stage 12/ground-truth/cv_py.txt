@@ -1,0 +1,59 @@
+==============================================================================
+mlforecast.MLForecast.cross_validation
+==============================================================================
+signature:
+   df = <class 'inspect._empty'>
+   n_windows = <class 'inspect._empty'>
+   h = <class 'inspect._empty'>
+   id_col = 'unique_id'
+   time_col = 'ds'
+   target_col = 'y'
+   step_size = None
+   static_features = None
+   dropna = True
+   keep_last_n = None
+   refit = True
+   max_horizon = None
+   horizons = None
+   horizon_features = None
+   horizon_feature_templates = None
+   before_predict_callback = None
+   after_predict_callback = None
+   prediction_intervals = None
+   level = None
+   input_size = None
+   fitted = False
+   as_numpy = False
+   weight_col = None
+   validate_data = True
+
+result shape (12, 5) cols ['unique_id', 'ds', 'cutoff', 'y', 'LinearRegression']
+unique_id         ds     cutoff            y  LinearRegression
+       s1 2019-01-01 2018-12-01  1.282252807      0.6732143146
+       s1 2019-02-01 2018-12-01  1.126256362       1.770665724
+       s1 2019-03-01 2018-12-01  1.462846878       1.953082237
+       s1 2019-04-01 2019-03-01  1.602381971       1.499333354
+       s1 2019-05-01 2019-03-01 0.8429104675         1.3845637
+       s1 2019-06-01 2019-03-01  1.542506224       1.294849728
+       s1 2019-07-01 2019-06-01 0.6176219605        1.66049942
+       s1 2019-08-01 2019-06-01  1.622172444       1.454267695
+       s1 2019-09-01 2019-06-01  1.653037499       1.276193671
+       s1 2019-10-01 2019-09-01  1.944089784       1.412964122
+       s1 2019-11-01 2019-09-01  1.863643709       1.259164938
+       s1 2019-12-01 2019-09-01  1.556669304       1.255034281
+
+-- refit=False (fit ONCE on the first train split, reuse):
+   max|diff| vs refit=True = 0.05061
+
+-- refit=2 (refit every 2nd window):
+   max|diff| vs refit=True = 0.02185
+
+-- is the window EXPANDING or SLIDING? inspect cutoffs + train sizes:
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-claude/eb040610-9b28-5c37-9f56-976a4d7fa171/scratchpad/s12/mlreduction/scripts/cv_py.py", line 26, in <module>
+    print(f"   cutoff {cutoffs.ds.iloc[0].date()}  train n={len(train)} (first {train.ds.iloc[0].date()})  valid n={len(valid)}")
+                       ^^^^^^^^^^
+  File "/usr/local/lib/python3.13/dist-packages/pandas/core/generic.py", line 6321, in __getattr__
+    return object.__getattribute__(self, name)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AttributeError: 'DataFrame' object has no attribute 'ds'. Did you mean: 'xs'?

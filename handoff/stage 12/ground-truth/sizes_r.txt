@@ -1,0 +1,23 @@
+file                         lines   ndefs  top-level functions (lines)
+combine_forecasts.R            630       2  combine_forecasts(159) plot.forecastML(395)
+create_skeleton.R               54       1  create_skeleton(33)
+create_windows.R               355       2  create_windows(141) plot.windows(159)
+data_buoy.R                     19       0  
+data_buoy_gaps.R                22       0  
+data_seatbelts.R                12       0  
+fill_gaps.R                    175       1  fill_gaps(134)
+lagged_df.R                   1047       3  create_lagged_df(757) summary.lagged_df(18) plot.lagged_df(138)
+return_error.R                 893       3  return_error(439) plot.validation_error(195) plot.forecast_error(168)
+return_hyper.R                 266       2  return_hyper(60) plot.forecast_model_hyper(168)
+train_model.R                 1537       4  train_model(150) predict.forecast_model(295) plot.training_results(545) plot.forecast_results(395)
+zzz.R                          209      10  .onLoad(3) forecastML_create_multi_outcome(42) forecastML_mae(4) forecastML_mape(4) forecastML_mdape(4) forecastML_smape(4) forecastML_rmse(4) forecastML_rmsse(3) forecastML_facet_plot(46) forecastML_filter_lookback_control(70)
+
+forecastML R/ TOTAL: 5219 lines across 12 files
+
+### LICENSE
+YEAR: 2019
+COPYRIGHT HOLDER: Nickalus Redell
+
+
+### DESCRIPTION License field:
+License: MIT + file LICENSE 

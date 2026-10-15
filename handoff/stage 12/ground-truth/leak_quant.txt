@@ -1,0 +1,11 @@
+lag_feature spec                       n  R2(in-sample)     resid SD
+mean [[1,3]]  (lag 1)                117   0.0037819467    5.642e-01
+mean [[0,3]]  (lag 0, LEAKY)         118   0.3996553803    4.396e-01
+mean [[0,1]]  (lag 0, w=1 -> y_t)    120   1.0000000000    7.813e-17
+lag [1]                              119   0.1975480022    5.062e-01
+
+A lag-0 window of size 1 is literally y_t: R2 = 1, resid SD = 0 -- a perfect
+in-sample fit from a 'feature'. sktime accepts this spec with NO warning.
+mlforecast CANNOT express it (positive-lag keys enforced); forecastML CANNOT
+express it via `lookback` (positive integers enforced) but CAN via
+`dynamic_features`, which are taken contemporaneously by design.

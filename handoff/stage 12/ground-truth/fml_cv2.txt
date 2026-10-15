@@ -1,0 +1,22 @@
+windows object columns: start, stop, window_length 
+
+### CLAIM: forecastML trains on everything OUTSIDE the validation block,
+### i.e. BOTH sides -- not an expanding/rolling ORIGIN. Verifying:
+usable design rows for h=1: 117 (original indices 4..120)
+
+window 1: valid idx   4.. 23 (20 rows) -> TRAIN n =  97 ; usable-minus-valid =  97  MATCH => trains on BOTH sides
+window 2: valid idx  24.. 43 (20 rows) -> TRAIN n =  97 ; usable-minus-valid =  97  MATCH => trains on BOTH sides
+window 3: valid idx  44.. 63 (20 rows) -> TRAIN n =  97 ; usable-minus-valid =  97  MATCH => trains on BOTH sides
+window 4: valid idx  64.. 83 (20 rows) -> TRAIN n =  97 ; usable-minus-valid =  97  MATCH => trains on BOTH sides
+window 5: valid idx  84..103 (20 rows) -> TRAIN n =  97 ; usable-minus-valid =  97  MATCH => trains on BOTH sides
+window 6: valid idx 104..120 (17 rows) -> TRAIN n = 100 ; usable-minus-valid = 100  MATCH => trains on BOTH sides
+
+### plot.windows / plot.lagged_df / plot.training_results etc. all require ggplot2
+### and render to a device. Confirming they run (no device, just object class):
+  plot.windows           -> ERR: argument "lagged_df" is missing, with no default
+  plot.lagged_df         -> gg/ggplot
+Warning message:
+In return_error(pr) :
+  'rmsse' was not calculated. The 'rmsse' metric needs a dataset of actuals passed in 'data_test' and 'test_indices'.
+  plot.training_results  -> gg/ggplot
+  plot.validation_error  -> gg/ggplot

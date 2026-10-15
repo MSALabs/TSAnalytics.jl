@@ -1,0 +1,15 @@
+=== forecastML create_lagged_df: does any FEATURE in row t see y[t]? ===
+  direct, lookback=1:2, h=1                      [clean]  cols: y, y_lag_1, y_lag_2
+  direct, lookback=1:6, h=3                      [clean]  cols: y, y_lag_3, y_lag_4, y_lag_5, y_lag_6
+  multi_output, lookback=1:2, h=1:6              [LEAK]  cols: y_1, y_2, y_3, y_4, y_5, y_6, y_lag_1, y_lag_2
+      !! y_lag_1: 1.629419262 -> 1001.629419 
+
+=== ADVERSARIAL: can lookback contain 0? ===
+REJECTED: The 'lookback' argument needs to be a numeric vector of positive integers of length >= 1. 
+
+=== dynamic_features: a column used UNLAGGED (contemporaneous) ===
+cols: y, y_lag_1, y_lag_2, xx 
+row 10: y = 2.09647654688  xx = 2.09647654688 
+-> dynamic_features are taken CONTEMPORANEOUSLY (no lag). If such a column is
+   not genuinely known at forecast time, that is leakage BY USER CONSTRUCTION,
+   and forecastML issues no warning.

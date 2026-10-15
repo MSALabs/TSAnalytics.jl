@@ -1,0 +1,66 @@
+### TRAIN frame with dynamic_features='x_known', lookback=1:6, horizons=1:6, h=1
+dim: 126x14 
+column summary (n distinct / n NA / sd):
+  y              distinct=126   NA=0     sd=1.95795
+  y_lag_1        distinct=126   NA=0     sd=1.95429
+  y_lag_2        distinct=126   NA=0     sd=1.95397
+  y_lag_3        distinct=126   NA=0     sd=1.95375
+  y_lag_4        distinct=126   NA=0     sd=1.95262
+  y_lag_5        distinct=126   NA=0     sd=1.95009
+  y_lag_6        distinct=126   NA=0     sd=1.94654
+  x_known        distinct=109   NA=0     sd=0.70993
+  x_past_lag_1   distinct=126   NA=0     sd=0.567383
+  x_past_lag_2   distinct=126   NA=0     sd=0.568839
+  x_past_lag_3   distinct=126   NA=0     sd=0.566959
+  x_past_lag_4   distinct=126   NA=0     sd=0.568725
+  x_past_lag_5   distinct=126   NA=0     sd=0.567579
+  x_past_lag_6   distinct=126   NA=0     sd=0.567778
+
+head(4) of the x_past_lag_* block:
+       x_past_lag_1     x_past_lag_2     x_past_lag_3     x_past_lag_4
+7   0.0431643364501  0.7812701005824  0.3748133370403 -0.5807458433601
+8  -0.7581772817049  0.0431643364501  0.7812701005824  0.3748133370403
+9  -0.4487874059418 -0.7581772817049  0.0431643364501  0.7812701005824
+10  0.5180770709231 -0.4487874059418 -0.7581772817049  0.0431643364501
+      x_past_lag_5    x_past_lag_6
+7  -0.685511002695  0.213999062900
+8  -0.580745843360 -0.685511002695
+9   0.374813337040 -0.580745843360
+10  0.781270100582  0.374813337040
+
+raw hist$x_past[1:8]: 0.21399906  -0.685511  -0.58074584  0.37481334  0.7812701  0.043164336  -0.75817728  -0.44878741 
+
+### SAME but WITHOUT dynamic_features (x_known lagged too)
+dim: 126x19  cols: y, y_lag_1, y_lag_2, y_lag_3, y_lag_4, y_lag_5, y_lag_6, x_known_lag_1, x_known_lag_2, x_known_lag_3, x_known_lag_4, x_known_lag_5, x_known_lag_6, x_past_lag_1, x_past_lag_2, x_past_lag_3, x_past_lag_4, x_past_lag_5, x_past_lag_6 
+x_past_lag_1 sd: 0.567383  distinct: 126 
+head(3):
+                 y           y_lag_1   x_known_lag_1     x_past_lag_1
+7 0.00797542455456 -0.38147143659719 -0.281831482468  0.0431643364501
+8 1.61310905128685  0.00797542455456  0.500000000000 -0.7581772817049
+9 4.61921495148446  1.61310905128685  1.281831482468 -0.4487874059418
+
+OLS on the no-dynamic design:
+   (Intercept)      -0.67695550414272609
+   y_lag_1          -0.20498093724517158
+   y_lag_2          0.40917423730931907
+   y_lag_3          -0.70306565004614341
+   y_lag_4          0.38273833715992717
+   y_lag_5          0.7506332657539414
+   y_lag_6          -0.3207750943219374
+   x_known_lag_1    3.641497146252334
+   x_known_lag_2    NA
+   x_known_lag_3    NA
+   x_known_lag_4    NA
+   x_known_lag_5    NA
+   x_known_lag_6    NA
+   x_past_lag_1     NA
+   x_past_lag_2     NA
+   x_past_lag_3     NA
+   x_past_lag_4     NA
+   x_past_lag_5     NA
+   x_past_lag_6     NA
+
+### lookback=1:2 WITH dynamic_features (the case that WORKED earlier)
+cols: y, y_lag_1, y_lag_2, x_known, x_past_lag_1, x_past_lag_2 
+  x_past_lag_1   sd=0.569228 distinct=130
+  x_past_lag_2   sd=0.566781 distinct=130

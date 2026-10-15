@@ -1,0 +1,38 @@
+==========================================================================
+FIXTURE A AR(2)  n=120
+==========================================================================
+direct windows_identical=True  fh preds: 1.2578665415283894  1.2136302750556682  1.3070101870553992  1.3084783854924888  1.3031988298866279  1.3839921465580807
+   per-horizon h=1 coefs: int=1.005639629996196 coef=-0.3810578737131684  0.61823215648324448
+direct windows_identical=False fh preds: 1.2806577561017729  1.2287056917420438  1.3146799275256662  1.3142036491594953  1.3056022702505263  1.3839921465580807
+   per-horizon h=1 coefs: int=1.0103484992289582 coef=-0.35837911855381466  0.60269721018546285
+recursive (one model)        int=1.0103484992289582 coef=-0.35837911855381466  0.60269721018546285
+   DirRec vs Direct max|diff| = 4.441e-16   (n_features per dirrec model: [2, 3, 4, 5, 6, 7])
+
+==========================================================================
+FIXTURE B seasonal  n=144
+==========================================================================
+direct windows_identical=True  fh preds: 16.581480555387376  17.224568452761485  16.026210654169361  13.302212349850176  9.8003301491621748  6.5097384142679067
+   per-horizon h=1 coefs: int=0.91454370552115893 coef=-0.90320303219065534  1.7723557368389984
+direct windows_identical=False fh preds: 16.640279114134177  17.268917602737965  16.028342799094084  13.2325695354236  9.731659655738234  6.5097384142679067
+   per-horizon h=1 coefs: int=0.93101042738602136 coef=-0.89126992069722188  1.7664346505568576
+recursive (one model)        int=0.93101042738602136 coef=-0.89126992069722188  1.7664346505568576
+   DirRec vs Direct max|diff| = 2.931e-14   (n_features per dirrec model: [2, 3, 4, 5, 6, 7])
+
+==========================================================================
+RAW _sliding_window_transform SHAPES (fixture A, window_length=2)
+==========================================================================
+  windows_identical=True  fh=[1]                yt(118, 1) Xt(118, 2)
+  windows_identical=True  fh=[1, 2, 3, 4, 5, 6] yt(113, 6) Xt(113, 2)
+  windows_identical=False fh=[1]                yt(118, 1) Xt(118, 2)
+  windows_identical=False fh=[1, 2, 3, 4, 5, 6] yt(118, 6) Xt(118, 2)
+  (recursive always uses fh=[1] internally -> the full 118-row sample)
+
+==========================================================================
+sktime's NEWER reduction classes: defaults differ
+==========================================================================
+  DirectReductionForecaster(estimator=<class 'inspect._empty'>, window_length=10, transformers=None, X_treatment='concurrent', impute_method='bfill', pooling='local', windows_identical=False)
+  RecursiveReductionForecaster(estimator=<class 'inspect._empty'>, window_length=10, impute_method='bfill', pooling='local')
+  YfromX(estimator=<class 'inspect._empty'>, pooling='local')
+
+make_reduction signature:
+  estimator=<class 'inspect._empty'>, strategy='recursive', window_length=10, scitype='infer', transformers=None, pooling='local', windows_identical=True

@@ -1,0 +1,71 @@
+### create_windows signature:
+function (lagged_df, window_length = 12L, window_start = NULL, 
+    window_stop = NULL, skip = 0, include_partial_window = TRUE) 
+NULL
+
+### create_windows(window_length=20) -- CONTIGUOUS VALIDATION BLOCKS
+  start stop window_length
+1     4   23            20
+2    24   43            20
+3    44   63            20
+4    64   83            20
+5    84  103            20
+6   104  120            20
+
+### create_windows(window_length=20, skip=10)
+  start stop window_length
+1     4   23            20
+2    34   53            20
+3    64   83            20
+4    94  113            20
+
+### create_windows(window_length=20, include_partial_window=FALSE)
+  start stop window_length
+1     4   23            20
+2    24   43            20
+3    44   63            20
+4    64   83            20
+5    84  103            20
+
+### create_windows(window_length=0) -- no CV, train on everything
+  start stop window_length
+1     4  120             0
+
+!! NOTE: forecastML's 'windows' are VALIDATION blocks carved OUT of the series;
+   the model trains on EVERYTHING OUTSIDE the block (both before AND after it).
+   That is NOT rolling-origin CV -- it is blocked/holdout CV in the Bergmeir-
+   Hyndman-Koo sense cited in the DESCRIPTION. Verifying by row counts:
+
+### return_error(): what metrics?
+Warning message:
+In return_error(pr) :
+  'rmsse' was not calculated. The 'rmsse' metric needs a dataset of actuals passed in 'data_test' and 'test_indices'.
+names(return_error): error_by_window, error_by_horizon, error_global 
+-- error_by_window cols: model, model_forecast_horizon, window_number, window_start, window_stop, window_midpoint, mae, mape, mdape, smape, rmse 
+-- error_by_horizon cols: model, model_forecast_horizon, window_start, window_stop, mae, mape, mdape, smape, rmse 
+-- error_global cols: model, window_start, window_stop, mae, mape, mdape, smape, rmse 
+
+error_global:
+  model window_start window_stop          mae        mape       mdape
+1   ols            4           4 0.3861672295 41.34515983 22.31687489
+        smape         rmse
+1 30.57234716 0.4981905072
+
+### PLOT METHODS exposed by forecastML
+[1] "plot.forecastML"           "plot.forecast_error"      
+[3] "plot.forecast_model_hyper" "plot.forecast_results"    
+[5] "plot.lagged_df"            "plot.training_results"    
+[7] "plot.validation_error"     "plot.windows"             
+
+### man pages (public API surface)
+ [1] "combine_forecasts"         "create_lagged_df"         
+ [3] "create_skeleton"           "create_windows"           
+ [5] "data_buoy"                 "data_buoy_gaps"           
+ [7] "data_seatbelts"            "figures"                  
+ [9] "fill_gaps"                 "plot.forecastML"          
+[11] "plot.forecast_error"       "plot.forecast_model_hyper"
+[13] "plot.forecast_results"     "plot.lagged_df"           
+[15] "plot.training_results"     "plot.validation_error"    
+[17] "plot.windows"              "predict.forecast_model"   
+[19] "return_error"              "return_hyper"             
+[21] "summary.lagged_df"         "train_model"              

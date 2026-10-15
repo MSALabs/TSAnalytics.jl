@@ -1,0 +1,10 @@
+=== CORRECTED multi_output leak test ===
+In multi_output the row labelled t has TARGETS y_1..y_6 = y[t+1..t+6] and
+FEATURES y_lag_1 = y[t], y_lag_2 = y[t-1].  So the right question is:
+does any FEATURE at row t depend on y[t+1] (the FIRST target)?
+
+perturb y[60] (= y_t, a legitimate feature) -> features at row 60 moved: y_lag_1   => expected (y_t IS feature y_lag_1)
+perturb y[61] (= y_{t+1}, the FIRST TARGET) -> features at row 60 moved:    => clean (no target leaks into features)
+
+VERDICT: forecastML multi_output is CLEAN. The earlier 'LEAK' flag was a
+false positive of a uniform probe that assumed target==y_t for every method.

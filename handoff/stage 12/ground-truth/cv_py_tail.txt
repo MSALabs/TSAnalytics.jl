@@ -1,0 +1,40 @@
+       s1 2019-06-01 2019-03-01  1.542506224       1.294849728
+       s1 2019-07-01 2019-06-01 0.6176219605        1.66049942
+       s1 2019-08-01 2019-06-01  1.622172444       1.454267695
+       s1 2019-09-01 2019-06-01  1.653037499       1.276193671
+       s1 2019-10-01 2019-09-01  1.944089784       1.412964122
+       s1 2019-11-01 2019-09-01  1.863643709       1.259164938
+       s1 2019-12-01 2019-09-01  1.556669304       1.255034281
+
+-- refit=False (fit ONCE on the first train split, reuse):
+   max|diff| vs refit=True = 0.05061
+
+-- refit=2 (refit every 2nd window):
+   max|diff| vs refit=True = 0.02185
+
+-- is the window EXPANDING or SLIDING? inspect cutoffs + train sizes:
+   cutoff 2018-12-01 00:00:00  train n=108 first=2010-01-01 last=2018-12-01  valid n=3
+   cutoff 2019-03-01 00:00:00  train n=111 first=2010-01-01 last=2019-03-01  valid n=3
+   cutoff 2019-06-01 00:00:00  train n=114 first=2010-01-01 last=2019-06-01  valid n=3
+   cutoff 2019-09-01 00:00:00  train n=117 first=2010-01-01 last=2019-09-01  valid n=3
+   -> train always starts at the series start => EXPANDING window. No sliding option,
+      no gap/purge/embargo argument in the signature.
+
+==============================================================================
+sktime splitters
+==============================================================================
+sktime.split exports: ['CutoffFhSplitter', 'CutoffSplitter', 'ExpandingCutoffSplitter', 'ExpandingGreedySplitter', 'ExpandingSlidingWindowSplitter', 'ExpandingWindowSplitter', 'ForecastingHorizonSplitter', 'InstanceSplitter', 'PresplitFilesCV', 'SameLocSplitter', 'SingleSplit', 'SingleWindowSplitter', 'SlidingGreedySplitter', 'SlidingWindowSplitter', 'TemporalTrainTestSplitter', 'TestPlusTrainSplitter']
+
+ExpandingWindowSplitter(iw=10,sl=1,fh=[1]): 110 folds
+   fold 1: train 0..9 (n=10)  test [10]
+   fold 2: train 0..10 (n=11)  test [11]
+   fold 3: train 0..11 (n=12)  test [12]
+
+SlidingWindowSplitter(wl=10,sl=1,fh=[1]): 110 folds
+   fold 1: train 0..9 (n=10)  test [10]
+   fold 2: train 1..10 (n=10)  test [11]
+   fold 3: train 2..11 (n=10)  test [12]
+
+-- does sktime offer a GAP / purge?
+   ExpandingWindowSplitter: ['fh', 'initial_window', 'step_length']
+   SlidingWindowSplitter: ['fh', 'window_length', 'step_length', 'initial_window', 'start_with_window']

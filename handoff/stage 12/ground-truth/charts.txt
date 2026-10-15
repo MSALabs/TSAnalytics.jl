@@ -1,0 +1,12 @@
+=== mlforecast: any plotting at all? ===
+  NONE -- mlforecast ships no plotting code
+  (its ecosystem dep utilsforecast 0.2.17 provides: ['plot_series'] )
+
+=== sktime: forecasting plot utilities ===
+  sktime.utils.plotting: ['plot_calibration', 'plot_correlations', 'plot_folds_global_forecasting', 'plot_interval', 'plot_lags', 'plot_series', 'plot_windows']
+   clustering/utils/plotting/_plot_partitions.py 99 lines
+   utils/plotting.py 777 lines
+
+=== is there a feature-importance or CV-fold plot anywhere in either? ===
+  mlforecast: no feature-importance plotting
+  sktime: no feature-importance plotting

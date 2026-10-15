@@ -1,0 +1,60 @@
+### predict_future is a FUNCTION f(data, dates) -> df with an 'index' date col
+h=1 cols: y, y_lag_1, y_lag_2, y_lag_3, y_lag_4, y_lag_5, y_lag_6, x_known, x_past_lag_1, x_past_lag_2, x_past_lag_3, x_past_lag_4, x_past_lag_5, x_past_lag_6 
+h=6 cols: y, y_lag_6, x_known, x_past_lag_6 
+-> NOTE: x_known (dynamic) appears UNLAGGED in EVERY horizon's design;
+   x_past is lagged and loses lags < h as the horizon grows.
+
+h=1 OLS coefs (DGP: y_t = 0.4 y_{t-1} + 2.0 x_known_t + 1.5 x_past_t + e):
+   (Intercept)     0.36765677514451361
+   y_lag_1         0.32696042712503859
+   y_lag_2         -0.056100032360162408
+   y_lag_3         0.031940077981840405
+   y_lag_4         0.012727175756847725
+   y_lag_5         -0.059179485114554849
+   y_lag_6         0.019134786436845075
+   x_known         1.9938080401103537
+   x_past_lag_1    0.11076016285247707
+   x_past_lag_2    0.072186903373592445
+   x_past_lag_3    -0.23971333412443671
+   x_past_lag_4    -0.041846088211646752
+   x_past_lag_5    0.25295959318274175
+   x_past_lag_6    -0.1795654434282021
+
+forecast-type h=1 row:
+       index horizon      y_lag_1      y_lag_2       y_lag_3       y_lag_4
+1 2023-01-01       1 1.4151217803 7.2015497255 6.86730257827 5.58805488547
+        y_lag_5       y_lag_6        x_known    x_past_lag_1    x_past_lag_2
+1 2.38630405159 4.27461441635 -1.94042501036 -0.279633150348 -0.797036223474
+      x_past_lag_3   x_past_lag_4    x_past_lag_5   x_past_lag_6
+1 -0.0170591224964 0.472346632068 -0.308527812326 0.593263941222
+forecast-type h=6 rows:
+       index horizon       y_lag_6         x_known     x_past_lag_6
+1 2023-01-01       1 4.27461441635 -1.940425010362  0.5932639412220
+2 2023-02-01       2 2.38630405159  0.946810864363 -0.3085278123261
+3 2023-03-01       3 5.58805488547  0.542093388662  0.4723466320678
+4 2023-04-01       4 6.86730257827  0.906454797077 -0.0170591224964
+5 2023-05-01       5 7.20154972550  1.212252580481 -0.7970362234743
+6 2023-06-01       6 1.41512178030  0.789370980747 -0.2796331503482
+
+### forecastML DIRECT path (diagonal: model h used for period n+h), WITH exog
+  h=1  -3.50021975966057
+  h=2  2.8378587067826424
+  h=3  1.7435415518990909
+  h=4  2.2821152033724372
+  h=5  3.3078881157970166
+  h=6  2.6152962045179371
+
+### (D) dynamic_features declared but predict_future OMITTED
+ACCEPTED (no error). x_known in forecast rows: NA | class: logical 
+   -> then predict() fails with a CASCADE, not a clear message:
+Error : variable 'x_known' was fitted with type "numeric" but type "logical" was supplied
+ERROR: missing value where TRUE/FALSE needed 
+Warning message:
+In FUN(X[[i]], ...) :
+  Model 'ols' returned class 'try-error' for model 1 in validation window 1
+
+### (E) predict_future returning TOO FEW future rows (3 of 6)
+ACCEPTED. h=6 nrow: 6  x_known: -1.94043, 0.946811, 0.542093, NA, NA, NA 
+
+### (F) predict_future WITHOUT the required 'index' column
+REJECTED (clear msg): The data.frame returned from 'predict_future()' needs a column of dates named 'index'. 

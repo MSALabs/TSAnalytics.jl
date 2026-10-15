@@ -1,0 +1,216 @@
+
+################ fx0_regen  n=300
+  cpt.mean MBIC    PELT    : 100,200
+  cpt.mean BIC     PELT    : 100,200
+  cpt.mean MBIC    BinSeg  : 100,200
+  cpt.mean BIC     BinSeg  : 100,200
+  cpt.mean Manual pen=10  PELT : 100,200
+  cpt.mean Manual pen=20  PELT : 100,200
+  cpt.mean Manual pen=50  PELT : 100,200
+  cpt.var      MBIC PELT      : 101,200
+  cpt.meanvar  MBIC PELT      : 100,200
+  cpt.np       MBIC PELT      : 100,200
+  sc breakpoints (BIC sel)    : 100,200   [h=45, max breaks=5]
+  sc BIC table m=0..: 1414.7402 1346.9330 838.5638 846.8578 857.1920 868.3132 
+  sc RSS table m=0..: 1888.7695 1450.4537 256.4779 253.8298 252.9232 252.6819 
+  sc confint 95%:
+  2.5 % breakpoints 97.5 %
+1    99         100    101
+2   199         200    201
+  sc supF  stat=     90.053285 p=0
+  sc aveF  stat=     38.343781 p=0
+  sc expF  stat=     40.284261 p=0
+  efp OLS-CUSUM    stat=    3.926752 p=8.09353e-14 
+  efp Rec-CUSUM    stat=    3.596620 p=0           
+  efp Score-CUSUM  stat=    3.496065 p=9.67739e-11 
+  efp OLS-MOSUM    stat=    3.595993 p=0.01        
+  efp Rec-MOSUM    stat=    4.202099 p=0.01        
+  efp RE           stat=    3.926752 p=8.09353e-14 
+  efp ME           stat=    3.595993 p=0.01        
+
+################ fxA_var  n=300
+  cpt.mean MBIC    PELT    : 109,113,121,130,132,133,141,142,151,169,174,179,198,199
+  cpt.mean BIC     PELT    : 100,102,109,113,122,123,124,127,129,130,132,133,137,139,141,142,143,144,145,146,151,169,174,179,193,195,198,199
+  cpt.mean MBIC    BinSeg  : (none)
+  cpt.mean BIC     BinSeg  : (none)
+  cpt.mean Manual pen=10  PELT : 100,102,109,113,116,119,120,121,123,124,127,129,130,132,133,137,139,141,142,143,144,145,146,151,160,161,163,169,174,179,180,184,186,189,190,193,195,198,199
+  cpt.mean Manual pen=20  PELT : 109,113,121,130,132,133,141,142,151,169,174,179,198,199
+  cpt.mean Manual pen=50  PELT : (none)
+  cpt.var      MBIC PELT      : 100,199
+  cpt.meanvar  MBIC PELT      : 100,199
+  cpt.np       MBIC PELT      : 103,113,199
+  sc breakpoints (BIC sel)    : NA   [h=45, max breaks=5]
+  sc BIC table m=0..: 1248.3971 1256.8780 1266.0390 1275.7133 1286.0858 1297.3034 
+  sc RSS table m=0..: 1084.8575 1074.3255 1066.3104 1060.1675 1056.5161 1055.8471 
+  sc confint:  simpleError : cannot compute confidence interval when `breaks = 0' 
+  sc supF  stat=      2.921401 p=0.570466
+  sc aveF  stat=      0.474468 p=0.667621
+  sc expF  stat=      0.303544 p=0.638816
+  efp OLS-CUSUM    stat=    0.825550 p=0.503186    
+  efp Rec-CUSUM    stat=    0.386663 p=0.868294    
+  efp Score-CUSUM  stat=    2.151583 p=0.00038111  
+  efp OLS-MOSUM    stat=    0.715172 p=0.425872    
+  efp Rec-MOSUM    stat=    0.763436 p=0.442558    
+  efp RE           stat=    0.825550 p=0.503186    
+  efp ME           stat=    0.715172 p=0.425872    
+
+################ fxB_weak  n=300
+  cpt.mean MBIC    PELT    : 187
+  cpt.mean BIC     PELT    : 139
+  cpt.mean MBIC    BinSeg  : 139
+  cpt.mean BIC     BinSeg  : 139
+  cpt.mean Manual pen=10  PELT : 139
+  cpt.mean Manual pen=20  PELT : 139
+  cpt.mean Manual pen=50  PELT : (none)
+  cpt.var      MBIC PELT      : (none)
+  cpt.meanvar  MBIC PELT      : 165
+  cpt.np       MBIC PELT      : 155
+  sc breakpoints (BIC sel)    : 139   [h=45, max breaks=5]
+  sc BIC table m=0..: 846.5727 826.3780 830.9036 840.6458 850.5170 862.1255 
+  sc RSS table m=0..: 284.2316 255.8134 250.0119 248.6278 247.3578 247.5236 
+  sc confint 95%:
+  2.5 % breakpoints 97.5 %
+1   112         139    162
+  sc supF  stat=     33.104626 p=3.65064e-07
+  sc aveF  stat=     20.579963 p=0
+  sc expF  stat=     13.968407 p=0
+  efp OLS-CUSUM    stat=    2.732367 p=6.55079e-07 
+  efp Rec-CUSUM    stat=    1.519677 p=0.000187235 
+  efp Score-CUSUM  stat=    2.731570 p=1.32162e-06 
+  efp OLS-MOSUM    stat=    1.363758 p=0.0121055   
+  efp Rec-MOSUM    stat=    1.669852 p=0.01        
+  efp RE           stat=    2.732367 p=6.55079e-07 
+  efp ME           stat=    1.363758 p=0.0121055   
+
+################ fxC_null  n=300
+  cpt.mean MBIC    PELT    : (none)
+  cpt.mean BIC     PELT    : (none)
+  cpt.mean MBIC    BinSeg  : (none)
+  cpt.mean BIC     BinSeg  : (none)
+  cpt.mean Manual pen=10  PELT : (none)
+  cpt.mean Manual pen=20  PELT : (none)
+  cpt.mean Manual pen=50  PELT : (none)
+  cpt.var      MBIC PELT      : (none)
+  cpt.meanvar  MBIC PELT      : (none)
+  cpt.np       MBIC PELT      : (none)
+  sc breakpoints (BIC sel)    : NA   [h=45, max breaks=5]
+  sc BIC table m=0..: 842.8303 850.2924 860.2288 868.5932 877.8795 890.8477 
+  sc RSS table m=0..: 280.7078 277.0403 275.6851 272.9026 270.9798 272.3932 
+  sc confint:  simpleError : cannot compute confidence interval when `breaks = 0' 
+  sc supF  stat=      3.945065 p=0.382972
+  sc aveF  stat=      1.360551 p=0.222997
+  sc expF  stat=      0.827368 p=0.255529
+  efp OLS-CUSUM    stat=    0.938489 p=0.341825    
+  efp Rec-CUSUM    stat=    0.390830 p=0.860941    
+  efp Score-CUSUM  stat=    0.953239 p=0.542382    
+  efp OLS-MOSUM    stat=    0.772965 p=0.379477    
+  efp Rec-MOSUM    stat=    0.767425 p=0.439645    
+  efp RE           stat=    0.938489 p=0.341825    
+  efp ME           stat=    0.772965 p=0.379477    
+
+################ fxD_edge  n=300
+  cpt.mean MBIC    PELT    : 3,297
+  cpt.mean BIC     PELT    : 3,297
+  cpt.mean MBIC    BinSeg  : 3,297
+  cpt.mean BIC     BinSeg  : 3,297
+  cpt.mean Manual pen=10  PELT : 3,297
+  cpt.mean Manual pen=20  PELT : 3,297
+  cpt.mean Manual pen=50  PELT : (none)
+  cpt.var      MBIC PELT      : 3
+  cpt.meanvar  MBIC PELT      : 3
+  cpt.np       MBIC PELT      : 3,106,131,134,297
+  sc breakpoints (BIC sel)    : NA   [h=45, max breaks=5]
+  sc BIC table m=0..: 940.5823 948.4425 957.7351 967.3751 977.1075 988.8970 
+  sc RSS table m=0..: 388.8348 384.2640 381.5646 379.3230 377.2108 377.6914 
+  sc confint:  simpleError : cannot compute confidence interval when `breaks = 0' 
+  sc supF  stat=      3.544635 p=0.449273
+  sc aveF  stat=      1.025548 p=0.331294
+  sc expF  stat=      0.627693 p=0.35318
+  efp OLS-CUSUM    stat=    0.822334 p=0.50827     
+  efp Rec-CUSUM    stat=    1.343681 p=0.00138555  
+  efp Score-CUSUM  stat=    1.063782 p=0.372399    
+  efp OLS-MOSUM    stat=    0.967654 p=0.223184    
+  efp Rec-MOSUM    stat=    1.633368 p=0.01        
+  efp RE           stat=    0.822334 p=0.50827     
+  efp ME           stat=    0.967654 p=0.223184    
+
+################ fxF_offgrid  n=300
+  cpt.mean MBIC    PELT    : 97,203
+  cpt.mean BIC     PELT    : 97,203
+  cpt.mean MBIC    BinSeg  : 97,203
+  cpt.mean BIC     BinSeg  : 97,203
+  cpt.mean Manual pen=10  PELT : 84,97,203
+  cpt.mean Manual pen=20  PELT : 97,203
+  cpt.mean Manual pen=50  PELT : 97,203
+  cpt.var      MBIC PELT      : 86,203
+  cpt.meanvar  MBIC PELT      : 97,203
+  cpt.np       MBIC PELT      : 97,203
+  sc breakpoints (BIC sel)    : 97,203   [h=45, max breaks=5]
+  sc BIC table m=0..: 1429.0872 1361.7910 889.6672 899.6184 909.7997 920.6949 
+  sc RSS table m=0..: 1981.2918 1524.0983 304.1092 302.6365 301.4020 300.8877 
+  sc confint 95%:
+  2.5 % breakpoints 97.5 %
+1    96          97     98
+2   202         203    204
+  sc supF  stat=     89.392957 p=0
+  sc aveF  stat=     35.987008 p=0
+  sc expF  stat=     39.772171 p=0
+  efp OLS-CUSUM    stat=    3.885295 p=1.54654e-13 
+  efp Rec-CUSUM    stat=    3.337102 p=0           
+  efp Score-CUSUM  stat=    3.516397 p=7.27638e-11 
+  efp OLS-MOSUM    stat=    3.423491 p=0.01        
+  efp Rec-MOSUM    stat=    4.098803 p=0.01        
+  efp RE           stat=    3.885295 p=1.54654e-13 
+  efp ME           stat=    3.423491 p=0.01        
+
+################ fxG_many  n=300
+  cpt.mean MBIC    PELT    : 60,90,121,148,180,210,240,270
+  cpt.mean BIC     PELT    : 19,60,90,121,148,180,210,240,270
+  cpt.mean MBIC    BinSeg  : 60,90,121,151,180,216,240,270
+  cpt.mean BIC     BinSeg  : 19,60,90,121,151,180,210,216,240,270
+  cpt.mean Manual pen=10  PELT : 19,60,90,121,148,180,210,240,270
+  cpt.mean Manual pen=20  PELT : 60,90,121,148,180,210,240,270
+  cpt.mean Manual pen=50  PELT : 60,90,121,148,180,210,240,270
+  cpt.var      MBIC PELT      : (none)
+  cpt.meanvar  MBIC PELT      : 60,90,121,148,180,210,240,270
+  cpt.np       MBIC PELT      : 34,60,90,121,148,180,210,240,270
+  sc breakpoints (BIC sel)    : NA   [h=45, max breaks=5]
+  sc BIC table m=0..: 1125.4231 1128.9800 1129.2102 1137.6830 1144.1335 1157.2365 
+  sc RSS table m=0..: 720.0282 701.4304 675.7774 669.1988 658.2322 661.9626 
+  sc confint:  simpleError : cannot compute confidence interval when `breaks = 0' 
+  sc supF  stat=      7.901188 p=0.0689675
+  sc aveF  stat=      1.314634 p=0.23506
+  sc expF  stat=      1.176256 p=0.152664
+  efp OLS-CUSUM    stat=    1.229540 p=0.0972468   
+  efp Rec-CUSUM    stat=    0.723654 p=0.218233    
+  efp Score-CUSUM  stat=    1.228335 p=0.186079    
+  efp OLS-MOSUM    stat=    1.216242 p=0.0467104   
+  efp Rec-MOSUM    stat=    1.505286 p=0.01        
+  efp RE           stat=    1.229540 p=0.0972468   
+  efp ME           stat=    1.216242 p=0.0467104   
+
+################ fxH_spike  n=200
+  cpt.mean MBIC    PELT    : 50,51,120,122
+  cpt.mean BIC     PELT    : 50,51,120,122
+  cpt.mean MBIC    BinSeg  : (none)
+  cpt.mean BIC     BinSeg  : 86,120,122,129
+  cpt.mean Manual pen=10  PELT : 50,51,120,122
+  cpt.mean Manual pen=20  PELT : 50,51,120,122
+  cpt.mean Manual pen=50  PELT : 50,51,120,122
+  cpt.var      MBIC PELT      : 49,51,120,122
+  cpt.meanvar  MBIC PELT      : 49,51,120,122
+  cpt.np       MBIC PELT      : 120,122
+  sc breakpoints (BIC sel)    : NA   [h=30, max breaks=5]
+  sc BIC table m=0..: 818.4886 824.8519 826.2138 835.5600 845.7592 856.6268 
+  sc RSS table m=0..: 665.0752 651.1458 621.7633 617.8881 616.6617 617.4977 
+  sc confint:  simpleError : cannot compute confidence interval when `breaks = 0' 
+  sc supF  stat=      4.235637 p=0.340248
+  sc aveF  stat=      1.817460 p=0.135543
+  sc expF  stat=      1.121589 p=0.164918
+  efp OLS-CUSUM    stat=    1.010715 p=0.25869     
+  efp Rec-CUSUM    stat=    0.683046 p=0.27297     
+  efp Score-CUSUM  stat=    1.399931 p=0.0778185   
+  efp OLS-MOSUM    stat=    1.282853 p=0.0255238   
+  efp Rec-MOSUM    stat=    1.396790 p=0.0222478   
+  efp RE           stat=    1.010715 p=0.25869     
+  efp ME           stat=    1.282853 p=0.0255238   

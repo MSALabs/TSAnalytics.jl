@@ -1,0 +1,13 @@
+RANK CHECK (a rank-deficient design makes R's lm emit NA coefs SILENTLY)
+  A: const + 2 y-lags                                    (118, 3)     rank   3 cond 7.232
+  A: const + 6 y-lags                                    (114, 7)     rank   7 cond 19.58
+  B: const + 2 y-lags                                    (142, 3)     rank   3 cond 21.15
+  B: const + 6 y-lags                                    (138, 7)     rank   7 cond 86.53
+  C: const + 1 lags of each of y,x_known,x_past          (131, 4)     rank   4 cond 10.99
+  C: const + 2 lags of each of y,x_known,x_past          (130, 7)     rank   7 cond 44.56
+  C: const + 6 lags of each of y,x_known,x_past          (126, 19)    rank  19 cond 76.28
+  C: const + 6 y-lags + CONTEMPORANEOUS x_known + 6 x_past-lags (126, 14)    rank  14 cond 16.77
+
+  fixture_a_ar2.csv          shape=(120, 3) cols=['t', 'date', 'y']
+  fixture_b_seasonal.csv     shape=(144, 4) cols=['t', 'date', 'y', 'month']
+  fixture_c_exog.csv         shape=(138, 5) cols=['t', 'date', 'y', 'x_known', 'x_past']

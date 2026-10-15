@@ -1,0 +1,40 @@
+fixture C: 132 observed y rows, 6 future-only rows
+
+### (A) BOTH exog LAGGED (past-only semantics): the default
+h=1 cols: y, y_lag_1, y_lag_2, x_known_lag_1, x_known_lag_2, x_past_lag_1, x_past_lag_2 
+h=2 cols: y, y_lag_2, x_known_lag_2, x_past_lag_2 
+
+### (B) x_known as a DYNAMIC feature (known-future, CONTEMPORANEOUS); x_past lagged
+h=1 cols: y, y_lag_1, y_lag_2, x_known, x_past_lag_1, x_past_lag_2 
+h=1 dim: 130x6 
+              y       y_lag_1       y_lag_2          x_known    x_past_lag_1
+3 2.22842294882 2.58220866650 2.00000000000  0.9338837391176 -0.685511002695
+4 1.33897312836 2.22842294882 2.58220866650  0.0661162608824 -0.580745843360
+5 1.03810709451 1.33897312836 2.22842294882 -0.4749279121818  0.374813337040
+     x_past_lag_2
+3  0.213999062900
+4 -0.685511002695
+5 -0.580745843360
+
+h=1 OLS coefficients (true DGP: y = 0.4 y_{t-1} + 2.0 x_known_t + 1.5 x_past_t):
+   (Intercept)    -0.79188353393183075
+   y_lag_1        -0.13546926013752605
+   y_lag_2        0.63503419144347095
+   x_known        3.270082267572791
+   x_past_lag_1   1.8576931646333033
+   x_past_lag_2   -2.1651859299810887
+
+### (C) FORECAST TIME: dynamic features must be SUPPLIED via predict_future
+forecast rows h=1:
+  index horizon         y_lag_1        y_lag_2 x_known    x_past_lag_1
+1   133       1 -0.779680916172 0.924166420333      NA -0.299112515125
+    x_past_lag_2
+1 0.634926955664
+Error : variable 'x_known' was fitted with type "numeric" but type "logical" was supplied
+Error in if (is.null(outcome_levels) && method == "direct" && !ncol(data_pred) %in%  : 
+  missing value where TRUE/FALSE needed
+Calls: predict ... predict.forecast_model -> lapply -> FUN -> lapply -> FUN -> lapply -> FUN
+In addition: Warning message:
+In FUN(X[[i]], ...) :
+  Model 'ols' returned class 'try-error' for model 1 in validation window 1
+Execution halted

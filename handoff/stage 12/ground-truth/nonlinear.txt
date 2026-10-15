@@ -1,0 +1,29 @@
+NOT A TEST EXPECTATION. sklearn 1.9.1, numpy 2.3.5
+A RandomForest's splits depend on the RNG, the tie-breaking and the
+implementation's float accumulation order; these digits will drift.
+
+### mlforecast, lags=[1,2], RandomForest(n=50), two different random_state
+  random_state=0: 1.1017030206891323  1.2484965468657576  1.0997755457042286  1.3888705412123601  1.4532659132097661  1.6490700468470851
+  random_state=1: 1.1744057494932798  1.3278206368898304  1.4899592121172986  1.4026483236105372  1.2543784432324661  1.3397895145068892
+  same random_state twice, max|diff| = 0.000e+00  (reproducible WITHIN a version)
+  feature_importances_ = [0.578130988147 0.421869011853]
+  -> a non-linear model exposes feature_importances_, which OLS does not;
+     anything the package plots from it must be OPTIONAL, not assumed.
+
+### sktime, same RF, all four strategies -- does DirRec still equal Direct?
+  recursive    1.115085041652331  1.2690244002209399  1.2164177628021164  1.615650172016176  1.6269205400243185  1.8035878881959588
+  direct       1.2166380666336767  0.94391762169991467  1.0063426950875605  1.3525850325378579  1.0438552500463301  0.85069203503471258
+  dirrec       1.2166380666336767  1.1390455551692553  1.2252968935743254  1.2543744878001093  1.0574797522598052  1.160222539094053
+  multioutput  1.1654788034725174  1.1576612586415194  1.1266091939974607  1.2876813777145744  1.0361296843709207  0.94964769450771813
+
+  |dirrec - direct| max = 0.309531
+  -> with OLS this was 4e-16 (an exact algebraic identity). With a NON-LINEAR
+     model the identity BREAKS, so DirRec is a genuinely distinct strategy
+     only for non-linear regressors.
+
+### the OLS DirRec==Direct identity, restated and re-proved from scratch
+  direct h=2 prediction : 1.2287056917420434
+  dirrec h=2 prediction : 1.2287056917420436
+  |diff| = 2.220e-16
+  Reason: OLS orthogonality X'(y1 - X b1) = 0 makes the composite collapse.
+  check ||X'(y1 - X b1)||_inf = 4.852e-14
