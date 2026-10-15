@@ -298,3 +298,34 @@ end
     # the starts run on threads; the answer must not depend on scheduling
     @test all(_ -> fit_uc(jj; kw...).params == m.params, 1:4)
 end
+
+@testset "UC: Tsay (2010) Example 11.3, log J&J, reproduced" begin
+    # Tsay, Analysis of Financial Time Series 3rd ed., printed p. 606: local
+    # level + dummy seasonal (s = 4) on log quarterly J&J EPS, S-PLUS/SsfPack.
+    # Standard deviations sigma_eta = 7.269655e-02, sigma_omega = 2.931691e-02;
+    # statsmodels gives 7.269789203e-02 and 2.931638067e-02 (1.8e-5 from Tsay).
+    # The irregular is at its boundary in all three and is not asserted.
+    y = log.(dataset("jj").value)
+    m = fit_uc(y; level=:stochastic, seasonal=4)
+    sd = Dict(zip(m.layout.names, sqrt.(m.params)))
+    @test sd["sigma2.level"] ≈ 7.269655e-02 rtol = 1e-5
+    @test sd["sigma2.seasonal"] ≈ 2.931691e-02 rtol = 1e-5
+    @test sd["sigma2.level"] ≈ 7.269789203e-02 rtol = 5e-5
+    @test sd["sigma2.seasonal"] ≈ 2.931638067e-02 rtol = 5e-5
+    @test sd["sigma2.irregular"] < 1e-4
+    @test m.converged
+end
+
+@testset "UC: a variance fixed at exactly zero" begin
+    # Holding a variance at 0 leaves the likelihood finite but makes its
+    # ForwardDiff derivative NaN; unguarded, the NaN slope broke the line
+    # search (AssertionError). The free fit puts the irregular at the
+    # boundary anyway, so both reach the same optimum.
+    y = log.(dataset("jj").value)
+    free = fit_uc(y; level=:stochastic, seasonal=4)
+    zero = fit_uc(y; level=:stochastic, seasonal=4, fixed=Dict("sigma2.irregular" => 0.0))
+    @test zero.params[1] == 0.0
+    @test zero.converged
+    @test zero.loglik ≈ free.loglik atol = 1e-6
+    @test zero.params[2:3] ≈ free.params[2:3] rtol = 1e-4
+end

@@ -516,6 +516,9 @@ function _uc_start(s::_UCSpec, L::_UCLayout, y, X, vy; lam=nothing)
     return p
 end
 
+_uc_finite(x::Real) = isfinite(x)
+_uc_finite(x::ForwardDiff.Dual) = isfinite(ForwardDiff.value(x)) && all(isfinite, ForwardDiff.partials(x))
+
 function _uc_optimise(s, L, y, X, vy, lltarget, fixed_idx, fixed_val)
     np = length(L.names)
     free = setdiff(1:np, fixed_idx)
@@ -544,11 +547,14 @@ function _uc_optimise(s, L, y, X, vy, lltarget, fixed_idx, fixed_val)
         p0[fixed_idx] = fixed_val
         return (p0, true, 0)
     end
+    # infeasible points score a large constant -- including a finite value
+    # whose derivative is not (a variance held at exactly zero makes the
+    # derivative NaN, and a NaN slope breaks the line search)
     objective(w0) = uf -> begin
         local w = Vector{eltype(uf)}(w0)
         w[free] = uf
         local ll = lltarget(_uc_transform(s, L, w, vy))
-        isfinite(ll) ? -ll : eltype(uf)(1e15)
+        _uc_finite(ll) ? -ll : eltype(uf)(1e15)
     end
     # the starts are independent: run them on threads, then take the best
     # in start order (deterministic whatever the scheduling)
