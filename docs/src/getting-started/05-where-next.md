@@ -61,10 +61,18 @@ deliberate improvements rather than incompatibilities.
 
 Stated plainly, because finding out by hitting it is worse:
 
-- **No `dist=:t`** for GARCH models — normal innovations only.
-- **No VAR, VECM, or multivariate models.**
-- **No `forecast`/`predict` for the regression-with-ARIMA-errors
-  models** (`ArimaxModel`, `SarimaxModel`), though they fit fine.
+- **Forecast intervals are Gaussian.** Every interval — ARIMA, ETS,
+  VAR, unobserved components — is a normal interval around the point
+  forecast; only GARCH models estimate a non-normal (`dist=:t`) shape.
+- **No `forecast` for drifting-coefficient regression**
+  (`fit_arimax(…; model=:tvss)`); the fixed-coefficient models forecast
+  with future regressors.
+- **No error bands for structural impulse responses**, no
+  sign-restricted SVAR, no threshold VECM.
+- **No confidence set for an estimated threshold**, and no automatic
+  order search for the smooth-transition (LSTAR) model.
+- **No HEGY or Canova-Hansen** seasonal unit-root tests (OCSB and the
+  seasonal-strength heuristic are what R and `pmdarima` default to).
 
 `development-sequence.md` in the repository is the full roadmap, and
 the last chapter of the Introduction,

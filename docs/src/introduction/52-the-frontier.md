@@ -22,6 +22,12 @@ Everything in this book reduces to a small number of things:
   share;
 - **multivariate least squares and reduced-rank regression**, on which
   the VAR, the Johansen test and the VECM all stand;
+- a **sequential multivariate Kalman filter**, which unobserved
+  components and dynamic factor models compile down to — the same
+  state-space engine, now taking a matrix of series;
+- a **filter over a discrete hidden state** — Hamilton's — for
+  Markov-switching models, and a **least-squares search over a
+  threshold** for the threshold autoregressions;
 - a set of **decomposition** procedures — classical, STL, MSTL — that
   do not involve a likelihood at all;
 - and **diagnostics**, which are independent of all of the above and
@@ -52,7 +58,8 @@ What that track does not yet have:
 | Threshold VECM | An equilibrium that is restored only outside a band | `tsDyn::TVECM` |
 | Sign-restricted SVAR | Identification by the signs of the responses rather than zeros | neither `vars` nor `statsmodels` ships one |
 | Toda-Yamamoto and frequency-domain causality | Causality tests that do not require pre-testing for unit roots | — |
-| Dynamic factor models | Many series driven by a few common factors | `dfms` (R), `statsmodels DynamicFactor` |
+| Mixed-frequency and EM-estimated factor models | [`fit_dfm`](@ref) maximises the likelihood directly, on series of one frequency | `statsmodels DynamicFactorMQ`, `dfms` |
+| Factor-augmented VARs | A VAR in a few observed series plus the factors of many | — |
 
 None of these is a small addition, and each of them is a place where
 R and Python disagree with each other often enough that a careful
@@ -72,36 +79,51 @@ TBATS is built without the automatic search R's `tbats()` wraps around
 it and without ARMA errors; both are additions on top of what exists,
 not changes to it.
 
-## Components you can name
+## Components you can name: what is still missing
 
-**Unobserved components models** — a local level, a local trend, a
-stochastic seasonal, a cycle, each with its own variance, fitted
-jointly — are the obvious state-space application that is not yet
-built. `fit_arimax(...; model=:tvss)` in
-[Chapter 39](39-coefficients-that-drift.md) is a special case of one,
-and the diffuse filter it uses is the hard part.
+This section used to say that **unobserved components** models were the
+obvious state-space application not yet built. They are built now —
+[`fit_uc`](@ref): a level, a slope, a seasonal, a cycle and an
+autoregressive part, each with its own variance, fitted jointly, every
+component returned with a standard error — and so are **dynamic factor
+models** ([`fit_dfm`](@ref)), the same idea across many series at once.
 
-The appeal of a UC model over an ARIMA is interpretability: you get a
-trend you can plot and a seasonal you can plot, with standard errors,
-rather than a set of coefficients that jointly imply them. For anyone
-who has to explain a model to somebody who does not want to hear about
-polynomials in the lag operator, that is the whole argument.
+What they do not yet have:
 
-## Regimes
+- **Drifting regression coefficients inside a UC model.** Regressors
+  enter [`fit_uc`](@ref) with fixed coefficients; a coefficient that is
+  itself a random walk is still `fit_arimax(…; model=:tvss)`, in
+  [Chapter 39](39-coefficients-that-drift.md).
+- **Exact diffuse initialisation for UC.** The non-stationary components
+  start from a large-variance prior, as `statsmodels` does, and the
+  periods it consumes are left out of the likelihood and reported
+  without a standard error rather than with a meaningless one.
+- **Forecast intervals that account for estimated variances** — the
+  same limitation every reference shares.
 
-Nothing here allows the model itself to change. **Markov-switching**
-models let the parameters jump between a small number of unobserved
-states, with the transition probabilities estimated; **threshold**
-models (TAR, SETAR, STAR) let them change as a function of an observed
-variable crossing a boundary.
+## Regimes: what is still missing
 
-[`nyblom_test`](@ref) will tell you the parameters did not stay
-constant. It will not tell you what to do about it, and the honest
-answer today is: split the sample, or go elsewhere. R's `MSwM` and
-`tsDyn` are the references; Python's coverage is thinner, which makes
-this one of the places a Julia implementation would not merely be
-catching up. Structural-break and CUSUM tests belong in the same
-family and are not built either.
+The model can change now. **Markov-switching** regressions and
+autoregressions ([`fit_ms_regression`](@ref),
+[`fit_ms_autoregression`](@ref)) let the parameters jump between
+unobserved states, with fixed or covariate-driven transition
+probabilities; **threshold** autoregressions ([`fit_setar`](@ref),
+[`fit_lstar`](@ref)) let them change when an observed lag crosses a
+boundary, abruptly or smoothly, and [`setar_test`](@ref) asks whether a
+threshold is there at all. Each is checked against R's `MSwM` or `tsDyn`
+and `statsmodels`, and in several places goes further than both — a
+three-regime phase plot, a threshold profile for any criterion, a count
+of how many optima the restarts found.
+
+What remains:
+
+| Missing | Why it matters | Reference |
+|---|---|---|
+| A confidence set for the threshold | The threshold's distribution is non-standard; Hansen's likelihood-ratio inversion is the usual answer, and no standard error is reported in its place | Hansen (2000); neither `tsDyn` nor `statsmodels` |
+| Automatic order search for LSTAR, and more than two smooth regimes | [`fit_lstar`](@ref) fits the order it is given | `tsDyn::selectLSTAR`, `tsDyn::star` |
+| Momentum TAR (a differenced threshold variable) | Asymmetric adjustment in the *direction* of the change | `tsDyn::setar(…, model="MTAR")` |
+| Markov-switching VARs | Several series switching together | — |
+| Structural-break and CUSUM tests | [`nyblom_test`](@ref) says the parameters moved; these say *when* | `strucchange` (R) |
 
 ## Distributions other than the normal
 
@@ -170,10 +192,10 @@ than an error you can read.
 ## Where to start
 
 If you want to contribute, the ordering that makes sense is roughly the
-order of this chapter. Unobserved components reuse the diffuse filter
-that already exists and would give the book its most interpretable
-model; bands for structural impulse responses and the restricted-`β`
-tests complete the multivariate track that Part X opened.
+order of this chapter. Bands for structural impulse responses and the
+restricted-`β` tests complete the multivariate track that Part X
+opened; a confidence set for the threshold, and the break tests that
+date a change rather than only detect it, complete the regime models.
 
 `development-sequence.md` in the repository carries the full staged
 roadmap with dependencies — what is built, what is next, and what each

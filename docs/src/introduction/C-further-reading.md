@@ -129,3 +129,55 @@ built from.
 - **Edgerton, D. & Shukur, G. (1999).** Testing autocorrelation in a
   system perspective. *Econometric Reviews* 18(4), 343–386.
   — [`es_test`](@ref).
+
+## Primary sources for components, factors and regimes
+
+- **Harvey, A. C. (1989).** *Forecasting, Structural Time Series Models
+  and the Kalman Filter.* Cambridge University Press. The structural
+  (unobserved-components) model — level, slope, seasonal and cycle, each
+  with its own disturbance — that [`fit_uc`](@ref) fits; Durbin & Koopman
+  above give the filtering and smoothing.
+- **Koopman, S. J. & Durbin, J. (2000).** Fast filtering and smoothing
+  for multivariate state space models. *Journal of Time Series Analysis*
+  21(3), 281–296. Processing a vector of observations one series at a
+  time — the sequential filter beneath [`fit_dfm`](@ref).
+- **Ansley, C. F. & Kohn, R. (1986).** A note on reparameterizing a
+  vector autoregressive moving average model to enforce stationarity.
+  *Journal of Statistical Computation and Simulation* 24(2), 99–106; and
+  **Morf, M., Vieira, A. & Kailath, T. (1978).** Covariance
+  characterization by partial autocorrelation matrices. *Annals of
+  Statistics* 6(3), 643–648. The map that keeps a factor VAR stationary
+  while the optimiser searches freely.
+- **Stock, J. H. & Watson, M. W. (2002).** Forecasting using principal
+  components from a large number of predictors. *Journal of the
+  American Statistical Association* 97(460), 1167–1179. The case for a
+  few factors behind many series, and the principal-components start.
+- **Bai, J. & Ng, S. (2002).** Determining the number of factors in
+  approximate factor models. *Econometrica* 70(1), 191–221. — [`bai_ng_ic`](@ref).
+- **Hamilton, J. D. (1989).** A new approach to the economic analysis of
+  nonstationary time series and the business cycle. *Econometrica*
+  57(2), 357–384. The Markov-switching autoregression, its filter, and
+  the GNP series it was first fitted to — [`fit_ms_autoregression`](@ref).
+- **Kim, C.-J. (1994).** Dynamic linear models with Markov-switching.
+  *Journal of Econometrics* 60(1–2), 1–22; and **Kim, C.-J. & Nelson,
+  C. R. (1999).** *State-Space Models with Regime Switching.* MIT Press.
+  The smoother behind [`regime_probabilities`](@ref).
+- **Diebold, F. X., Lee, J.-H. & Weinbach, G. C. (1994).** Regime
+  switching with time-varying transition probabilities. In C.
+  Hargreaves (ed.), *Nonstationary Time Series Analysis and
+  Cointegration*, Oxford University Press, 283–302. The `exog_tvtp`
+  option.
+- **Tong, H. & Lim, K. S. (1980).** Threshold autoregression, limit
+  cycles and cyclical data. *Journal of the Royal Statistical Society B*
+  42(3), 245–292; and **Tong, H. (1990).** *Non-linear Time Series: A
+  Dynamical System Approach.* Oxford University Press. The threshold
+  autoregression, and the lynx series it is still demonstrated on —
+  [`fit_setar`](@ref).
+- **Hansen, B. E. (1999).** Testing for linearity. *Journal of Economic
+  Surveys* 13(5), 551–576. — [`setar_test`](@ref). And **Hansen, B. E.
+  (2000).** Sample splitting and threshold estimation. *Econometrica*
+  68(3), 575–603: why the threshold has no ordinary standard error, and
+  the confidence set that is not yet built.
+- **Teräsvirta, T. (1994).** Specification, estimation, and evaluation
+  of smooth transition autoregressive models. *Journal of the American
+  Statistical Association* 89(425), 208–218. — [`fit_lstar`](@ref).

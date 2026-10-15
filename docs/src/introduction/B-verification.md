@@ -14,8 +14,9 @@ claim the rest of the book rests on.
 in Julia from its primary source — the original paper or the textbook.
 Never by translating another package's source code, in any language.
 
-R (`stats`, `forecast`, `tseries`, `urca`, `rugarch`) and Python
-(`statsmodels`, `pmdarima`, `arch`) are used for exactly two things:
+R (`stats`, `forecast`, `tseries`, `urca`, `vars`, `rugarch`, `tsDyn`,
+`MSwM`, `dfms`) and Python (`statsmodels`, `pmdarima`, `arch`, `aeon`)
+are used for exactly two things:
 
 1. **Resolving ambiguity** when a paper underspecifies an
    implementation detail, by checking what a mature implementation
@@ -129,6 +130,17 @@ that passed in isolation but errored under the full suite because
 `std` was not imported. Documentation that executes is a test suite
 with a different shape.
 
+The models of components, factors and regimes added two of the same
+kind. The worked example for [`fit_dfm`](@ref) failed on the Julia
+version the documentation is built with and passed on the one the tests
+run on: there, matrix multiplication skips an entry whose value is zero,
+and the automatic-differentiation numbers it was multiplying count as
+zero when their *value* is zero even if their derivative is not — so a
+derivative silently vanished. And drawing every new chart by hand, once,
+found titles and axis labels that disappeared because a later series in
+the same panel overwrote them, which no test of the chart's data could
+see.
+
 ## What the documentation build enforces
 
 Both gates are live in CI and a failure is treated like a test failure:
@@ -216,6 +228,27 @@ model, but a wrong number:
   the causing and the caused block have more than one variable — an
   indexing fault, verified at three block sizes. It never returns a
   wrong answer, but for a general block `vars` is the only reference.
+
+The models of components, factors and regimes found the most, in
+references that are otherwise careful:
+
+- **R's `StructTS` reports a `loglik` that is not the log-likelihood** —
+  it scales by the wrong count and adds a normalising term with the
+  wrong sign — and clips negative variances to zero, so a reported zero
+  is ambiguous. `statsmodels` agrees with this package to `1e-10`.
+- **`statsmodels`' one-series-at-a-time filter silently drops nearly
+  degenerate updates**: with idiosyncratic variances of `1e-12` it
+  reports a log-likelihood of `−696.17` where the true value, which the
+  conventional filter and this package both compute, is about `−1.4e14`.
+- **`MSwM` stores the negative log-likelihood** in its `logLikel` slot,
+  and under its default parallel restarts gives three different optima
+  from one seed.
+- **`statsmodels` returns the starting values** for the transition
+  probabilities of a switching model in which nothing switches, with no
+  warning; this package refuses the model.
+- **`tsDyn`'s LSTAR optimiser stops short** on a likelihood that is
+  nearly flat in the slope; this package reaches a lower sum of squares
+  and reproduces `tsDyn`'s exactly at `tsDyn`'s parameters.
 
 And one that is not an error on either side but would read like one: for
 the Johansen test with an unrestricted constant, `urca` uses

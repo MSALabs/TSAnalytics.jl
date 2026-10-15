@@ -29,6 +29,16 @@ canonical threshold-autoregression example, usually taken in `log10`
 const LYNX = joinpath(dirname(@__DIR__), "test_data", "lynx.csv")
 
 """
+    TSAnalytics.HAMILTON_GNP
+
+Absolute path to `hamilton_gnp.csv`: quarterly growth of US real GNP
+(100 times the change in its log), 1951Q1-1984Q3, n = 135 -- the series
+Hamilton (1989) fitted the first Markov-switching autoregression to, as
+distributed with statsmodels.
+"""
+const HAMILTON_GNP = joinpath(dirname(@__DIR__), "test_data", "hamilton_gnp.csv")
+
+"""
     TSAnalytics.AIR_PASSENGERS
 
 Absolute path to `airpassengers.csv`: monthly US airline passenger

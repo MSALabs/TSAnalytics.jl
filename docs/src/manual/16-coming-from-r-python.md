@@ -64,6 +64,17 @@ and concluding something is broken.
 | `stats::filter` | [`convolution_filter`](@ref) / [`recursive_filter`](@ref) |
 | `forecast::BoxCox.lambda` | [`guerrero_lambda`](@ref) |
 | `spec.pgram` | [`periodogram`](@ref) |
+| `StructTS(y, type="level")` | [`uc_local_level`](@ref)`(y)` — a different likelihood, see below |
+| `StructTS(y, type="trend")` | [`uc_local_linear_trend`](@ref)`(y)` |
+| `StructTS(y, type="BSM")` | [`uc_bsm`](@ref)`(y, period)` |
+| `tsSmooth(fit)` | [`uc_decomposition`](@ref)`(m)` — with standard errors |
+| `dfms::DFM(X, r, p)` | [`fit_dfm`](@ref)`(standardize(X), r; p)` |
+| `dfms::ICr(X)` | [`bai_ng_ic`](@ref)`(X, rmax)` |
+| `MSwM::msmFit(lm(y ~ 1), k, sw)` | [`fit_ms_regression`](@ref)`(y; k)` |
+| `tsDyn::setar(y, m, thDelay=d)` | [`fit_setar`](@ref)`(y, m; thDelay=d)` — same `thDelay` convention |
+| `tsDyn::selectSETAR(y, m)` | [`select_setar`](@ref)`(y, m)` |
+| `tsDyn::lstar(y, m, thDelay=d)` | [`fit_lstar`](@ref)`(y, m; thDelay=d)` |
+| `tsDyn::setarTest(y, m)` | [`setar_test`](@ref)`(y, m)` — 1000 bootstrap draws, not 10 |
 
 ## From Python
 
@@ -102,6 +113,16 @@ and concluding something is broken.
 | `tsa.exponential_smoothing.ETSModel` | [`fit_ets`](@ref) |
 | `tsa.forecasting.theta.ThetaModel` | [`fit_theta`](@ref) |
 | `tbats.TBATS` (the `tbats` package) | [`fit_tbats`](@ref) |
+| `tsa.UnobservedComponents(y, "llevel")` | [`uc_local_level`](@ref)`(y)` |
+| `tsa.UnobservedComponents(y, level=…, trend=…, seasonal=…)` | [`fit_uc`](@ref)`(y; level=…, trend=…, seasonal=…)` — explicit `:deterministic`/`:stochastic`, see below |
+| `.smoothed_state`, `.level`, `.trend` | [`uc_decomposition`](@ref)`(m)` |
+| `tsa.DynamicFactor(Y, k_factors=r, factor_order=p)` | [`fit_dfm`](@ref)`(Y, r; p)` |
+| `.factors.smoothed` | [`factors`](@ref)`(m)[1]` — observations × factors, the transpose |
+| `.coefficients_of_determination` | [`factor_r2`](@ref)`(m)` |
+| `tsa.MarkovRegression(y, k_regimes=k, exog=X)` | [`fit_ms_regression`](@ref)`(y; k, exog=X)` |
+| `tsa.MarkovAutoregression(y, k_regimes=k, order=p)` | [`fit_ms_autoregression`](@ref)`(y, p; k)` |
+| `.smoothed_marginal_probabilities` | [`regime_probabilities`](@ref)`(m)` |
+| `.expected_durations` | [`expected_durations`](@ref)`(m)` |
 
 ## Where the defaults differ
 
@@ -559,6 +580,122 @@ All ten of `vars`' residual-diagnostic p-values are `1 − CDF`, like its
 Granger test, and print `0` for strong rejections that have representable
 tails. Compare statistics with `vars`, never p-values.
 
+### `StructTS`'s `loglik` is not the log-likelihood
+
+R's `StructTS` scales its concentrated likelihood by `length(y)` where
+the number of observations the filter used belongs, and adds a
+normalising term with the wrong sign: `loglik0 − loglik` is exactly
+`n·log(2π) + 0.5·n_obs·log(2π)`, and on the Nile its reported value is
+`10.663` from the true likelihood at its own parameters. It also starts
+the state at the first observation, making the first innovation exactly
+zero, and clips negative variance estimates to zero (`pmax`), so a
+reported `0` cannot be told from a clipped negative. Compare variances
+with `StructTS`, never log-likelihoods. [`fit_uc`](@ref) agrees with
+`statsmodels`' `UnobservedComponents` to `1e-10` on the Nile, and on
+UKgas reports a level variance of `5e-17` — small, positive, and not
+clipped.
+
+### `statsmodels`' `level=True` is a deterministic level
+
+`UnobservedComponents(y, level=True)` fits a **fixed** level and adds an
+irregular, with only a `SpecificationWarning`; a stochastic level needs
+`stochastic_level=True` as well, which then drops the irregular. Its
+string shortcuts disagree too — `"llevel"` carries an irregular,
+`"rwalk"` does not. [`fit_uc`](@ref) asks for each component as
+`:none`, `:deterministic` or `:stochastic`, and refuses a specification
+with no disturbance at all.
+
+### Smoothed component variances over the diffuse periods
+
+The periods the large-variance prior consumes have no meaningful
+smoothed variance: under a prior variance of `1e6` the computation is a
+cancellation, and `statsmodels`' own values there go **negative** (to
+`−0.97` on UKgas). [`uc_decomposition`](@ref) reports those standard
+errors as `NaN`, the same periods the likelihood leaves out, rather than
+a clipped zero that would claim certainty where the prior dominates.
+
+### Factor-model loadings are identified differently
+
+A factor model's loadings are fixed only up to a rotation. `statsmodels`
+fixes the factor variance (`Q = I`) and nothing else; `dfms` fixes
+nothing. [`fit_dfm`](@ref) also makes the leading block of loadings
+lower-triangular with a positive diagonal, so twenty random starts reach
+the same loadings to `1e-8` — with one parameter fewer than
+`statsmodels` and a likelihood `2.3e-6` higher. Loadings from the three
+are comparable only after a rotation; on the six-series fixture the
+rotation to `statsmodels`' is a **reflection**. [`factors`](@ref)
+returns observations × factors, the transpose of `statsmodels`'
+`factors.smoothed`. Standardise first, with [`standardize`](@ref): the
+likelihood is not scale-invariant and the fit does not do it for you.
+
+### `MSwM` stores the negative log-likelihood, and is not reproducible
+
+`MSwM`'s `logLikel` slot holds `−Σ log(margLik)`; read as a
+log-likelihood it flips every comparison. Under its default
+`parallelization=TRUE` the random restarts run without RNG stream
+control: three runs with one seed gave `−183.58332`, `−183.66895` and
+`−183.66916`. And `msmFit` on a regression with lagged `y` is **not**
+Hamilton's switching autoregression, whose lags are taken around the
+regime-dependent mean — that is [`fit_ms_autoregression`](@ref). On
+Hamilton's GNP series this package matches `statsmodels`' log-likelihood
+`−181.26339` to `8.5e-14`.
+
+### `statsmodels` returns start values for an unidentified switching model
+
+With nothing switching — no switching trend, AR or variance — the
+transition probabilities are not identified, and `statsmodels` returns
+them untouched from their starting values (`0.5`) without a warning.
+[`fit_ms_regression`](@ref) and [`fit_ms_autoregression`](@ref) refuse
+the specification. (`MarkovAutoregression.fit()` also fails at
+`order=0`, though its `loglike` there is correct; the order-0 model is
+[`fit_ms_regression`](@ref) here.)
+
+### `tsDyn`'s SETAR standard errors and AIC use the full series length
+
+`tsDyn::setar` divides the residual sum of squares by `n − p` — the full
+series length less the slopes, counting observations the regression
+never used — and computes AIC and BIC on `n`. [`fit_setar`](@ref) uses
+the rows the regression used, `rows − k`; `tsDyn`'s figures are kept in
+`se_tsdyn` and [`tsdyn_ic`](@ref) so they can be reproduced exactly
+(they are, to `1e-10` on lynx). `tsDyn`'s own linear AR, `linear()`,
+uses a third denominator, so a SETAR and the AR it is compared with
+carry inconsistent standard errors there. Its covariance matrix
+zero-pads the threshold — there is no standard error for it, here or
+there, because its distribution is non-standard — and its `k` counts the
+threshold only when it was searched, so the AIC of a supplied threshold
+is `2` lower for the same fit. `logLik` is not defined for a `setar`
+object.
+
+### `tsDyn`'s threshold grid skips candidates
+
+`tsDyn` builds the candidate grid from fractional indices that R
+truncates, so on lynx it considers 74 of the 75 admissible thresholds.
+[`fit_setar`](@ref) searches all of them by default and reaches the same
+threshold there; `grid = :tsdyn` reproduces the truncated grid, which is
+what makes [`select_setar`](@ref) match `selectSETAR`'s 592-row table
+exactly. Both include ties among the candidates, which a grid over
+unique values does not. And with two thresholds, `tsDyn`'s default
+`"pooled-AIC"` criterion is not implemented: it falls back to the SSR
+with only a warning.
+
+### `tsDyn`'s LSTAR is additive, on the raw scale, and stops early
+
+`lstar`'s high-regime coefficients are **increments** on the low ones
+(`φ_L + φ_H` is the high regime), and its slope `γ` multiplies the raw
+`z − c`, not `(z − c)/sd(z)` as in much of the literature — so its `γ`
+is not comparable with a textbook's. [`fit_lstar`](@ref) fits the same
+form. The likelihood is nearly flat in `γ`, and `tsDyn`'s optimiser
+stops short: on lynx this package reaches a sum of squares of
+`4.33764091` against its `4.33764323`, and reproduces its figure exactly
+at its parameters.
+
+### `setarTest`'s default is ten bootstrap draws
+
+Hansen's threshold test has no asymptotic distribution, so its p-values
+come from the bootstrap alone, and `tsDyn`'s default `nboot = 10` is far
+too few to be stable. [`setar_test`](@ref) defaults to 1000. The
+statistics themselves agree exactly.
+
 ## What is missing here that you may be looking for
 
 | Missing | Note |
@@ -566,6 +703,9 @@ tails. Compare statistics with `vars`, never p-values.
 | HEGY / Canova-Hansen | [`nsdiffs`](@ref) covers R's default seasonal-strength heuristic and OCSB. HEGY and CH need R's separate `uroot` package and are not built here. |
 | A Burg PACF via R's `pacf()` | **R's `pacf()` silently ignores its `method` argument** — all four options return the same numbers. R's real Burg estimator is `ar.burg()`, and `pacf(method=:burg)` here matches it (and `statsmodels`' `pacf_burg`) to `4e-11`. |
 | `forecast` for `model=:tvss` | `model=:mle` forecasts; `:tvss` does not — `beta` is a latent state there, so it needs a projected path and a second variance term. |
+| `tsDyn::selectLSTAR`, `star`, MTAR | [`fit_lstar`](@ref) fits the order it is given; more than two smooth regimes and a differenced threshold variable are not built. |
+| A confidence set for a threshold | Neither reference has one either; Hansen's (2000) inversion is not built, and no standard error stands in for it. |
+| `statsmodels` `DynamicFactorMQ` | Mixed frequencies and EM estimation are not built; [`fit_dfm`](@ref) maximises the likelihood directly. |
 | Robust SE for ARIMA in R | Not a gap here — `sandwich::vcovHC` **cannot consume an `arima` object at all**. `se_type=:robust` has no R counterpart to compare against. |
 
 ## Further reading

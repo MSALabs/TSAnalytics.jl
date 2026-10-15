@@ -80,9 +80,12 @@ Full detail on all of these lives in the repository README.
     multivariate track -- VAR, Granger causality, impulse responses and
     variance decomposition, Engle-Granger, Phillips-Ouliaris and
     Johansen cointegration tests, the VECM, structural VARs and
-    multivariate residual diagnostics -- are complete. Structural time
-    series (unobserved components), regime-switching models and the
-    companion TSFeatures.jl package are planned but not yet started.
+    multivariate residual diagnostics -- are complete, and so are the
+    models built on a hidden or switching structure: unobserved
+    components (structural time series), dynamic factor models,
+    Markov-switching regressions and autoregressions, and threshold
+    autoregressions (SETAR, LSTAR, Hansen's test). The companion
+    TSFeatures.jl package is planned but not yet started.
     See [`development-sequence.md`](https://github.com/MSALabs/TSAnalytics.jl/blob/main/development-sequence.md)
     in the repository root for the complete, current, staged roadmap.
 
